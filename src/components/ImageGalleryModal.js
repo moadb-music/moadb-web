@@ -6,13 +6,26 @@ export default function ImageGalleryModal({
   title = 'GALERIA',
   tabs = [{ key: 'images', label: 'IMAGENS', folder: 'images' }],
   initialTabKey,
+  allFolder,
   onSelect,
   onClose,
 }) {
+  const ALL_KEY = 'all';
+
+  const preparedTabs = useMemo(() => {
+    const clean = (tabs || []).filter(Boolean);
+    const hasAll = clean.some((t) => t.key === ALL_KEY);
+    // adiciona a aba TODOS automaticamente se houver mais de uma pasta
+    if (!hasAll && clean.length > 1) {
+      return [{ key: ALL_KEY, label: 'TODOS' }, ...clean];
+    }
+    return clean;
+  }, [tabs]);
+
   const initialKey = useMemo(() => {
-    if (initialTabKey && tabs.some((t) => t.key === initialTabKey)) return initialTabKey;
-    return tabs[0]?.key || 'images';
-  }, [initialTabKey, tabs]);
+    if (initialTabKey && preparedTabs.some((t) => t.key === initialTabKey)) return initialTabKey;
+    return preparedTabs[0]?.key || ALL_KEY;
+  }, [initialTabKey, preparedTabs]);
 
   const [activeTab, setActiveTab] = useState(initialKey);
   const [loading, setLoading] = useState(false);
@@ -20,23 +33,54 @@ export default function ImageGalleryModal({
   const [imagesByTab, setImagesByTab] = useState({}); // { [key]: [{path,url}] }
   const [uploadInputKey, setUploadInputKey] = useState(0);
 
-  const tab = useMemo(() => tabs.find((t) => t.key === activeTab) || tabs[0], [activeTab, tabs]);
+  const tab = useMemo(() => preparedTabs.find((t) => t.key === activeTab) || preparedTabs[0], [activeTab, preparedTabs]);
+
+  async function loadFolder(folder) {
+    const root = storageRef(storage, folder);
+    const res = await listAll(root);
+    const urls = await Promise.all(
+      (res.items || []).map(async (item) => {
+        const url = await getDownloadURL(item);
+        return { path: item.fullPath, url };
+      })
+    );
+    return urls;
+  }
 
   async function loadTab(key) {
-    const t = tabs.find((x) => x.key === key);
-    if (!t) return;
+    if (key === ALL_KEY) {
+      setLoading(true);
+      setError('');
+      try {
+        // Se allFolder foi definido, a aba TODOS lista apenas essa pasta.
+        if (typeof allFolder === 'string' && allFolder.trim()) {
+          const urls = await loadFolder(allFolder.trim());
+          urls.sort((a, b) => a.path.localeCompare(b.path));
+          setImagesByTab((prev) => ({ ...prev, [ALL_KEY]: urls }));
+          return;
+        }
+
+        // fallback: merge de todas as pastas das tabs
+        const folderTabs = preparedTabs.filter((t) => t.key !== ALL_KEY && t.folder);
+        const allLists = await Promise.all(folderTabs.map((t) => loadFolder(t.folder)));
+        const merged = allLists.flat();
+        merged.sort((a, b) => a.path.localeCompare(b.path));
+        setImagesByTab((prev) => ({ ...prev, [ALL_KEY]: merged }));
+      } catch {
+        setError('Não foi possível listar as imagens do Storage.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    const t = preparedTabs.find((x) => x.key === key);
+    if (!t?.folder) return;
 
     setLoading(true);
     setError('');
     try {
-      const root = storageRef(storage, t.folder);
-      const res = await listAll(root);
-      const urls = await Promise.all(
-        (res.items || []).map(async (item) => {
-          const url = await getDownloadURL(item);
-          return { path: item.fullPath, url };
-        })
-      );
+      const urls = await loadFolder(t.folder);
       urls.sort((a, b) => a.path.localeCompare(b.path));
       setImagesByTab((prev) => ({ ...prev, [key]: urls }));
     } catch {
@@ -60,6 +104,10 @@ export default function ImageGalleryModal({
     const list = Array.from(files || []).filter(Boolean);
     if (!tab || list.length === 0) return;
 
+    // se estiver em TODOS, sobe arquivos na primeira pasta real
+    const effective = tab.key === ALL_KEY ? preparedTabs.find((t) => t.key !== ALL_KEY && t.folder) : tab;
+    if (!effective?.folder) return;
+
     setLoading(true);
     setError('');
     try {
@@ -67,10 +115,19 @@ export default function ImageGalleryModal({
       for (let i = 0; i < list.length; i += 1) {
         const file = list[i];
         const safeName = String(file.name || `image-${i}`).replace(/[^a-zA-Z0-9._-]/g, '_');
-        const path = `${tab.folder}/${stamp}-${safeName}`;
+        const path = `${effective.folder}/${stamp}-${safeName}`;
         await uploadBytes(storageRef(storage, path), file);
       }
+      // recarrega aba atual e também TODOS, se existir
       await loadTab(activeTab);
+      if (preparedTabs.some((t) => t.key === ALL_KEY) && activeTab !== ALL_KEY) {
+        // invalida cache para refletir o upload em TODOS quando o usuário alternar
+        setImagesByTab((prev) => {
+          const next = { ...prev };
+          delete next[ALL_KEY];
+          return next;
+        });
+      }
     } catch {
       setError('Falha ao enviar imagem para o Storage.');
     } finally {
@@ -87,6 +144,8 @@ export default function ImageGalleryModal({
     setError('');
     try {
       await deleteObject(storageRef(storage, path));
+      // limpa cache de todas as tabs, pois não sabemos de qual pasta veio
+      setImagesByTab({});
       await loadTab(activeTab);
     } catch {
       setError('Falha ao excluir imagem do Storage.');
@@ -119,7 +178,7 @@ export default function ImageGalleryModal({
 
         <div className="admin-gallery-tabs">
           <nav className="admin-tabs" aria-label="Pastas da galeria">
-            {tabs.map((t) => (
+            {preparedTabs.map((t) => (
               <button
                 key={t.key}
                 className={`admin-tab ${activeTab === t.key ? 'is-active' : ''}`}
@@ -168,7 +227,11 @@ export default function ImageGalleryModal({
           ))}
         </div>
 
-        {!loading && images.length === 0 ? <div className="admin-muted" style={{ marginTop: 10 }}>Sem imagens nesta pasta.</div> : null}
+        {!loading && images.length === 0 ? (
+          <div className="admin-muted" style={{ marginTop: 10 }}>
+            Sem imagens nesta pasta.
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -89,11 +89,6 @@ export default function HomeAdmin() {
     return discography.find((d) => String(d.id) === String(id)) || null;
   }, [discography, draft.featuredReleaseIds]);
 
-  const selectedItems = useMemo(() => {
-    const set = new Set((draft.featuredReleaseIds || []).map(String));
-    return discography.filter(d => set.has(String(d.id)));
-  }, [discography, draft.featuredReleaseIds]);
-
   function toggleSelected(id) {
     const key = String(id);
     setDraft(prev => {
@@ -175,9 +170,7 @@ export default function HomeAdmin() {
                       placeholder="Ouça agora"
                     />
                   </div>
-                </div>
 
-                <div className="admin-field-row admin-home-featured-settings-row">
                   <div className="admin-field">
                     <div className="admin-label">BOTÃO</div>
                     <input
@@ -234,38 +227,6 @@ export default function HomeAdmin() {
                         {primarySelected.year ? ` • ${primarySelected.year}` : ''}
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ) : null}
-
-            {draft.featuredEnabled ? (
-              <div className="admin-card admin-home-featured-selected">
-                <div className="admin-label">SELECIONADO</div>
-                {selectedItems.length === 0 ? (
-                  <div className="admin-muted">Nenhum lançamento selecionado.</div>
-                ) : (
-                  <div className="admin-home-featured-selected-list">
-                    {selectedItems.map((r) => (
-                      <div key={r.id} className="admin-home-featured-selected-row">
-                        <div className="admin-home-featured-selected-left">
-                          <div className="admin-list-item-thumb">
-                            {r.coverUrl ? <img src={r.coverUrl} alt="" /> : <div className="admin-thumb-empty" />}
-                          </div>
-                          <div className="admin-home-featured-selected-text">
-                            <div className="admin-home-featured-selected-name">{r.title}</div>
-                            <div className="admin-muted admin-home-featured-selected-meta">
-                              {r.type ? String(r.type).toUpperCase() : ''}
-                              {r.year ? ` • ${r.year}` : ''}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="admin-hint" style={{ marginTop: 0 }}>
-                          Clique novamente no item acima (grid) para desmarcar.
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 )}
               </div>

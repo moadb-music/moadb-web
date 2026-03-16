@@ -1578,8 +1578,8 @@
 }
 
 .admin-cover-drop-xl{
-  width:190px;
-  height:190px;
+  width:100%;
+  height:100%;
 }
 
 .admin-cover-drop-img{
@@ -1878,4 +1878,32 @@
   flex-wrap:wrap;
 }
 
-/* CTA preview removido do editor da HOME */
+/* ===== PÁGINAS: Rich text (SOBRE) ===== */
+.admin-richtext{
+  min-height: 180px;
+  padding: 14px 14px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: rgba(255,255,255,.92);
+  outline: none;
+  line-height: 1.6;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+
+.admin-richtext:focus{
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 2px rgba(139,0,0,.18), 0 10px 30px rgba(0,0,0,.35);
+}
+
+.admin-richtext b,
+.admin-richtext strong{font-weight:900}
+
+.admin-richtext u{text-decoration: underline}
+
+.admin-richtext i,
+.admin-richtext em{font-style: italic}
+
+.admin-richtext a{color: rgba(255,255,255,.92); text-decoration: underline}
+
+.admin-richtext *{max-width:100%}

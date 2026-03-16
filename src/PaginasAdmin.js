@@ -29,11 +29,38 @@ function makeDefaultBackground() {
   };
 }
 
+function makeDefaultAboutSection() {
+  return {
+    title: { pt: '', en: '' },
+    text: { pt: '', en: '' }, // HTML (rich text)
+    imageUrl: '',
+  };
+}
+
+function makeDefaultAbout() {
+  return {
+    // duas sessões editáveis
+    sections: [
+      {
+        ...makeDefaultAboutSection(),
+        // Subtítulo 1 (o título principal "SOBRE/ABOUT" é fixo no site e não é editável)
+        title: { pt: '', en: '' },
+      },
+      {
+        ...makeDefaultAboutSection(),
+        // Subtítulo 2
+        title: { pt: '', en: '' },
+      },
+    ],
+  };
+}
+
 const DEFAULT_CONFIG = {
   backgroundsBySection: SECTIONS.reduce((acc, s) => {
     acc[s.key] = makeDefaultBackground();
     return acc;
   }, {}),
+  about: makeDefaultAbout(),
 };
 
 function clamp01(n) {
@@ -68,7 +95,6 @@ function normalizeBackground(rawBg) {
   next.gradientAngle = clampAngle(bg.gradientAngle ?? next.gradientAngle);
   next.gradientOpacity = clamp01(bg.gradientOpacity ?? bg.colorOpacity ?? next.gradientOpacity);
 
-  // new single switch, but honor old stored flags if they exist
   if (typeof bg.gradientEnabled === 'boolean') {
     next.gradientEnabled = bg.gradientEnabled;
   } else if (typeof bg.gradientFromEnabled === 'boolean' || typeof bg.gradientToEnabled === 'boolean') {
@@ -105,7 +131,63 @@ function normalizeDoc(data) {
     }
   });
 
-  return { backgroundsBySection: acc };
+  const aboutRaw = raw.about ?? raw.sobre ?? {};
+
+  const isMainAboutTitle = (v) => {
+    const s = String(v || '').trim().toLowerCase();
+    return s === 'sobre' || s === 'about';
+  };
+
+  // Novo formato: about.sections[]
+  if (Array.isArray(aboutRaw?.sections)) {
+    const sections = aboutRaw.sections
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((s) => ({
+        title: {
+          pt: typeof s?.title?.pt === 'string' ? s.title.pt : '',
+          en: typeof s?.title?.en === 'string' ? s.title.en : '',
+        },
+        text: {
+          pt: typeof s?.text?.pt === 'string' ? s.text.pt : '',
+          en: typeof s?.text?.en === 'string' ? s.text.en : '',
+        },
+        imageUrl: typeof s?.imageUrl === 'string' ? s.imageUrl : '',
+      }));
+
+    while (sections.length < 2) sections.push(makeDefaultAbout().sections[sections.length]);
+
+    // Garantia extra: se alguém salvou o título principal como subtítulo por engano, limpa.
+    sections.forEach((sec) => {
+      if (isMainAboutTitle(sec?.title?.pt)) sec.title.pt = '';
+      if (isMainAboutTitle(sec?.title?.en)) sec.title.en = '';
+    });
+
+    return { backgroundsBySection: acc, about: { sections } };
+  }
+
+  // Legacy: about.title/text/imageUrl (mantém como Subtítulo 1 / Texto 1; o heading "SOBRE" continua fixo)
+  const legacyTitlePT = typeof aboutRaw?.title?.pt === 'string' ? aboutRaw.title.pt : typeof aboutRaw?.titlePT === 'string' ? aboutRaw.titlePT : '';
+  const legacyTitleEN = typeof aboutRaw?.title?.en === 'string' ? aboutRaw.title.en : typeof aboutRaw?.titleEN === 'string' ? aboutRaw.titleEN : '';
+
+  const about = {
+    sections: [
+      {
+        title: {
+          pt: isMainAboutTitle(legacyTitlePT) ? '' : legacyTitlePT,
+          en: isMainAboutTitle(legacyTitleEN) ? '' : legacyTitleEN,
+        },
+        text: {
+          pt: typeof aboutRaw?.text?.pt === 'string' ? aboutRaw.text.pt : typeof aboutRaw?.textPT === 'string' ? aboutRaw.textPT : '',
+          en: typeof aboutRaw?.text?.en === 'string' ? aboutRaw.text.en : typeof aboutRaw?.textEN === 'string' ? aboutRaw.textEN : '',
+        },
+        imageUrl: typeof aboutRaw?.imageUrl === 'string' ? aboutRaw.imageUrl : '',
+      },
+      makeDefaultAbout().sections[1],
+    ],
+  };
+
+  return { backgroundsBySection: acc, about };
 }
 
 function backgroundToPreviewStyle(bg) {
@@ -137,6 +219,33 @@ export default function PaginasAdmin() {
   const [selectedSection, setSelectedSection] = useState(SECTIONS[0].key);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+
+  const [aboutLang, setAboutLang] = useState('pt');
+  const [langOpen, setLangOpen] = useState(false);
+
+  // SVGs simples (sem emoji) para bandeiras
+  const FlagBR = (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect width="24" height="24" fill="#009B3A" />
+      <polygon points="12,3 21,12 12,21 3,12" fill="#FFDF00" />
+      <circle cx="12" cy="12" r="5" fill="#002776" />
+    </svg>
+  );
+
+  const FlagUK = (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect width="24" height="24" fill="#012169" />
+      <path d="M0 0 L24 24 M24 0 L0 24" stroke="#FFF" strokeWidth="5" />
+      <path d="M0 0 L24 24 M24 0 L0 24" stroke="#C8102E" strokeWidth="3" />
+      <path d="M12 0 V24 M0 12 H24" stroke="#FFF" strokeWidth="7" />
+      <path d="M12 0 V24 M0 12 H24" stroke="#C8102E" strokeWidth="4" />
+    </svg>
+  );
+
+  const aboutCfg = config.about ?? makeDefaultAbout();
+  const aboutSections = Array.isArray(aboutCfg.sections) ? aboutCfg.sections : makeDefaultAbout().sections;
+  const aboutS1 = aboutSections[0] ?? makeDefaultAbout().sections[0];
+  const aboutS2 = aboutSections[1] ?? makeDefaultAbout().sections[1];
 
   const selectedBg = config.backgroundsBySection?.[selectedSection] ?? makeDefaultBackground();
 
@@ -284,6 +393,20 @@ export default function PaginasAdmin() {
                   <div className="admin-pages-preview-chip">{sectionLabel}</div>
                 </div>
               </div>
+
+              {selectedSection === 'sobre' ? (
+                <div className="admin-card" style={{ marginTop: 14 }}>
+                  <div className="admin-panel-title" style={{ fontSize: 14, letterSpacing: 2 }}>SOBRE — CONTEÚDO</div>
+                  <div className="admin-pages-divider" />
+
+                  <div className="admin-field-row" style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                    <div className="admin-muted">Edite título/texto (PT/EN) e imagem da seção Sobre.</div>
+                    <button type="button" className="admin-btn admin-btn-primary" onClick={openEditor}>
+                      EDITAR
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
               <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <button type="button" className="admin-btn admin-btn-ghost" onClick={resetSelected} disabled={saving || loading}>
@@ -470,6 +593,197 @@ export default function PaginasAdmin() {
                   </div>
                 </div>
 
+                {selectedSection === 'sobre' ? (
+                  <div className="admin-card" style={{ marginTop: 14 }}>
+                    <div className="admin-pages-degrade-head">
+                      <div className="admin-pages-label">SOBRE — CONTEÚDO</div>
+
+                      {/* dropdown de idioma (estilo do site) */}
+                      <div className="lang-dropdown" style={{ minWidth: 170 }}>
+                        <button
+                          type="button"
+                          className="lang-dropdown-toggle"
+                          onClick={() => setLangOpen((v) => !v)}
+                          aria-haspopup="menu"
+                          aria-expanded={langOpen ? 'true' : 'false'}
+                          title="Idioma"
+                        >
+                          <span className="lang-flag" aria-hidden="true">{aboutLang === 'pt' ? FlagBR : FlagUK}</span>
+                          <span className="lang-current">{aboutLang === 'pt' ? 'Português' : 'English'}</span>
+                          <span className="lang-arrow">▾</span>
+                        </button>
+
+                        {langOpen ? (
+                          <ul className="lang-dropdown-menu" role="menu" aria-label="Idioma">
+                            <li>
+                              <button
+                                type="button"
+                                className={`lang-dropdown-item ${aboutLang === 'pt' ? 'active' : ''}`}
+                                onClick={() => {
+                                  setAboutLang('pt');
+                                  setLangOpen(false);
+                                }}
+                                role="menuitem"
+                              >
+                                <span className="lang-flag" aria-hidden="true">{FlagBR}</span>
+                                Português
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                type="button"
+                                className={`lang-dropdown-item ${aboutLang === 'en' ? 'active' : ''}`}
+                                onClick={() => {
+                                  setAboutLang('en');
+                                  setLangOpen(false);
+                                }}
+                                role="menuitem"
+                              >
+                                <span className="lang-flag" aria-hidden="true">{FlagUK}</span>
+                                English
+                              </button>
+                            </li>
+                          </ul>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="admin-pages-divider" />
+
+                    {/* Layout: esquerda imagem+dicas, direita subtitulo/texto/subtitulo/texto */}
+                    <div className="admin-field-row" style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 16, alignItems: 'start' }}>
+                      {/* ESQUERDA: IMAGEM + DICAS */}
+                      <div className="admin-field" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div className="admin-field">
+                          <div className="admin-label">IMAGEM</div>
+                          <button
+                            type="button"
+                            className="admin-cover-drop admin-cover-drop-xl"
+                            onClick={() => setIsGalleryOpen(true)}
+                            aria-label="Selecionar imagem do Sobre"
+                            title="Selecionar imagem"
+                          >
+                            {aboutS1?.imageUrl ? (
+                              <img src={aboutS1.imageUrl} alt="" className="admin-cover-drop-img" />
+                            ) : (
+                              <span className="admin-cover-drop-empty">SEM IMAGEM</span>
+                            )}
+                          </button>
+                          {aboutS1?.imageUrl ? (
+                            <button
+                              type="button"
+                              className="admin-btn admin-btn-ghost"
+                              style={{ marginTop: 10 }}
+                              onClick={() =>
+                                setConfig((prev) => {
+                                  const base = prev.about ?? makeDefaultAbout();
+                                  const sections = (Array.isArray(base.sections) ? base.sections : makeDefaultAbout().sections).slice(0, 2);
+                                  while (sections.length < 2) sections.push(makeDefaultAbout().sections[sections.length]);
+                                  const nextSections = sections.map((s, idx) => (idx === 0 ? { ...s, imageUrl: '' } : s));
+                                  return { ...prev, about: { ...base, sections: nextSections } };
+                                })
+                              }
+                            >
+                              REMOVER
+                            </button>
+                          ) : null}
+                        </div>
+
+                        <div className="admin-hint" style={{ marginTop: 4 }}>
+                          Dica: cole/edite com formatação (negrito/itálico/sublinhado/cores). O conteúdo é salvo como HTML.
+                        </div>
+                        <div className="admin-muted">
+                          Controles: Ctrl+B / Ctrl+I / Ctrl+U.
+                        </div>
+                      </div>
+
+                      {/* DIREITA: apenas subtítulos editáveis + textos */}
+                      <div className="admin-field" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <div className="admin-field">
+                          <div className="admin-label">SUBTÍTULO 1 ({aboutLang.toUpperCase()})</div>
+                          <input
+                            className="admin-input"
+                            value={String(aboutS1?.title?.[aboutLang] ?? '')}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setConfig((prev) => {
+                                const base = prev.about ?? makeDefaultAbout();
+                                const sections = (Array.isArray(base.sections) ? base.sections : makeDefaultAbout().sections).slice(0, 2);
+                                while (sections.length < 2) sections.push(makeDefaultAbout().sections[sections.length]);
+                                const nextSections = sections.map((s, idx) => (idx === 0 ? { ...s, title: { ...(s?.title || {}), [aboutLang]: v } } : s));
+                                return { ...prev, about: { ...base, sections: nextSections } };
+                              });
+                            }}
+                            placeholder={aboutLang === 'pt' ? 'A HISTÓRIA' : 'THE STORY'}
+                          />
+                          <div className="admin-muted" style={{ marginTop: 6 }}>
+                            (O título principal "SOBRE" é fixo e não é editável aqui.)
+                          </div>
+                        </div>
+
+                        <div className="admin-field">
+                          <div className="admin-label">TEXTO 1 ({aboutLang.toUpperCase()})</div>
+                          <div
+                            className="admin-richtext"
+                            contentEditable
+                            suppressContentEditableWarning
+                            onInput={(e) => {
+                              const html = e.currentTarget.innerHTML;
+                              setConfig((prev) => {
+                                const base = prev.about ?? makeDefaultAbout();
+                                const sections = (Array.isArray(base.sections) ? base.sections : makeDefaultAbout().sections).slice(0, 2);
+                                while (sections.length < 2) sections.push(makeDefaultAbout().sections[sections.length]);
+                                const nextSections = sections.map((s, idx) => (idx === 0 ? { ...s, text: { ...(s?.text || {}), [aboutLang]: html } } : s));
+                                return { ...prev, about: { ...base, sections: nextSections } };
+                              });
+                            }}
+                            dangerouslySetInnerHTML={{ __html: String(aboutS1?.text?.[aboutLang] ?? '') }}
+                          />
+                        </div>
+
+                        <div className="admin-field">
+                          <div className="admin-label">SUBTÍTULO 2 ({aboutLang.toUpperCase()})</div>
+                          <input
+                            className="admin-input"
+                            value={String(aboutS2?.title?.[aboutLang] ?? '')}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setConfig((prev) => {
+                                const base = prev.about ?? makeDefaultAbout();
+                                const sections = (Array.isArray(base.sections) ? base.sections : makeDefaultAbout().sections).slice(0, 2);
+                                while (sections.length < 2) sections.push(makeDefaultAbout().sections[sections.length]);
+                                const nextSections = sections.map((s, idx) => (idx === 1 ? { ...s, title: { ...(s?.title || {}), [aboutLang]: v } } : s));
+                                return { ...prev, about: { ...base, sections: nextSections } };
+                              });
+                            }}
+                            placeholder={aboutLang === 'pt' ? 'A FILOSOFIA' : 'THE PHILOSOPHY'}
+                          />
+                        </div>
+
+                        <div className="admin-field">
+                          <div className="admin-label">TEXTO 2 ({aboutLang.toUpperCase()})</div>
+                          <div
+                            className="admin-richtext"
+                            contentEditable
+                            suppressContentEditableWarning
+                            onInput={(e) => {
+                              const html = e.currentTarget.innerHTML;
+                              setConfig((prev) => {
+                                const base = prev.about ?? makeDefaultAbout();
+                                const sections = (Array.isArray(base.sections) ? base.sections : makeDefaultAbout().sections).slice(0, 2);
+                                while (sections.length < 2) sections.push(makeDefaultAbout().sections[sections.length]);
+                                const nextSections = sections.map((s, idx) => (idx === 1 ? { ...s, text: { ...(s?.text || {}), [aboutLang]: html } } : s));
+                                return { ...prev, about: { ...base, sections: nextSections } };
+                              });
+                            }}
+                            dangerouslySetInnerHTML={{ __html: String(aboutS2?.text?.[aboutLang] ?? '') }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="admin-pages-editor-bottom">
                   <div className="admin-pages-preview-top">
                     <div className="admin-pages-preview-title">PREVIEW</div>
@@ -502,21 +816,29 @@ export default function PaginasAdmin() {
 
       {isGalleryOpen ? (
         <ImageGalleryModal
-          title={`BACKGROUND — ${sectionLabel}`}
+          title={`MÍDIA — ${sectionLabel}`}
+          allFolder="uploads"
           tabs={[
-            {
-              key: 'background',
-              label: 'BACKGROUND',
-              folder: 'pages/background',
-            },
+            { key: 'uploads', label: 'UPLOADS', folder: 'uploads' },
+            { key: 'pages', label: 'PÁGINAS', folder: 'pages/background' },
           ]}
-          initialTabKey="background"
+          initialTabKey="all"
           onClose={() => setIsGalleryOpen(false)}
           onSelect={(url) => {
-            setDraft((v) => ({
-              ...v,
-              imageUrl: url,
-            }));
+            if (selectedSection === 'sobre') {
+              setConfig((prev) => {
+                const base = prev.about ?? makeDefaultAbout();
+                const sections = (Array.isArray(base.sections) ? base.sections : makeDefaultAbout().sections).slice(0, 2);
+                while (sections.length < 2) sections.push(makeDefaultAbout().sections[sections.length]);
+                const nextSections = sections.map((s, idx) => (idx === 0 ? { ...s, imageUrl: url } : s));
+                return { ...prev, about: { ...base, sections: nextSections } };
+              });
+            } else {
+              setDraft((v) => ({
+                ...v,
+                imageUrl: url,
+              }));
+            }
             setIsGalleryOpen(false);
           }}
         />

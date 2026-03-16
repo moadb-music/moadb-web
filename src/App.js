@@ -1,15 +1,61 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import './App.css';
 import logoPng from './assets/logo.png';
 import aboutLogoMark from './assets/logo-mark.png';
 import instagramPng from './assets/instagram.png';
 import pixPng from './assets/pix.png';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import spotifyIcon from './assets/spotify.png';
 import appleIcon from './assets/apple.png';
 import deezerIcon from './assets/deezer.png';
 import youtubeMusicIcon from './assets/youtube-music.png';
+
+const PAGES_DOC_PATH = ['siteData', 'moadb_pages'];
+
+function normalizeAboutFromPagesDoc(raw) {
+  const aboutRaw = raw?.about ?? raw?.sobre ?? {};
+
+  if (Array.isArray(aboutRaw?.sections)) {
+    const sections = aboutRaw.sections
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((s) => ({
+        title: {
+          pt: typeof s?.title?.pt === 'string' ? s.title.pt : '',
+          en: typeof s?.title?.en === 'string' ? s.title.en : '',
+        },
+        text: {
+          pt: typeof s?.text?.pt === 'string' ? s.text.pt : '',
+          en: typeof s?.text?.en === 'string' ? s.text.en : '',
+        },
+        imageUrl: typeof s?.imageUrl === 'string' ? s.imageUrl : '',
+      }));
+
+    while (sections.length < 2) {
+      sections.push({ title: { pt: '', en: '' }, text: { pt: '', en: '' }, imageUrl: '' });
+    }
+    return { sections };
+  }
+
+  // legado (uma sessão)
+  return {
+    sections: [
+      {
+        title: {
+          pt: typeof aboutRaw?.title?.pt === 'string' ? aboutRaw.title.pt : typeof aboutRaw?.titlePT === 'string' ? aboutRaw.titlePT : 'SOBRE',
+          en: typeof aboutRaw?.title?.en === 'string' ? aboutRaw.title.en : typeof aboutRaw?.titleEN === 'string' ? aboutRaw.titleEN : 'ABOUT',
+        },
+        text: {
+          pt: typeof aboutRaw?.text?.pt === 'string' ? aboutRaw.text.pt : typeof aboutRaw?.textPT === 'string' ? aboutRaw.textPT : '',
+          en: typeof aboutRaw?.text?.en === 'string' ? aboutRaw.text.en : typeof aboutRaw?.textEN === 'string' ? aboutRaw.textEN : '',
+        },
+        imageUrl: typeof aboutRaw?.imageUrl === 'string' ? aboutRaw.imageUrl : '',
+      },
+      { title: { pt: '', en: '' }, text: { pt: '', en: '' }, imageUrl: '' },
+    ],
+  };
+}
 
 function FlagBR(props) {
   return (
@@ -52,6 +98,8 @@ function App() {
   const [featuredPlatformsOpen, setFeaturedPlatformsOpen] = useState(false);
   const featuredIdsKey = (homeCfg.featuredReleaseIds || []).join('|');
 
+  const [pagesContent, setPagesContent] = useState(null);
+
   useEffect(() => {
     const unsubHome = onSnapshot(doc(db, 'siteData', 'moadb_home'), (snap) => {
       const raw = snap.exists() ? (snap.data()?.content ?? snap.data() ?? {}) : {};
@@ -90,6 +138,29 @@ function App() {
       unsubDisco();
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPages() {
+      try {
+        const ref = doc(db, ...PAGES_DOC_PATH);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) return;
+        const data = snap.data();
+        const content = data?.content ?? data;
+        if (!cancelled) setPagesContent(content);
+      } catch {
+        // silencioso: mantém placeholders
+      }
+    }
+    loadPages();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const langKey = useMemo(() => (String(lang || '').toLowerCase().startsWith('pt') ? 'pt' : 'en'), [lang]);
+  const aboutFromDb = useMemo(() => normalizeAboutFromPagesDoc(pagesContent || {}), [pagesContent]);
 
   useEffect(() => {
     // reset UI when featured release changes or gets disabled
@@ -346,27 +417,40 @@ function App() {
 
         <section id="sobre" className="about" aria-label="Sobre">
           <div className="about-inner">
-            <h2 className="about-title">SOBRE</h2>
+            {/* Título principal fixo (não editável via Firestore) */}
+            <h2 className="about-title">{langKey === 'pt' ? 'SOBRE' : 'ABOUT'}</h2>
 
             <div className="about-grid">
               <div className="about-col about-left">
-                <div className="about-subtitle">A HISTÓRIA</div>
-                <p className="about-text">
-                  [Placeholder] Texto sobre o projeto, origem, referências e contexto.
-                  Substituir depois com o texto oficial.
-                </p>
+                <div className="about-subtitle">{aboutFromDb?.sections?.[0]?.title?.[langKey] || (langKey === 'pt' ? 'A HISTÓRIA' : 'THE STORY')}</div>
+                {aboutFromDb?.sections?.[0]?.text?.[langKey] ? (
+                  <div className="about-text" dangerouslySetInnerHTML={{ __html: aboutFromDb.sections[0].text[langKey] }} />
+                ) : (
+                  <p className="about-text">
+                    [Placeholder] Texto sobre o projeto, origem, referências e contexto.
+                    Substituir depois com o texto oficial.
+                  </p>
+                )}
               </div>
 
               <div className="about-col about-center">
-                <img className="about-logo" src={aboutLogoMark} alt="Logo" />
+                <img
+                  className="about-logo"
+                  src={aboutFromDb?.sections?.[0]?.imageUrl || aboutLogoMark}
+                  alt="Logo"
+                />
               </div>
 
               <div className="about-col about-right">
-                <div className="about-subtitle">A FILOSOFIA</div>
-                <p className="about-text">
-                  [Placeholder] Texto sobre a proposta artística, estética e direção.
-                  Substituir depois com o texto oficial.
-                </p>
+                <div className="about-subtitle">{aboutFromDb?.sections?.[1]?.title?.[langKey] || (langKey === 'pt' ? 'A FILOSOFIA' : 'THE PHILOSOPHY')}</div>
+                {aboutFromDb?.sections?.[1]?.text?.[langKey] ? (
+                  <div className="about-text" dangerouslySetInnerHTML={{ __html: aboutFromDb.sections[1].text[langKey] }} />
+                ) : (
+                  <p className="about-text">
+                    [Placeholder] Texto sobre a proposta artística, estética e direção.
+                    Substituir depois com o texto oficial.
+                  </p>
+                )}
               </div>
             </div>
           </div>
