@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import YouTubeSegmentPicker from './YouTubeSegmentPicker';
 
 const DEFAULT_FORM = {
   type: 'single',
@@ -10,7 +11,7 @@ const DEFAULT_FORM = {
   appleUrl: '',
   deezerUrl: '',
   youtubeMusicUrl: '',
-  tracks: [], // [{ id, name, youtubeUrl, lyrics }]
+  tracks: [], // [{ id, name, youtubeUrl, lyrics, startSec, endSec }]
 };
 
 function uid() {
@@ -31,7 +32,7 @@ export default function DiscografiaAdmin() {
         deezerUrl: '',
         youtubeMusicUrl: '',
         tracks: [
-          { id: 't1', name: 'Demo Track', youtubeUrl: '', lyrics: '' },
+          { id: 't1', name: 'Demo Track', youtubeUrl: '', lyrics: '', startSec: 0, endSec: 15 },
         ],
       },
     ];
@@ -54,6 +55,8 @@ export default function DiscografiaAdmin() {
         name: t.name || '',
         youtubeUrl: t.youtubeUrl || '',
         lyrics: t.lyrics || '',
+        startSec: Number(t.startSec ?? 0),
+        endSec: Number(t.endSec ?? 15),
       })),
     };
   });
@@ -74,6 +77,8 @@ export default function DiscografiaAdmin() {
         name: t.name || '',
         youtubeUrl: t.youtubeUrl || '',
         lyrics: t.lyrics || '',
+        startSec: Number(t.startSec ?? 0),
+        endSec: Number(t.endSec ?? 15),
       })),
     });
     setIsEditorOpen(true);
@@ -125,7 +130,7 @@ export default function DiscografiaAdmin() {
   function addTrack() {
     setForm(prev => ({
       ...prev,
-      tracks: [...prev.tracks, { id: uid(), name: '', youtubeUrl: '', lyrics: '' }],
+      tracks: [...prev.tracks, { id: uid(), name: '', youtubeUrl: '', lyrics: '', startSec: 0, endSec: 15 }],
     }));
   }
 
@@ -168,6 +173,8 @@ export default function DiscografiaAdmin() {
         name: (t.name || '').trim(),
         youtubeUrl: (t.youtubeUrl || '').trim(),
         lyrics: t.lyrics || '',
+        startSec: Number(t.startSec ?? 0),
+        endSec: Number(t.endSec ?? 0),
       })),
     };
 
@@ -367,7 +374,16 @@ export default function DiscografiaAdmin() {
                         />
                       </label>
 
-                      <label className="admin-field">
+                      <YouTubeSegmentPicker
+                        value={{
+                          youtubeUrl: t.youtubeUrl,
+                          startSec: t.startSec,
+                          endSec: t.endSec,
+                        }}
+                        onChange={next => updateTrack(t.id, { startSec: next.startSec, endSec: next.endSec })}
+                      />
+
+                      <label className="admin-field" style={{ marginTop: 12 }}>
                         <span className="admin-label">Letra</span>
                         <textarea
                           className="admin-input admin-textarea"
