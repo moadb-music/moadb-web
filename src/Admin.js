@@ -6,6 +6,7 @@ import DiscografiaAdmin from './DiscografiaAdmin';
 import LojaAdmin from './LojaAdmin';
 import PaginasAdmin from './PaginasAdmin';
 import HomeAdmin from './HomeAdmin';
+import NoticiasAdmin from './NoticiasAdmin';
 import './Admin.css';
 
 export default function Admin() {
@@ -93,6 +94,8 @@ export default function Admin() {
           <LojaAdmin />
         ) : activeTab === 'paginas' ? (
           <PaginasAdmin />
+        ) : activeTab === 'noticias' ? (
+          <NoticiasAdmin />
         ) : (
           <div className="admin-empty" aria-label="Conteúdo do painel" />
         )}

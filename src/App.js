@@ -76,6 +76,81 @@ function normalizeShopFromDb(data) {
   };
 }
 
+function normalizeNewsFromDb(data) {
+  const d = data || {};
+  const content = d.content && typeof d.content === 'object' ? d.content : {};
+  const rawItems = Array.isArray(content.items)
+    ? content.items
+    : Array.isArray(content.posts)
+      ? content.posts
+      : Array.isArray(d.items)
+        ? d.items
+        : [];
+
+  return rawItems
+    .map((it, idx) => {
+      const tags = Array.isArray(it?.tags)
+        ? it.tags.map((t) => String(t).trim()).filter(Boolean)
+        : typeof it?.tags === 'string'
+          ? it.tags.split(/[,/]/g).map((t) => t.trim()).filter(Boolean)
+          : [];
+
+      const mediaUrl = String(it?.mediaUrl || it?.media || it?.videoUrl || '');
+      const mediaKind = String(it?.mediaKind || (mediaUrl ? 'video' : 'image'));
+
+      return {
+        id: String(it?.id ?? idx),
+        tags,
+        type: String(it?.type || it?.tag || ''),
+        date: String(it?.date || it?.publishedAt || it?.timestamp || ''),
+        title: String(it?.title || ''),
+        excerptHtml: String(it?.excerptHtml || ''),
+        excerpt: String(it?.excerpt || it?.description || it?.text || ''),
+        ctaText: String(it?.ctaText || it?.cta || ''),
+        ctaUrl: String(it?.ctaUrl || it?.href || it?.url || it?.link || ''),
+        image: String(it?.imageUrl || it?.image || it?.thumbUrl || ''),
+        mediaUrl,
+        mediaKind,
+      };
+    })
+    .filter((x) => x.title || x.image || x.mediaUrl || x.excerptHtml || x.excerpt || x.ctaUrl);
+}
+
+// Tenta extrair thumbnail de vídeo (YouTube) a partir de uma URL.
+function getVideoThumbnail(url) {
+  if (!url || typeof url !== 'string') return '';
+
+  try {
+    const u = new URL(url);
+    const host = (u.hostname || '').toLowerCase();
+
+    // youtube.com / youtu.be / shorts
+    if (host.includes('youtube.com') || host.includes('youtu.be')) {
+      let id = '';
+
+      if (host.includes('youtu.be')) {
+        id = (u.pathname || '').replace(/^\//, '').split('/')[0] || '';
+      } else if ((u.pathname || '').startsWith('/shorts/')) {
+        id = u.pathname.split('/shorts/')[1]?.split('/')[0] || '';
+      } else {
+        id = u.searchParams.get('v') || '';
+        if (!id && (u.pathname || '').startsWith('/embed/')) {
+          id = u.pathname.split('/embed/')[1]?.split('/')[0] || '';
+        }
+      }
+
+      if (id) {
+        // hqdefault costuma funcionar bem para cards 1:1
+        return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return '';
+}
+
 function FlagBR(props) {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" {...props}>
@@ -119,6 +194,9 @@ function App() {
 
   const [pagesContent, setPagesContent] = useState(null);
   const [shopCfg, setShopCfg] = useState({ storeUrl: '', items: [] });
+  const [newsItems, setNewsItems] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(true);
+  const [newsError, setNewsError] = useState('');
 
   useEffect(() => {
     const unsubHome = onSnapshot(doc(db, 'siteData', 'moadb_home'), (snap) => {
@@ -164,10 +242,56 @@ function App() {
       }
     );
 
+    const unsubNews = onSnapshot(
+      doc(db, 'siteData', 'moadb_news'),
+      (snap) => {
+        try {
+          setNewsLoading(false);
+          setNewsError('');
+
+          const exists = snap.exists();
+          const data = exists ? snap.data() : {};
+          const normalized = normalizeNewsFromDb(data);
+
+          // Diagnóstico: ajuda a entender se o doc existe, qual o shape e quantos itens saíram da normalização
+          console.info('[NEWS] onSnapshot ok', {
+            path: 'siteData/moadb_news',
+            exists,
+            keys: data && typeof data === 'object' ? Object.keys(data) : [],
+            contentKeys:
+              data?.content && typeof data.content === 'object' ? Object.keys(data.content) : [],
+            rawItemsCount: Array.isArray(data?.content?.items)
+              ? data.content.items.length
+              : Array.isArray(data?.content?.posts)
+                ? data.content.posts.length
+                : Array.isArray(data?.items)
+                  ? data.items.length
+                  : 0,
+            normalizedCount: normalized.length,
+          });
+
+          setNewsItems(normalized);
+        } catch (e) {
+          console.error('[NEWS] normalize failed', e);
+          setNewsLoading(false);
+          setNewsError('normalize-failed');
+          setNewsItems([]);
+        }
+      },
+      (err) => {
+        // Não deixa falhar silenciosamente: isso é a causa mais comum de "não aparece"
+        console.error('[NEWS] onSnapshot error', err);
+        setNewsLoading(false);
+        setNewsError(String(err?.code || err?.message || 'unknown'));
+        setNewsItems([]);
+      }
+    );
+
     return () => {
       unsubHome();
       unsubDisco();
       unsubShop();
+      unsubNews();
     };
   }, []);
 
@@ -274,6 +398,28 @@ function App() {
   }, []);
 
   const isPt = lang === 'pt-BR';
+
+  // ===== NEWS carousel state (4 por vez / 12 no total) =====
+  const [newsIndex, setNewsIndex] = useState(0);
+
+  const visibleNewsItems = useMemo(() => {
+    const list = Array.isArray(newsItems) ? newsItems : [];
+    return list.slice(0, 12);
+  }, [newsItems]);
+
+  // ===== NEWS carousel state (anda de 1 em 1 item; 4 visíveis) =====
+  const newsVisibleCount = 4;
+  const maxNewsScrollIndex = Math.max(0, visibleNewsItems.length - newsVisibleCount);
+
+  const scrolledNewsItems = useMemo(() => visibleNewsItems.slice(newsIndex, newsIndex + newsVisibleCount), [visibleNewsItems, newsIndex]);
+
+  useEffect(() => {
+    setNewsIndex((i) => Math.min(i, maxNewsScrollIndex));
+  }, [maxNewsScrollIndex]);
+
+  function goNewsScrollIndex(next) {
+    setNewsIndex(() => Math.max(0, Math.min(next, maxNewsScrollIndex)));
+  }
 
   return (
     <div className="app-container">
@@ -558,78 +704,115 @@ function App() {
             <h2 className="news-title">NOTÍCIAS</h2>
 
             <div className="news-carousel" aria-label="Carrossel de notícias">
-              <button type="button" className="news-nav news-prev" aria-label="Anterior">‹</button>
+              {newsIndex > 0 ? (
+                <button
+                  type="button"
+                  className="news-nav news-prev"
+                  aria-label="Anterior"
+                  onClick={() => goNewsScrollIndex(newsIndex - 1)}
+                >
+                  ‹
+                </button>
+              ) : null}
 
               <div className="news-viewport">
-                <div className="news-track">
-                  {[
-                    {
-                      id: 'n1',
-                      type: 'ASDS',
-                      date: '2026-03-15',
-                      title: '123',
-                      excerpt: '123123 era da Inteligência Artificial ndustrial atinge seu ápice. O novo álbum redefine os limites do caos. tt A era da Inteligência...',
-                      cta: 'LER MAIS',
-                      image: 'https://via.placeholder.com/800x800?text=Video',
-                    },
-                    {
-                      id: 'n2',
-                      type: 'RERER',
-                      date: '2026-03-15',
-                      title: 'AEQWEQ',
-                      excerpt: 'AAA',
-                      cta: 'LER MAIS',
-                      image: 'https://via.placeholder.com/800x800?text=Reels',
-                    },
-                    {
-                      id: 'n3',
-                      type: 'ALBUM OUT NOW',
-                      date: '2026-03-01',
-                      title: 'SILENT REBIRTH: O DESPERTAR',
-                      excerpt: 'A era da Inteligência Artificial Industrial atinge seu ápice. O novo álbum redefine os limites do caos. tt A era da Inteligência Artificial Industrial atinge seu...',
-                      cta: 'LER MAIS',
-                      image: 'https://via.placeholder.com/800x800?text=Album',
-                    },
-                    {
-                      id: 'n4',
-                      type: 'AAA',
-                      date: '2026-03-15',
-                      title: 'TESTE',
-                      excerpt: 'A era da Inteligência Artificial Industrial atinge seu ápice. O novo álbum redefine os limites do caos. A era da Inteligência...',
-                      cta: 'LER MAIS',
-                      image: 'https://via.placeholder.com/800x800?text=Video',
-                    },
-                    {
-                      id: 'n5',
-                      type: 'VIDEO',
-                      date: '2026-03-02',
-                      title: 'RISE BEYOND THE RUINS',
-                      excerpt: 'Assista ao novo videoclipe. Uma jornada visual pelas ruínas da consciência digital.',
-                      cta: 'WATCH NOW',
-                      image: 'https://via.placeholder.com/800x800?text=Video',
-                    },
-                  ].map(post => (
-                    <article key={post.id} className="news-card">
-                      <div className="news-media">
-                        <img src={post.image} alt="" />
-                        <div className="news-play" aria-hidden="true" />
-                      </div>
+                <div
+                  className="news-track"
+                  style={{
+                    width: '100%',
+                    transform: `translateX(-${newsIndex * (100 / Math.max(1, newsVisibleCount))}%)`,
+                    transition: 'transform .55s cubic-bezier(.22, 1, .36, 1)',
+                    willChange: 'transform',
+                  }}
+                >
+                  {newsError ? (
+                    <div className="news-empty" role="status">
+                      {langKey === 'pt'
+                        ? `Falha ao carregar notícias (${newsError}).`
+                        : `Failed to load news (${newsError}).`}
+                    </div>
+                  ) : newsLoading ? (
+                    <div className="news-empty" role="status">
+                      {langKey === 'pt' ? 'Carregando notícias…' : 'Loading news…'}
+                    </div>
+                  ) : (visibleNewsItems || []).length === 0 ? (
+                    <div className="news-empty" role="status">
+                      {langKey === 'pt' ? 'Sem notícias no momento.' : 'No news yet.'}
+                    </div>
+                  ) : (
+                    (scrolledNewsItems || []).map((post) => {
+                      const isVideo = post.mediaKind === 'video' || post.mediaKind === 'video_vertical';
+                      const mediaHref = post.mediaUrl || post.ctaUrl || '';
+                      const thumbSrc = post.image || (isVideo ? getVideoThumbnail(post.mediaUrl) : '') || '';
+                      const hasMedia = Boolean(thumbSrc || (isVideo && post.mediaUrl));
 
-                      <div className="news-body">
-                        <div className="news-tag">{post.type}</div>
-                        <div className="news-date">{post.date}</div>
-                        <h3 className="news-headline">{post.title}</h3>
-                        <p className="news-excerpt">{post.excerpt}</p>
-                        <a className="news-cta" href="/">
-                          {post.cta}
-                        </a>
-                      </div>
-                    </article>
-                  ))}
+                      return (
+                        <article key={post.id} className={`news-card ${hasMedia ? '' : 'news-card--text'}`.trim()}>
+                          {hasMedia ? (
+                            mediaHref ? (
+                              <a
+                                className="news-media"
+                                href={mediaHref}
+                                target="_blank"
+                                rel="noreferrer"
+                                aria-label={isVideo ? 'Abrir vídeo' : 'Abrir notícia'}
+                              >
+                                {thumbSrc ? <img src={thumbSrc} alt="" /> : null}
+                                {isVideo ? <div className="news-play" aria-hidden="true" /> : null}
+                              </a>
+                            ) : (
+                              <div className="news-media">
+                                {thumbSrc ? <img src={thumbSrc} alt="" /> : null}
+                                {isVideo ? <div className="news-play" aria-hidden="true" /> : null}
+                              </div>
+                            )
+                          ) : null}
+
+                          <div className="news-body">
+                            {Array.isArray(post.tags) && post.tags.length ? (
+                              <div className="news-tag">{String(post.tags[0] || '').toUpperCase()}</div>
+                            ) : post.type ? (
+                              <div className="news-tag">{post.type}</div>
+                            ) : null}
+
+                            {post.date ? <div className="news-date">{post.date}</div> : null}
+                            <h3 className="news-headline">{post.title}</h3>
+
+                            {post.excerptHtml ? (
+                              <div className="news-excerpt" dangerouslySetInnerHTML={{ __html: post.excerptHtml }} />
+                            ) : post.excerpt ? (
+                              <p className="news-excerpt">{post.excerpt}</p>
+                            ) : null}
+
+                            <a
+                              className="news-cta"
+                              href={post.ctaUrl || '#'}
+                              onClick={(e) => {
+                                if (!post.ctaUrl) e.preventDefault();
+                              }}
+                              target={post.ctaUrl ? '_blank' : undefined}
+                              rel={post.ctaUrl ? 'noreferrer' : undefined}
+                            >
+                              {post.ctaText || (langKey === 'pt' ? 'LER MAIS' : 'READ MORE')}
+                            </a>
+                          </div>
+                        </article>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
-              <button type="button" className="news-nav news-next" aria-label="Próximo">›</button>
+              {newsIndex < maxNewsScrollIndex ? (
+                <button
+                  type="button"
+                  className="news-nav news-next"
+                  aria-label="Próximo"
+                  onClick={() => goNewsScrollIndex(newsIndex + 1)}
+                >
+                  ›
+                </button>
+              ) : null}
             </div>
           </div>
         </section>
