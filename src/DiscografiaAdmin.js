@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import YouTubeSegmentPicker from './YouTubeSegmentPicker';
 import { useEffect } from 'react';
 import {
@@ -7,7 +7,14 @@ import {
   serverTimestamp,
   setDoc,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import {
+  getDownloadURL,
+  listAll,
+  ref as storageRef,
+  uploadBytes,
+  deleteObject,
+} from 'firebase/storage';
+import { db, storage } from './firebase';
 
 const DEFAULT_FORM = {
   type: 'single',
@@ -121,7 +128,14 @@ export default function DiscografiaAdmin() {
     };
   });
 
-  const fileInputRef = useRef(null);
+  const [isCoverPickerOpen, setIsCoverPickerOpen] = useState(false);
+  const [coverPickerLoading, setCoverPickerLoading] = useState(false);
+  const [coverPickerError, setCoverPickerError] = useState('');
+  const [coverPickerImages, setCoverPickerImages] = useState([]); // [{ path, url }]
+  const [galleryTab, setGalleryTab] = useState('covers');
+
+  // Hidden file input for the gallery upload tile
+  const [galleryUploadInputKey, setGalleryUploadInputKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -153,6 +167,103 @@ export default function DiscografiaAdmin() {
       cancelled = true;
     };
   }, []);
+
+  async function loadCoversFromStorage({ force } = { force: false }) {
+    if (!force && coverPickerImages.length > 0) return;
+
+    setCoverPickerLoading(true);
+    setCoverPickerError('');
+    try {
+      const root = storageRef(storage, 'discography/covers');
+      const res = await listAll(root);
+
+      const urls = await Promise.all(
+        (res.items || []).map(async (item) => {
+          const url = await getDownloadURL(item);
+          return { path: item.fullPath, url };
+        })
+      );
+
+      urls.sort((a, b) => a.path.localeCompare(b.path));
+      setCoverPickerImages(urls);
+    } catch {
+      setCoverPickerError('Não foi possível listar as imagens do Storage.');
+    } finally {
+      setCoverPickerLoading(false);
+    }
+  }
+
+  async function openCoverPicker() {
+    setIsCoverPickerOpen(true);
+    setGalleryTab('covers');
+    await loadCoversFromStorage({ force: false });
+  }
+
+  function closeCoverPicker() {
+    setIsCoverPickerOpen(false);
+  }
+
+  async function uploadCoverFiles(files) {
+    const list = Array.from(files || []).filter(Boolean);
+    if (list.length === 0) return;
+
+    setCoverPickerLoading(true);
+    setCoverPickerError('');
+    try {
+      const stamp = Date.now();
+      for (let i = 0; i < list.length; i += 1) {
+        const file = list[i];
+        const safeName = String(file.name || `cover-${i}`).replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `discography/covers/${stamp}-${safeName}`;
+        const r = storageRef(storage, path);
+        await uploadBytes(r, file);
+      }
+      await loadCoversFromStorage({ force: true });
+    } catch {
+      setCoverPickerError('Falha ao enviar imagem para o Storage.');
+    } finally {
+      setCoverPickerLoading(false);
+      // reset the file input so the same file can be selected again
+      setGalleryUploadInputKey(k => k + 1);
+    }
+  }
+
+  async function deleteCoverFromStorage(path) {
+    const ok = window.confirm('Excluir esta imagem do Storage?');
+    if (!ok) return;
+
+    setCoverPickerLoading(true);
+    setCoverPickerError('');
+    try {
+      const r = storageRef(storage, path);
+      await deleteObject(r);
+      await loadCoversFromStorage({ force: true });
+    } catch {
+      setCoverPickerError('Falha ao excluir imagem do Storage.');
+    } finally {
+      setCoverPickerLoading(false);
+    }
+  }
+
+  function onGalleryDrop(e) {
+    e.preventDefault();
+    const files = e.dataTransfer?.files;
+    if (files && files.length) uploadCoverFiles(files);
+  }
+
+  function onGalleryDragOver(e) {
+    e.preventDefault();
+  }
+
+  function selectCoverFromStorage(url) {
+    setForm(prev => ({
+      ...prev,
+      coverFile: null,
+      coverPreviewUrl: url,
+      coverUrl: url,
+    }));
+    setIsCoverPickerOpen(false);
+  }
 
   function selectItem(id) {
     // Menu click should only change preview selection;
@@ -231,10 +342,6 @@ export default function DiscografiaAdmin() {
     e.preventDefault();
   }
 
-  // Removed legacy immediate-edit track helpers (replaced by draft + GRAVAR flow)
-  // function addTrack() { ... }
-  // function updateTrack(id, patch) { ... }
-
   function startAddTrack() {
     setEditingTrackId('new');
   }
@@ -295,9 +402,7 @@ export default function DiscografiaAdmin() {
     }
   }
 
-  // Save helper: persist current release (including tracks) as soon as track operations are committed
   async function persistTracksNow() {
-    // only persist if editor is open and we have enough info to write a release
     if (!isEditorOpen) return;
     if (!String(form.title || '').trim()) return;
     await upsertLocal();
@@ -328,7 +433,6 @@ export default function DiscografiaAdmin() {
 
     setEditingTrackId(null);
 
-    // persist after state flush
     setTimeout(() => {
       persistTracksNow();
     }, 0);
@@ -353,7 +457,6 @@ export default function DiscografiaAdmin() {
       return { ...rest, tracks: nextTracks };
     });
 
-    // if url changed, force picker to be closed
     setOpenPickerByTrackId(prev => ({ ...prev, [id]: false }));
 
     setEditingTrackId(null);
@@ -397,6 +500,9 @@ export default function DiscografiaAdmin() {
   }
 
   function removeTrack(id) {
+    const ok = window.confirm('Excluir esta faixa?');
+    if (!ok) return;
+
     setForm(prev => ({
       ...prev,
       tracks: (prev.tracks || []).filter(t => t.id !== id),
@@ -434,6 +540,8 @@ export default function DiscografiaAdmin() {
 
   async function removeLocal() {
     if (!selectedId) return;
+    const ok = window.confirm('Tem certeza que deseja EXCLUIR este lançamento? Esta ação não pode ser desfeita.');
+    if (!ok) return;
     try {
       const ref = doc(db, 'siteData', 'moadb_discography');
       const existing = Array.isArray(rawContent) ? rawContent : [];
@@ -460,7 +568,9 @@ export default function DiscografiaAdmin() {
           {loadError ? <div className="admin-subtitle" style={{ marginTop: 6, color: '#ffb3b3' }}>{loadError}</div> : null}
         </div>
         <div className="admin-section-actions">
-          <button type="button" className="admin-btn" onClick={newItem}>+ NOVO LANÇAMENTO</button>
+          {!isEditorOpen ? (
+            <button type="button" className="admin-btn" onClick={newItem}>+ NOVO LANÇAMENTO</button>
+          ) : null}
           {isEditorOpen && (
             <>
               <button type="button" className="admin-btn admin-btn-primary" onClick={upsertLocal}>SALVAR</button>
@@ -628,7 +738,7 @@ export default function DiscografiaAdmin() {
                     className="admin-dropzone admin-dropzone-square"
                     role="button"
                     tabIndex={0}
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={openCoverPicker}
                     onDrop={onDropCover}
                     onDragOver={onDragOver}
                   >
@@ -636,19 +746,10 @@ export default function DiscografiaAdmin() {
                       <img className="admin-dropzone-square-img" src={form.coverPreviewUrl} alt="Prévia da capa" />
                     ) : (
                       <div className="admin-dropzone-placeholder">
-                        <div className="admin-dropzone-title">Solte aqui</div>
-                        <div className="admin-dropzone-sub">ou clique</div>
+                        <div className="admin-dropzone-title">CLIQUE</div>
                       </div>
                     )}
                   </div>
-                  <input
-                    ref={fileInputRef}
-                    name="coverFile"
-                    onChange={onChange}
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                  />
                 </div>
 
                 <div className="admin-release-links">
@@ -689,6 +790,106 @@ export default function DiscografiaAdmin() {
                   </div>
                 </div>
               </div>
+
+              {isCoverPickerOpen ? (
+                <div
+                  className="admin-modal-backdrop"
+                  role="dialog"
+                  aria-modal="true"
+                  onDrop={onGalleryDrop}
+                  onDragOver={onGalleryDragOver}
+                >
+                  <div className="admin-modal">
+                    <div className="admin-modal-header">
+                      <div>
+                        <div className="admin-panel-title" style={{ borderBottom: 0, padding: 0 }}>GALERIA</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <button type="button" className="admin-btn" onClick={closeCoverPicker}>FECHAR</button>
+                      </div>
+                    </div>
+
+                    <div className="admin-gallery-tabs admin-tabs-wrap">
+                      <div className="admin-tabs" style={{ padding: '8px 0' }}>
+                        <button
+                          type="button"
+                          className={`admin-tab ${galleryTab === 'covers' ? 'is-active' : ''}`}
+                          onClick={() => setGalleryTab('covers')}
+                        >
+                          COVERS
+                        </button>
+                      </div>
+                    </div>
+
+                    {coverPickerLoading ? (
+                      <div className="admin-hint">Carregando…</div>
+                    ) : null}
+                    {coverPickerError ? (
+                      <div className="admin-hint" style={{ color: '#ffb3b3' }}>{coverPickerError}</div>
+                    ) : null}
+
+                    {galleryTab === 'covers' ? (
+                      <div className="admin-cover-grid">
+                        <label
+                          className={`admin-cover-tile admin-cover-tile-upload ${coverPickerLoading ? 'is-loading' : ''}`}
+                          title="Enviar imagens"
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const files = e.dataTransfer?.files;
+                            if (files && files.length) uploadCoverFiles(files);
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        >
+                          <input
+                            key={galleryUploadInputKey}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={e => uploadCoverFiles(e.target.files)}
+                            style={{ display: 'none' }}
+                          />
+                          <div className="admin-cover-upload-inner">
+                            <div className="admin-cover-upload-plus">+</div>
+                            <div className="admin-cover-upload-text">ENVIAR</div>
+                          </div>
+                        </label>
+
+                        {coverPickerImages.length === 0 ? (
+                          <div className="admin-hint">Nenhuma imagem encontrada em <b>discography/covers</b>.</div>
+                        ) : (
+                          coverPickerImages.map(img => (
+                            <button
+                              key={img.path}
+                              type="button"
+                              className="admin-cover-tile"
+                              onClick={() => selectCoverFromStorage(img.url)}
+                              title={img.path}
+                            >
+                              <img src={img.url} alt={img.path} />
+                              <button
+                                type="button"
+                                className="admin-cover-tile-delete"
+                                title="Excluir"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  deleteCoverFromStorage(img.path);
+                                }}
+                              >
+                                ×
+                              </button>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
 
               <div className="admin-divider" style={{ margin: '18px 0' }} />
 
