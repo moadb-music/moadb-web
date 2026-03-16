@@ -42,6 +42,7 @@ export default function DiscografiaAdmin() {
   const selected = useMemo(() => items.find(i => i.id === selectedId) || null, [items, selectedId]);
 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [openPickerByTrackId, setOpenPickerByTrackId] = useState(() => ({}));
 
   const [form, setForm] = useState(() => {
     if (!selected) return DEFAULT_FORM;
@@ -67,6 +68,7 @@ export default function DiscografiaAdmin() {
     setSelectedId(id);
     const next = items.find(i => i.id === id);
     if (!next) return;
+    setOpenPickerByTrackId({});
     setForm({
       ...DEFAULT_FORM,
       ...next,
@@ -87,11 +89,13 @@ export default function DiscografiaAdmin() {
   function newItem() {
     setSelectedId(null);
     setForm(DEFAULT_FORM);
+    setOpenPickerByTrackId({});
     setIsEditorOpen(true);
   }
 
   function closeEditor() {
     setIsEditorOpen(false);
+    setOpenPickerByTrackId({});
   }
 
   function onChange(e) {
@@ -146,6 +150,11 @@ export default function DiscografiaAdmin() {
       ...prev,
       tracks: prev.tracks.filter(t => t.id !== id),
     }));
+    setOpenPickerByTrackId(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   }
 
   function moveTrack(id, dir) {
@@ -251,8 +260,20 @@ export default function DiscografiaAdmin() {
             </div>
           ) : (
             <div className="admin-form">
-              <div className="admin-field-row">
-                <label className="admin-field">
+              {/* Linha 1: Título, Tipo, Ano */}
+              <div className="admin-field-row admin-release-row-1">
+                <label className="admin-field admin-release-title">
+                  <span className="admin-label">Título</span>
+                  <input
+                    name="title"
+                    value={form.title}
+                    onChange={onChange}
+                    placeholder="Ex: Silent Rebirth"
+                    className="admin-input"
+                  />
+                </label>
+
+                <label className="admin-field admin-release-type">
                   <span className="admin-label">Tipo</span>
                   <select name="type" value={form.type} onChange={onChange} className="admin-input">
                     <option value="single">Single</option>
@@ -261,7 +282,7 @@ export default function DiscografiaAdmin() {
                   </select>
                 </label>
 
-                <label className="admin-field">
+                <label className="admin-field admin-release-year">
                   <span className="admin-label">Ano</span>
                   <input
                     name="year"
@@ -275,62 +296,60 @@ export default function DiscografiaAdmin() {
                 </label>
               </div>
 
-              <label className="admin-field">
-                <span className="admin-label">Título</span>
-                <input name="title" value={form.title} onChange={onChange} placeholder="Ex: Silent Rebirth" className="admin-input" />
-              </label>
-
-              <div className="admin-field">
-                <span className="admin-label">Capa (upload)</span>
-                <div
-                  className="admin-dropzone"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => fileInputRef.current?.click()}
-                  onDrop={onDropCover}
-                  onDragOver={onDragOver}
-                >
-                  {form.coverPreviewUrl ? (
-                    <div className="admin-dropzone-preview">
-                      <img src={form.coverPreviewUrl} alt="Prévia da capa" />
-                    </div>
-                  ) : (
-                    <div className="admin-dropzone-placeholder">
-                      <div className="admin-dropzone-title">Solte a imagem aqui</div>
-                      <div className="admin-dropzone-sub">ou clique para selecionar</div>
-                    </div>
-                  )}
+              {/* Linha 2: capa 1:1 esquerda + links direita */}
+              <div className="admin-release-row-2">
+                <div className="admin-release-cover">
+                  <div className="admin-label" style={{ marginBottom: 8 }}>Capa</div>
+                  <div
+                    className="admin-dropzone admin-dropzone-square"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => fileInputRef.current?.click()}
+                    onDrop={onDropCover}
+                    onDragOver={onDragOver}
+                  >
+                    {form.coverPreviewUrl ? (
+                      <img className="admin-dropzone-square-img" src={form.coverPreviewUrl} alt="Prévia da capa" />
+                    ) : (
+                      <div className="admin-dropzone-placeholder">
+                        <div className="admin-dropzone-title">Solte aqui</div>
+                        <div className="admin-dropzone-sub">ou clique</div>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    name="coverFile"
+                    onChange={onChange}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                  />
                 </div>
-                <input
-                  ref={fileInputRef}
-                  name="coverFile"
-                  onChange={onChange}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                />
-              </div>
 
-              <div className="admin-field-row">
-                <label className="admin-field">
-                  <span className="admin-label">Spotify</span>
-                  <input name="spotifyUrl" value={form.spotifyUrl} onChange={onChange} placeholder="https://open.spotify.com/..." className="admin-input" />
-                </label>
-                <label className="admin-field">
-                  <span className="admin-label">Apple Music</span>
-                  <input name="appleUrl" value={form.appleUrl} onChange={onChange} placeholder="https://music.apple.com/..." className="admin-input" />
-                </label>
-              </div>
+                <div className="admin-release-links">
+                  <div className="admin-field-row">
+                    <label className="admin-field">
+                      <span className="admin-label">Spotify</span>
+                      <input name="spotifyUrl" value={form.spotifyUrl} onChange={onChange} placeholder="https://open.spotify.com/..." className="admin-input" />
+                    </label>
+                    <label className="admin-field">
+                      <span className="admin-label">Apple Music</span>
+                      <input name="appleUrl" value={form.appleUrl} onChange={onChange} placeholder="https://music.apple.com/..." className="admin-input" />
+                    </label>
+                  </div>
 
-              <div className="admin-field-row">
-                <label className="admin-field">
-                  <span className="admin-label">Deezer</span>
-                  <input name="deezerUrl" value={form.deezerUrl} onChange={onChange} placeholder="https://www.deezer.com/..." className="admin-input" />
-                </label>
-                <label className="admin-field">
-                  <span className="admin-label">YouTube Music</span>
-                  <input name="youtubeMusicUrl" value={form.youtubeMusicUrl} onChange={onChange} placeholder="https://music.youtube.com/..." className="admin-input" />
-                </label>
+                  <div className="admin-field-row">
+                    <label className="admin-field">
+                      <span className="admin-label">Deezer</span>
+                      <input name="deezerUrl" value={form.deezerUrl} onChange={onChange} placeholder="https://www.deezer.com/..." className="admin-input" />
+                    </label>
+                    <label className="admin-field">
+                      <span className="admin-label">YouTube Music</span>
+                      <input name="youtubeMusicUrl" value={form.youtubeMusicUrl} onChange={onChange} placeholder="https://music.youtube.com/..." className="admin-input" />
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div className="admin-divider" style={{ margin: '18px 0' }} />
@@ -366,22 +385,40 @@ export default function DiscografiaAdmin() {
 
                       <label className="admin-field" style={{ marginBottom: 10 }}>
                         <span className="admin-label">YouTube</span>
-                        <input
-                          className="admin-input"
-                          placeholder="https://youtube.com/..."
-                          value={t.youtubeUrl}
-                          onChange={e => updateTrack(t.id, { youtubeUrl: e.target.value })}
-                        />
+                        <div className="admin-inline" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                          <input
+                            className="admin-input"
+                            placeholder="https://youtube.com/..."
+                            value={t.youtubeUrl}
+                            onChange={e => {
+                              updateTrack(t.id, { youtubeUrl: e.target.value });
+                              // If the URL changes, force user to re-open preview (lazy-load picker)
+                              setOpenPickerByTrackId(prev => ({ ...prev, [t.id]: false }));
+                            }}
+                            style={{ flex: 1 }}
+                          />
+                          <button
+                            type="button"
+                            className="admin-btn"
+                            onClick={() => setOpenPickerByTrackId(prev => ({ ...prev, [t.id]: true }))}
+                            disabled={!String(t.youtubeUrl || '').trim()}
+                            title="Abrir preview e selecionar trecho"
+                          >
+                            PREVIEW
+                          </button>
+                        </div>
                       </label>
 
-                      <YouTubeSegmentPicker
-                        value={{
-                          youtubeUrl: t.youtubeUrl,
-                          startSec: t.startSec,
-                          endSec: t.endSec,
-                        }}
-                        onChange={next => updateTrack(t.id, { startSec: next.startSec, endSec: next.endSec })}
-                      />
+                      {openPickerByTrackId[t.id] ? (
+                        <YouTubeSegmentPicker
+                          value={{
+                            youtubeUrl: t.youtubeUrl,
+                            startSec: t.startSec,
+                            endSec: t.endSec,
+                          }}
+                          onChange={next => updateTrack(t.id, { startSec: next.startSec, endSec: next.endSec })}
+                        />
+                      ) : null}
 
                       <label className="admin-field" style={{ marginTop: 12 }}>
                         <span className="admin-label">Letra</span>

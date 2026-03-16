@@ -189,9 +189,7 @@ export default function YouTubeSegmentPicker({ value, onChange }) {
         ) : null}
       </div>
 
-      {!hasPlayer ? (
-        <div className="seg-empty">Cole um link do YouTube válido na faixa para habilitar o seletor.</div>
-      ) : (
+      {!hasPlayer ? null : (
         <div className="seg-time">
           <div className="seg-row">
             <div className="seg-title">Trecho</div>
@@ -234,7 +232,7 @@ export default function YouTubeSegmentPicker({ value, onChange }) {
             />
           </div>
 
-          <div className="seg-actions">
+          <div className="seg-actions seg-actions-transport">
             <button
               type="button"
               className="admin-btn"
@@ -243,42 +241,56 @@ export default function YouTubeSegmentPicker({ value, onChange }) {
             >
               MARCAR INÍCIO
             </button>
+
+            <div className="seg-transport" role="group" aria-label="Controles de preview">
+              <button
+                type="button"
+                className="admin-btn"
+                onClick={() => {
+                  const p = playerRef.current;
+                  if (!p?.seekTo) return;
+
+                  if (isPlayingPreview) {
+                    p.pauseVideo?.();
+                    setIsPlayingPreview(false);
+                    stopPreviewGuard();
+                    return;
+                  }
+
+                  p.seekTo(safeRange.start + previewPos, true);
+                  p.playVideo?.();
+                  setIsPlayingPreview(true);
+                  startTick();
+                  startPreviewGuard();
+                }}
+                disabled={!duration || gapDuration <= 0.05}
+              >
+                {isPlayingPreview ? '❚❚' : '▶'}
+              </button>
+              <button
+                type="button"
+                className="admin-btn"
+                onClick={() => {
+                  const p = playerRef.current;
+                  p?.pauseVideo?.();
+                  p?.seekTo?.(safeRange.start, true);
+                  setPreviewPos(0);
+                  setIsPlayingPreview(false);
+                  stopPreviewGuard();
+                }}
+                disabled={!duration}
+              >
+                ⏹
+              </button>
+            </div>
+
             <button
               type="button"
-              className="admin-btn admin-btn-primary"
+              className="admin-btn"
               onClick={() => emit({ endSec: currentTime })}
               disabled={!duration}
             >
               MARCAR FIM
-            </button>
-            <button
-              type="button"
-              className="admin-btn"
-              onClick={() => {
-                const p = playerRef.current;
-                if (!p?.seekTo) return;
-                p.seekTo(safeRange.start + previewPos, true);
-                p.playVideo?.();
-                setIsPlayingPreview(true);
-                startTick();
-                startPreviewGuard();
-              }}
-              disabled={!duration || gapDuration <= 0.05}
-            >
-              PREVIEW
-            </button>
-            <button
-              type="button"
-              className="admin-btn"
-              onClick={() => {
-                const p = playerRef.current;
-                p?.pauseVideo?.();
-                setIsPlayingPreview(false);
-                stopPreviewGuard();
-              }}
-              disabled={!duration}
-            >
-              PAUSAR
             </button>
           </div>
 
