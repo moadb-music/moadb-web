@@ -4,6 +4,12 @@ import logoPng from './assets/logo.png';
 import aboutLogoMark from './assets/logo-mark.png';
 import instagramPng from './assets/instagram.png';
 import pixPng from './assets/pix.png';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from './firebase';
+import spotifyIcon from './assets/spotify.png';
+import appleIcon from './assets/apple.png';
+import deezerIcon from './assets/deezer.png';
+import youtubeMusicIcon from './assets/youtube-music.png';
 
 function FlagBR(props) {
   return (
@@ -32,6 +38,99 @@ function App() {
   const [langOpen, setLangOpen] = useState(false);
   const [lang, setLang] = useState('pt-BR');
   const langRef = useRef(null);
+
+  // HOME featured (Novos Lançamentos)
+  const [homeCfg, setHomeCfg] = useState({
+    featuredEnabled: false,
+    featuredReleaseIds: [],
+    featuredTitle: 'OUÇA AGORA',
+    featuredButtonLabel: 'OUVIR AGORA',
+  });
+  const [discography, setDiscography] = useState([]);
+
+  // UI state: toggle platform links for featured release
+  const [featuredPlatformsOpen, setFeaturedPlatformsOpen] = useState(false);
+  const featuredIdsKey = (homeCfg.featuredReleaseIds || []).join('|');
+
+  useEffect(() => {
+    const unsubHome = onSnapshot(doc(db, 'siteData', 'moadb_home'), (snap) => {
+      const raw = snap.exists() ? (snap.data()?.content ?? snap.data() ?? {}) : {};
+      setHomeCfg({
+        featuredEnabled: typeof raw.featuredEnabled === 'boolean' ? raw.featuredEnabled : false,
+        featuredReleaseIds: Array.isArray(raw.featuredReleaseIds) ? raw.featuredReleaseIds.map(String) : [],
+        featuredTitle: typeof raw.featuredTitle === 'string' && raw.featuredTitle.trim() ? raw.featuredTitle : 'OUÇA AGORA',
+        featuredButtonLabel:
+          typeof raw.featuredButtonLabel === 'string' && raw.featuredButtonLabel.trim() ? raw.featuredButtonLabel : 'OUVIR AGORA',
+      });
+    });
+
+    const unsubDisco = onSnapshot(doc(db, 'siteData', 'moadb_discography'), (snap) => {
+      const raw = snap.exists() ? (snap.data()?.content ?? snap.data() ?? {}) : {};
+      const content = Array.isArray(raw) ? raw : Array.isArray(raw.content) ? raw.content : Array.isArray(snap.data()?.content) ? snap.data().content : [];
+      const list = (content || [])
+        .map((e) => ({
+          id: String(e?.id ?? ''),
+          title: String(e?.title ?? ''),
+          year: String(e?.year ?? ''),
+          type: String(e?.type ?? ''),
+          coverUrl: String(e?.coverUrl ?? e?.coverURL ?? e?.cover ?? ''),
+          links: {
+            spotify: String(e?.links?.spotify ?? ''),
+            apple: String(e?.links?.apple ?? ''),
+            deezer: String(e?.links?.deezer ?? ''),
+            youtubeMusic: String(e?.links?.youtube ?? e?.links?.youtubeMusic ?? ''),
+          },
+        }))
+        .filter((x) => x.id);
+      setDiscography(list);
+    });
+
+    return () => {
+      unsubHome();
+      unsubDisco();
+    };
+  }, []);
+
+  useEffect(() => {
+    // reset UI when featured release changes or gets disabled
+    setFeaturedPlatformsOpen(false);
+  }, [homeCfg.featuredEnabled, featuredIdsKey]);
+
+  useEffect(() => {
+    // Se o usuário sair do "Início" e depois voltar, volta para o botão automaticamente
+    const heroEl = document.querySelector('#inicio');
+    if (!heroEl) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const e = entries?.[0];
+        if (!e) return;
+        // quando sair da viewport, reseta
+        if (!e.isIntersecting) setFeaturedPlatformsOpen(false);
+      },
+      { threshold: 0.15 }
+    );
+
+    obs.observe(heroEl);
+    return () => obs.disconnect();
+  }, []);
+
+  const featuredItems = (() => {
+    const ids = (homeCfg.featuredReleaseIds || []).map(String);
+    if (!ids.length) return [];
+    const byId = new Map(discography.map((d) => [String(d.id), d]));
+    return ids.map((id) => byId.get(String(id))).filter(Boolean);
+  })();
+
+  const featuredPrimary = featuredItems[0] || null;
+
+  const featuredLinks = featuredPrimary?.links || {};
+  const platformList = [
+    { key: 'spotify', label: 'Spotify', href: featuredLinks?.spotify || '', icon: spotifyIcon },
+    { key: 'apple', label: 'Apple Music', href: featuredLinks?.apple || '', icon: appleIcon },
+    { key: 'deezer', label: 'Deezer', href: featuredLinks?.deezer || '', icon: deezerIcon },
+    { key: 'youtubeMusic', label: 'YouTube Music', href: featuredLinks?.youtubeMusic || '', icon: youtubeMusicIcon },
+  ].filter((p) => String(p.href || '').trim());
 
   const shopItems = [
     {
@@ -162,10 +261,86 @@ function App() {
       <main>
         <section id="inicio" className="hero" aria-label="Início">
           <div className="hero-inner">
-            <h1 className="hero-title">
-              <span>MIND OF A</span>
-              <span>DEAD BODY</span>
-            </h1>
+            {!(homeCfg.featuredEnabled && featuredPrimary) ? (
+              <h1 className="hero-title">
+                <span>MIND OF A</span>
+                <span>DEAD BODY</span>
+              </h1>
+            ) : null}
+
+            {homeCfg.featuredEnabled && featuredPrimary ? (
+              <div className="home-featured" aria-label="Novos Lançamentos">
+                <div className="home-featured-head">
+                  <div className="home-featured-page-title">{String(homeCfg.featuredTitle || 'OUÇA AGORA').toUpperCase()}</div>
+                </div>
+
+                <div className="home-featured-row">
+                  <div className="home-featured-cover">
+                    {featuredPrimary.coverUrl ? <img src={featuredPrimary.coverUrl} alt="" /> : null}
+                  </div>
+
+                  <div className="home-featured-meta">
+                    <div className="home-featured-album">{featuredPrimary.title}</div>
+                    <div className="home-featured-sub">
+                      {featuredPrimary.type ? String(featuredPrimary.type).toUpperCase() : ''}
+                      {featuredPrimary.year ? ` • ${featuredPrimary.year}` : ''}
+                    </div>
+
+                    <div className="home-featured-actions">
+                      {!featuredPlatformsOpen ? (
+                        <button
+                          type="button"
+                          className="home-featured-btn btn-outline"
+                          onClick={() => {
+                            // clique só alterna a exibição de ícones (não abre links direto)
+                            if (platformList.length === 0) {
+                              const el = document.querySelector('#discografia');
+                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                              return;
+                            }
+                            setFeaturedPlatformsOpen(true);
+                          }}
+                          title={platformList.length === 0 ? 'Sem links configurados — rolando para a Discografia' : 'Mostrar plataformas'}
+                        >
+                          {String(homeCfg.featuredButtonLabel || 'OUVIR AGORA').toUpperCase()}
+                        </button>
+                      ) : (
+                        <div className="home-featured-platform-icons-wrap" aria-label="Plataformas">
+                          <div className="home-featured-platform-icons" aria-label="Plataformas disponíveis">
+                            {platformList.map((p) => (
+                              <a
+                                key={p.key}
+                                className="home-featured-platform-icon"
+                                href={p.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={p.label}
+                                title={p.label}
+                              >
+                                <img src={p.icon} alt="" />
+                              </a>
+                            ))}
+                          </div>
+
+                          <button
+                            type="button"
+                            className="home-featured-platform-back"
+                            onClick={() => setFeaturedPlatformsOpen(false)}
+                            aria-label="Fechar"
+                            title="Fechar"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* mantém o grid de botões texto apenas como fallback (não usado) */}
+                    {null}
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         </section>
 

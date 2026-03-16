@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import DiscografiaAdmin from './DiscografiaAdmin';
+import LojaAdmin from './LojaAdmin';
+import PaginasAdmin from './PaginasAdmin';
+import HomeAdmin from './HomeAdmin';
 import './Admin.css';
 
 export default function Admin() {
@@ -84,6 +87,12 @@ export default function Admin() {
 
         {activeTab === 'discografia' ? (
           <DiscografiaAdmin />
+        ) : activeTab === 'home' ? (
+          <HomeAdmin />
+        ) : activeTab === 'loja' ? (
+          <LojaAdmin />
+        ) : activeTab === 'paginas' ? (
+          <PaginasAdmin />
         ) : (
           <div className="admin-empty" aria-label="Conteúdo do painel" />
         )}
