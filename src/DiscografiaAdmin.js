@@ -1,5 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
 import YouTubeSegmentPicker from './YouTubeSegmentPicker';
+import { useEffect } from 'react';
+import {
+  doc,
+  getDoc,
+  serverTimestamp,
+  setDoc,
+} from 'firebase/firestore';
+import { db } from './firebase';
 
 const DEFAULT_FORM = {
   type: 'single',
@@ -18,31 +26,82 @@ function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
+function mapTypeFromDb(type) {
+  const t = String(type || '').toLowerCase();
+  if (t === 'album') return 'album';
+  if (t === 'ep') return 'ep';
+  if (t === 'single') return 'single';
+  return 'single';
+}
+
+function normalizeReleaseFromContent(entry) {
+  const e = entry || {};
+  const rawTracks = e.tracks;
+  const tracksArray = Array.isArray(rawTracks)
+    ? rawTracks
+    : rawTracks && typeof rawTracks === 'object'
+      ? Object.values(rawTracks)
+      : [];
+
+  return {
+    id: String(e.id || uid()),
+    type: mapTypeFromDb(e.type),
+    title: e.title || '',
+    year: String(e.year || ''),
+    coverUrl: e.coverUrl || e.coverURL || e.cover || '',
+    spotifyUrl: e.links?.spotify || '',
+    appleUrl: e.links?.apple || '',
+    deezerUrl: e.links?.deezer || '',
+    youtubeMusicUrl: e.links?.youtube || e.links?.youtubeMusic || '',
+    tracks: tracksArray.map(t => ({
+      id: t?.id || uid(),
+      name: t?.name || t?.title || '',
+      youtubeUrl: t?.youtubeUrl || t?.youtube || t?.url || '',
+      lyrics: t?.lyrics || '',
+      startSec: Number(t?.startSec ?? t?.start ?? t?.segmentStart ?? 0),
+      endSec: Number(t?.endSec ?? t?.end ?? t?.segmentEnd ?? 15),
+    })),
+  };
+}
+
+function serializeReleaseToContent(r) {
+  return {
+    id: String(r.id || uid()),
+    type: String(r.type || 'single').toUpperCase(),
+    title: String(r.title || '').trim(),
+    year: String(r.year || '').trim(),
+    coverUrl: r.coverUrl || '',
+    links: {
+      spotify: r.spotifyUrl || '',
+      apple: r.appleUrl || '',
+      deezer: r.deezerUrl || '',
+      youtube: r.youtubeMusicUrl || '',
+    },
+    tracks: Array.isArray(r.tracks)
+      ? r.tracks.map(t => ({
+        id: t.id || uid(),
+        name: String(t.name || '').trim(),
+        youtubeUrl: String(t.youtubeUrl || '').trim(),
+        lyrics: t.lyrics || '',
+        startSec: Number(t.startSec ?? 0),
+        endSec: Number(t.endSec ?? 0),
+      }))
+      : [],
+  };
+}
+
 export default function DiscografiaAdmin() {
-  const [items, setItems] = useState(() => {
-    return [
-      {
-        id: 'demo-1',
-        type: 'single',
-        title: 'Demo Single',
-        year: '2026',
-        coverUrl: '',
-        spotifyUrl: '',
-        appleUrl: '',
-        deezerUrl: '',
-        youtubeMusicUrl: '',
-        tracks: [
-          { id: 't1', name: 'Demo Track', youtubeUrl: '', lyrics: '', startSec: 0, endSec: 15 },
-        ],
-      },
-    ];
-  });
+  const [items, setItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [rawContent, setRawContent] = useState([]);
 
   const [selectedId, setSelectedId] = useState(items[0]?.id || null);
   const selected = useMemo(() => items.find(i => i.id === selectedId) || null, [items, selectedId]);
 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [openPickerByTrackId, setOpenPickerByTrackId] = useState(() => ({}));
+  const [editingTrackId, setEditingTrackId] = useState(null); // 'new' | trackId | null
 
   const [form, setForm] = useState(() => {
     if (!selected) return DEFAULT_FORM;
@@ -64,17 +123,56 @@ export default function DiscografiaAdmin() {
 
   const fileInputRef = useRef(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setIsLoading(true);
+      setLoadError('');
+      try {
+        const ref = doc(db, 'siteData', 'moadb_discography');
+        const snap = await getDoc(ref);
+        const data = snap.exists() ? snap.data() : {};
+        const content = Array.isArray(data?.content) ? data.content : [];
+        const list = content.map(normalizeReleaseFromContent);
+        list.sort((a, b) => String(b.year || '').localeCompare(String(a.year || '')));
+        if (cancelled) return;
+        setRawContent(content);
+        setItems(list);
+        // Always default to the latest release in preview
+        setSelectedId(list[0]?.id || null);
+        setIsEditorOpen(false);
+      } catch (e) {
+        if (cancelled) return;
+        setLoadError('Falha ao carregar discografia do Firestore.');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function selectItem(id) {
+    // Menu click should only change preview selection;
+    // editing happens exclusively via the EDITAR button on preview.
     setSelectedId(id);
-    const next = items.find(i => i.id === id);
-    if (!next) return;
+    setIsEditorOpen(false);
     setOpenPickerByTrackId({});
+    setEditingTrackId(null);
+  }
+
+  function openEditorForSelected() {
+    if (!selected) return;
+    setOpenPickerByTrackId({});
+    setEditingTrackId(null);
     setForm({
       ...DEFAULT_FORM,
-      ...next,
+      ...selected,
       coverFile: null,
-      coverPreviewUrl: next.coverUrl || '',
-      tracks: (next.tracks || []).map(t => ({
+      coverPreviewUrl: selected.coverUrl || '',
+      tracks: (selected.tracks || []).map(t => ({
         id: t.id || uid(),
         name: t.name || '',
         youtubeUrl: t.youtubeUrl || '',
@@ -90,12 +188,14 @@ export default function DiscografiaAdmin() {
     setSelectedId(null);
     setForm(DEFAULT_FORM);
     setOpenPickerByTrackId({});
+    setEditingTrackId(null);
     setIsEditorOpen(true);
   }
 
   function closeEditor() {
     setIsEditorOpen(false);
     setOpenPickerByTrackId({});
+    setEditingTrackId(null);
   }
 
   function onChange(e) {
@@ -131,47 +231,23 @@ export default function DiscografiaAdmin() {
     e.preventDefault();
   }
 
-  function addTrack() {
-    setForm(prev => ({
-      ...prev,
-      tracks: [...prev.tracks, { id: uid(), name: '', youtubeUrl: '', lyrics: '', startSec: 0, endSec: 15 }],
-    }));
+  // Removed legacy immediate-edit track helpers (replaced by draft + GRAVAR flow)
+  // function addTrack() { ... }
+  // function updateTrack(id, patch) { ... }
+
+  function startAddTrack() {
+    setEditingTrackId('new');
   }
 
-  function updateTrack(id, patch) {
-    setForm(prev => ({
-      ...prev,
-      tracks: prev.tracks.map(t => (t.id === id ? { ...t, ...patch } : t)),
-    }));
+  function cancelTrackEdit() {
+    setEditingTrackId(null);
   }
 
-  function removeTrack(id) {
-    setForm(prev => ({
-      ...prev,
-      tracks: prev.tracks.filter(t => t.id !== id),
-    }));
-    setOpenPickerByTrackId(prev => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+  function startEditTrack(id) {
+    setEditingTrackId(id);
   }
 
-  function moveTrack(id, dir) {
-    setForm(prev => {
-      const idx = prev.tracks.findIndex(t => t.id === id);
-      if (idx < 0) return prev;
-      const nextIdx = idx + dir;
-      if (nextIdx < 0 || nextIdx >= prev.tracks.length) return prev;
-      const next = [...prev.tracks];
-      const temp = next[idx];
-      next[idx] = next[nextIdx];
-      next[nextIdx] = temp;
-      return { ...prev, tracks: next };
-    });
-  }
-
-  function upsertLocal() {
+  async function upsertLocal() {
     const payload = {
       ...form,
       coverFile: null,
@@ -189,19 +265,187 @@ export default function DiscografiaAdmin() {
 
     if (!payload.title.trim()) return;
 
-    if (!selectedId) {
-      const newId = `local-${Date.now()}`;
-      setItems(prev => [{ id: newId, ...payload }, ...prev]);
-      setSelectedId(newId);
-      return;
-    }
+    try {
+      const ref = doc(db, 'siteData', 'moadb_discography');
 
-    setItems(prev => prev.map(i => (i.id === selectedId ? { ...i, ...payload } : i)));
+      const nextId = selectedId ? String(selectedId) : String(Date.now());
+      const next = { ...payload, id: nextId };
+      const nextEntry = serializeReleaseToContent(next);
+
+      const nextContent = (() => {
+        const existing = Array.isArray(rawContent) ? rawContent : [];
+        const idx = existing.findIndex(x => String(x?.id) === String(nextId));
+        if (idx >= 0) {
+          const copy = [...existing];
+          copy[idx] = nextEntry;
+          return copy;
+        }
+        return [nextEntry, ...existing];
+      })();
+
+      await setDoc(ref, { content: nextContent, updatedAt: serverTimestamp() }, { merge: true });
+
+      setRawContent(nextContent);
+      const list = nextContent.map(normalizeReleaseFromContent);
+      list.sort((a, b) => String(b.year || '').localeCompare(String(a.year || '')));
+      setItems(list);
+      setSelectedId(nextId);
+    } catch {
+      // keep silent for now (UI can be added later)
+    }
   }
 
-  function removeLocal() {
+  // Save helper: persist current release (including tracks) as soon as track operations are committed
+  async function persistTracksNow() {
+    // only persist if editor is open and we have enough info to write a release
+    if (!isEditorOpen) return;
+    if (!String(form.title || '').trim()) return;
+    await upsertLocal();
+  }
+
+  function commitNewTrack() {
+    const t = form._newTrack;
+    if (!t) return;
+    const name = String(t.name || '').trim();
+    if (!name) return;
+
+    const youtubeUrl = String(t.youtubeUrl || '').trim();
+    const startSec = Number(t.startSec ?? 0);
+    const endSec = Number(t.endSec ?? 15);
+
+    setForm(prev => {
+      const nextTrack = {
+        id: uid(),
+        name,
+        youtubeUrl,
+        lyrics: t.lyrics || '',
+        startSec,
+        endSec,
+      };
+      const { _newTrack, ...rest } = prev;
+      return { ...rest, tracks: [...(prev.tracks || []), nextTrack] };
+    });
+
+    setEditingTrackId(null);
+
+    // persist after state flush
+    setTimeout(() => {
+      persistTracksNow();
+    }, 0);
+  }
+
+  function commitEditTrack(id) {
+    const t = form._editTrack;
+    if (!t) return;
+    const name = String(t.name || '').trim();
+    if (!name) return;
+
+    setForm(prev => {
+      const patch = {
+        name,
+        youtubeUrl: String(t.youtubeUrl || '').trim(),
+        lyrics: t.lyrics || '',
+        startSec: Number(t.startSec ?? 0),
+        endSec: Number(t.endSec ?? 15),
+      };
+      const nextTracks = (prev.tracks || []).map(x => (x.id === id ? { ...x, ...patch } : x));
+      const { _editTrack, ...rest } = prev;
+      return { ...rest, tracks: nextTracks };
+    });
+
+    // if url changed, force picker to be closed
+    setOpenPickerByTrackId(prev => ({ ...prev, [id]: false }));
+
+    setEditingTrackId(null);
+
+    setTimeout(() => {
+      persistTracksNow();
+    }, 0);
+  }
+
+  function beginNewTrackDraft() {
+    setForm(prev => ({
+      ...prev,
+      _newTrack: { id: 'new', name: '', youtubeUrl: '', lyrics: '', startSec: 0, endSec: 15 },
+    }));
+    setOpenPickerByTrackId(prev => ({ ...prev, new: false }));
+  }
+
+  function beginEditTrackDraft(id) {
+    const existing = (form.tracks || []).find(x => x.id === id);
+    if (!existing) return;
+    setForm(prev => ({
+      ...prev,
+      _editTrack: {
+        id,
+        name: existing.name || '',
+        youtubeUrl: existing.youtubeUrl || '',
+        lyrics: existing.lyrics || '',
+        startSec: Number(existing.startSec ?? 0),
+        endSec: Number(existing.endSec ?? 15),
+      },
+    }));
+    setOpenPickerByTrackId(prev => ({ ...prev, [id]: false }));
+  }
+
+  function updateTrackDraft(kind, patch) {
+    setForm(prev => {
+      const key = kind === 'new' ? '_newTrack' : '_editTrack';
+      const curr = prev[key] || { id: kind };
+      return { ...prev, [key]: { ...curr, ...patch } };
+    });
+  }
+
+  function removeTrack(id) {
+    setForm(prev => ({
+      ...prev,
+      tracks: (prev.tracks || []).filter(t => t.id !== id),
+    }));
+    setOpenPickerByTrackId(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    if (editingTrackId === id) setEditingTrackId(null);
+
+    setTimeout(() => {
+      persistTracksNow();
+    }, 0);
+  }
+
+  function moveTrack(id, dir) {
+    setForm(prev => {
+      const tracks = prev.tracks || [];
+      const idx = tracks.findIndex(t => t.id === id);
+      if (idx < 0) return prev;
+      const nextIdx = idx + dir;
+      if (nextIdx < 0 || nextIdx >= tracks.length) return prev;
+      const next = [...tracks];
+      const temp = next[idx];
+      next[idx] = next[nextIdx];
+      next[nextIdx] = temp;
+      return { ...prev, tracks: next };
+    });
+
+    setTimeout(() => {
+      persistTracksNow();
+    }, 0);
+  }
+
+  async function removeLocal() {
     if (!selectedId) return;
-    setItems(prev => prev.filter(i => i.id !== selectedId));
+    try {
+      const ref = doc(db, 'siteData', 'moadb_discography');
+      const existing = Array.isArray(rawContent) ? rawContent : [];
+      const nextContent = existing.filter(x => String(x?.id) !== String(selectedId));
+      await setDoc(ref, { content: nextContent, updatedAt: serverTimestamp() }, { merge: true });
+      setRawContent(nextContent);
+      const list = nextContent.map(normalizeReleaseFromContent);
+      list.sort((a, b) => String(b.year || '').localeCompare(String(a.year || '')));
+      setItems(list);
+    } catch {
+      // ignore
+    }
     setSelectedId(null);
     setForm(DEFAULT_FORM);
   }
@@ -212,6 +456,8 @@ export default function DiscografiaAdmin() {
         <div>
           <h2 className="admin-h2">DISCOGRAFIA</h2>
           <div className="admin-subtitle">Gerencie lançamentos (single/EP/álbum), capa e links.</div>
+          {isLoading ? <div className="admin-subtitle" style={{ marginTop: 6 }}>Carregando do Firestore…</div> : null}
+          {loadError ? <div className="admin-subtitle" style={{ marginTop: 6, color: '#ffb3b3' }}>{loadError}</div> : null}
         </div>
         <div className="admin-section-actions">
           <button type="button" className="admin-btn" onClick={newItem}>+ NOVO LANÇAMENTO</button>
@@ -236,13 +482,20 @@ export default function DiscografiaAdmin() {
                 className={`admin-list-item ${i.id === selectedId ? 'is-active' : ''}`}
                 onClick={() => selectItem(i.id)}
               >
-                <div className="admin-list-item-title">{i.title}</div>
-                <div className="admin-list-item-meta">
-                  <span>{i.type.toUpperCase()}</span>
-                  <span>•</span>
-                  <span>{i.year || '—'}</span>
-                  <span>•</span>
-                  <span>{(i.tracks?.length || 0)} faixas</span>
+                <div className="admin-list-item-row">
+                  <div className="admin-list-item-thumb">
+                    {i.coverUrl ? <img src={i.coverUrl} alt="" /> : <div className="admin-list-item-thumb-empty" />}
+                  </div>
+                  <div className="admin-list-item-text">
+                    <div className="admin-list-item-title">{i.title}</div>
+                    <div className="admin-list-item-meta">
+                      <span>{i.type.toUpperCase()}</span>
+                      <span>•</span>
+                      <span>{i.year || '—'}</span>
+                      <span>•</span>
+                      <span>{(i.tracks?.length || 0)} faixas</span>
+                    </div>
+                  </div>
                 </div>
               </button>
             ))}
@@ -254,9 +507,80 @@ export default function DiscografiaAdmin() {
 
           {!isEditorOpen ? (
             <div className="admin-form">
-              <div className="admin-hint">
-                Selecione um lançamento na lista para editar ou clique em <b>+ NOVO LANÇAMENTO</b>.
-              </div>
+              {selected ? (
+                <div className="admin-release-preview">
+                  <div className="admin-release-preview-top">
+                    <div className="admin-release-preview-cover">
+                      {selected.coverUrl ? (
+                        <img src={selected.coverUrl} alt={`Capa de ${selected.title}`} />
+                      ) : (
+                        <div className="admin-release-preview-cover-empty">SEM CAPA</div>
+                      )}
+                    </div>
+
+                    <div className="admin-release-preview-meta">
+                      <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div className="admin-release-preview-title">{selected.title || '—'}</div>
+                          <div className="admin-release-preview-sub">
+                            <span>{String(selected.type || '').toUpperCase()}</span>
+                            <span>•</span>
+                            <span>{selected.year || '—'}</span>
+                            <span>•</span>
+                            <span>{(selected.tracks?.length || 0)} faixas</span>
+                          </div>
+                        </div>
+                        <button type="button" className="admin-btn admin-btn-primary" onClick={openEditorForSelected}>EDITAR</button>
+                      </div>
+
+                      <div className="admin-release-preview-links">
+                        {selected.spotifyUrl ? (
+                          <a className="admin-linkchip" href={selected.spotifyUrl} target="_blank" rel="noreferrer">Spotify</a>
+                        ) : null}
+                        {selected.appleUrl ? (
+                          <a className="admin-linkchip" href={selected.appleUrl} target="_blank" rel="noreferrer">Apple</a>
+                        ) : null}
+                        {selected.deezerUrl ? (
+                          <a className="admin-linkchip" href={selected.deezerUrl} target="_blank" rel="noreferrer">Deezer</a>
+                        ) : null}
+                        {selected.youtubeMusicUrl ? (
+                          <a className="admin-linkchip" href={selected.youtubeMusicUrl} target="_blank" rel="noreferrer">YouTube Music</a>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="admin-divider" style={{ margin: '14px 0' }} />
+
+                  <div className="admin-release-preview-tracks">
+                    <div className="admin-panel-title" style={{ borderBottom: 0, padding: 0 }}>FAIXAS</div>
+
+                    {(selected.tracks?.length || 0) === 0 ? (
+                      <div className="admin-hint">Nenhuma faixa cadastrada.</div>
+                    ) : (
+                      <div className="admin-tracklist">
+                        {(selected.tracks || []).map((t, idx) => (
+                          <div key={t.id || idx} className="admin-tracklist-row">
+                            <div className="admin-tracklist-idx">{idx + 1}</div>
+                            <div className="admin-tracklist-name" title={t.name}>{t.name || '—'}</div>
+                            <div className="admin-tracklist-meta">
+                              {t.youtubeUrl ? <span className="admin-tag">YT</span> : <span className="admin-tag admin-tag-muted">sem YT</span>}
+                              <span className="admin-tag">{Math.max(0, Number(t.startSec ?? 0))}s → {Math.max(0, Number(t.endSec ?? 0))}s</span>
+                              {t.youtubeUrl ? (
+                                <a className="admin-tag admin-tag-link" href={t.youtubeUrl} target="_blank" rel="noreferrer">abrir</a>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="admin-hint">
+                  Selecione um lançamento na lista para editar ou clique em <b>+ NOVO LANÇAMENTO</b>.
+                </div>
+              )}
             </div>
           ) : (
             <div className="admin-form">
@@ -349,37 +673,178 @@ export default function DiscografiaAdmin() {
                       <input name="youtubeMusicUrl" value={form.youtubeMusicUrl} onChange={onChange} placeholder="https://music.youtube.com/..." className="admin-input" />
                     </label>
                   </div>
+
+                  {/* + ADICIONAR FAIXA (bottom-right of this section) */}
+                  <div className="admin-release-links-actions">
+                    <button
+                      type="button"
+                      className="admin-btn"
+                      onClick={() => {
+                        startAddTrack();
+                        beginNewTrackDraft();
+                      }}
+                    >
+                      + ADICIONAR FAIXA
+                    </button>
+                  </div>
                 </div>
               </div>
 
               <div className="admin-divider" style={{ margin: '18px 0' }} />
 
-              <div className="admin-tracks-header">
-                <div>
-                  <div className="admin-panel-title" style={{ borderBottom: 0, padding: 0 }}>FAIXAS</div>
-                  <div className="admin-subtitle" style={{ marginTop: 6 }}>Nome, link do YouTube e letra. Você pode reordenar.</div>
+              {((form.tracks?.length || 0) > 0 || editingTrackId) ? (
+                <div className="admin-tracks-header" style={{ marginBottom: 10 }}>
+                  <div>
+                    <div className="admin-panel-title" style={{ borderBottom: 0, padding: 0 }}>FAIXAS</div>
+                    <div className="admin-subtitle" style={{ marginTop: 6 }}>
+                      Clique em uma faixa para editar. Use ↑/↓ para reordenar.
+                    </div>
+                  </div>
                 </div>
-                <button type="button" className="admin-btn" onClick={addTrack}>+ ADICIONAR FAIXA</button>
-              </div>
+              ) : null}
 
               <div className="admin-tracks">
-                {form.tracks.length === 0 ? (
+                {/* Empty state only when nothing and not adding/editing */}
+                {(form.tracks?.length || 0) === 0 && !editingTrackId ? (
                   <div className="admin-hint">Nenhuma faixa adicionada ainda.</div>
-                ) : (
-                  form.tracks.map((t, idx) => (
+                ) : null}
+
+                {/* New track editor */}
+                {editingTrackId === 'new' && form._newTrack ? (
+                  <div className="admin-track">
+                    <div className="admin-track-top">
+                      <div className="admin-track-index">+</div>
+                      <input
+                        className="admin-input"
+                        placeholder="Nome da música"
+                        value={form._newTrack.name}
+                        onChange={e => updateTrackDraft('new', { name: e.target.value })}
+                      />
+                      <div className="admin-track-actions">
+                        <button type="button" className="admin-track-btn" onClick={commitNewTrack} title="Gravar">
+                          GRAVAR
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-track-btn admin-track-btn-danger"
+                          onClick={() => {
+                            setForm(prev => {
+                              const { _newTrack, ...rest } = prev;
+                              return rest;
+                            });
+                            setOpenPickerByTrackId(prev => {
+                              const next = { ...prev };
+                              delete next.new;
+                              return next;
+                            });
+                            cancelTrackEdit();
+                          }}
+                          title="Cancelar"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+
+                    <label className="admin-field" style={{ marginBottom: 10 }}>
+                      <span className="admin-label">YouTube</span>
+                      <div className="admin-inline" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <input
+                          className="admin-input"
+                          placeholder="https://youtube.com/..."
+                          value={form._newTrack.youtubeUrl}
+                          onChange={e => {
+                            updateTrackDraft('new', { youtubeUrl: e.target.value });
+                            setOpenPickerByTrackId(prev => ({ ...prev, new: false }));
+                          }}
+                          style={{ flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          className="admin-btn"
+                          onClick={() => setOpenPickerByTrackId(prev => ({ ...prev, new: true }))}
+                          disabled={!String(form._newTrack.youtubeUrl || '').trim()}
+                          title="Abrir preview e selecionar trecho"
+                        >
+                          PREVIEW
+                        </button>
+                      </div>
+                    </label>
+
+                    {openPickerByTrackId.new ? (
+                      <YouTubeSegmentPicker
+                        value={{
+                          youtubeUrl: form._newTrack.youtubeUrl,
+                          startSec: form._newTrack.startSec,
+                          endSec: form._newTrack.endSec,
+                        }}
+                        onChange={next => updateTrackDraft('new', { startSec: next.startSec, endSec: next.endSec })}
+                      />
+                    ) : null}
+
+                    <label className="admin-field" style={{ marginTop: 12 }}>
+                      <span className="admin-label">Letra</span>
+                      <textarea
+                        className="admin-input admin-textarea"
+                        rows={6}
+                        value={form._newTrack.lyrics}
+                        onChange={e => updateTrackDraft('new', { lyrics: e.target.value })}
+                        placeholder="Cole a letra aqui..."
+                      />
+                    </label>
+                  </div>
+                ) : null}
+
+                {/* Existing tracks as collapsed rows or editor */}
+                {(form.tracks || []).map((t, idx) => {
+                  const isEditing = editingTrackId === t.id;
+                  const draft = isEditing ? form._editTrack : null;
+
+                  if (!isEditing) {
+                    return (
+                      <div key={t.id} className="admin-track admin-track-collapsed">
+                        <div className="admin-track-top">
+                          <div className="admin-track-index">{idx + 1}</div>
+                          <div
+                            className="admin-track-collapsed-name"
+                            style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                            title={t.name}
+                          >
+                            {t.name || '—'}
+                          </div>
+                          <div className="admin-track-actions">
+                            <button
+                              type="button"
+                              className="admin-track-btn"
+                              onClick={() => {
+                                startEditTrack(t.id);
+                                beginEditTrackDraft(t.id);
+                              }}
+                            >
+                              EDITAR
+                            </button>
+                            <button type="button" className="admin-track-btn" onClick={() => moveTrack(t.id, -1)} disabled={idx === 0}>↑</button>
+                            <button type="button" className="admin-track-btn" onClick={() => moveTrack(t.id, 1)} disabled={idx === form.tracks.length - 1}>↓</button>
+                            <button type="button" className="admin-track-btn admin-track-btn-danger" onClick={() => removeTrack(t.id)}>×</button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
                     <div key={t.id} className="admin-track">
                       <div className="admin-track-top">
                         <div className="admin-track-index">{idx + 1}</div>
                         <input
                           className="admin-input"
                           placeholder="Nome da música"
-                          value={t.name}
-                          onChange={e => updateTrack(t.id, { name: e.target.value })}
+                          value={draft?.name || ''}
+                          onChange={e => updateTrackDraft('edit', { name: e.target.value })}
                         />
                         <div className="admin-track-actions">
-                          <button type="button" className="admin-track-btn" onClick={() => moveTrack(t.id, -1)} disabled={idx === 0}>↑</button>
-                          <button type="button" className="admin-track-btn" onClick={() => moveTrack(t.id, 1)} disabled={idx === form.tracks.length - 1}>↓</button>
-                          <button type="button" className="admin-track-btn admin-track-btn-danger" onClick={() => removeTrack(t.id)}>×</button>
+                          <button type="button" className="admin-track-btn" onClick={() => commitEditTrack(t.id)} title="Gravar">GRAVAR</button>
+                          <button type="button" className="admin-track-btn" onClick={() => { cancelTrackEdit(); }} title="Fechar">FECHAR</button>
                         </div>
                       </div>
 
@@ -389,10 +854,9 @@ export default function DiscografiaAdmin() {
                           <input
                             className="admin-input"
                             placeholder="https://youtube.com/..."
-                            value={t.youtubeUrl}
+                            value={draft?.youtubeUrl || ''}
                             onChange={e => {
-                              updateTrack(t.id, { youtubeUrl: e.target.value });
-                              // If the URL changes, force user to re-open preview (lazy-load picker)
+                              updateTrackDraft('edit', { youtubeUrl: e.target.value });
                               setOpenPickerByTrackId(prev => ({ ...prev, [t.id]: false }));
                             }}
                             style={{ flex: 1 }}
@@ -401,7 +865,7 @@ export default function DiscografiaAdmin() {
                             type="button"
                             className="admin-btn"
                             onClick={() => setOpenPickerByTrackId(prev => ({ ...prev, [t.id]: true }))}
-                            disabled={!String(t.youtubeUrl || '').trim()}
+                            disabled={!String(draft?.youtubeUrl || '').trim()}
                             title="Abrir preview e selecionar trecho"
                           >
                             PREVIEW
@@ -412,11 +876,11 @@ export default function DiscografiaAdmin() {
                       {openPickerByTrackId[t.id] ? (
                         <YouTubeSegmentPicker
                           value={{
-                            youtubeUrl: t.youtubeUrl,
-                            startSec: t.startSec,
-                            endSec: t.endSec,
+                            youtubeUrl: draft?.youtubeUrl || '',
+                            startSec: Number(draft?.startSec ?? 0),
+                            endSec: Number(draft?.endSec ?? 15),
                           }}
-                          onChange={next => updateTrack(t.id, { startSec: next.startSec, endSec: next.endSec })}
+                          onChange={next => updateTrackDraft('edit', { startSec: next.startSec, endSec: next.endSec })}
                         />
                       ) : null}
 
@@ -425,14 +889,14 @@ export default function DiscografiaAdmin() {
                         <textarea
                           className="admin-input admin-textarea"
                           rows={6}
-                          value={t.lyrics}
-                          onChange={e => updateTrack(t.id, { lyrics: e.target.value })}
+                          value={draft?.lyrics || ''}
+                          onChange={e => updateTrackDraft('edit', { lyrics: e.target.value })}
                           placeholder="Cole a letra aqui..."
                         />
                       </label>
                     </div>
-                  ))
-                )}
+                  );
+                })}
               </div>
             </div>
           )}
