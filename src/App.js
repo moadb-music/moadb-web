@@ -57,6 +57,25 @@ function normalizeAboutFromPagesDoc(raw) {
   };
 }
 
+function normalizeShopFromDb(data) {
+  const d = data || {};
+  const content = d.content && typeof d.content === 'object' ? d.content : {};
+  const rawItems = Array.isArray(content.items) ? content.items : [];
+
+  return {
+    storeUrl: String(content.storeUrl || content.url || d.storeUrl || d.url || ''),
+    items: rawItems
+      .map((it, idx) => ({
+        id: String(it?.id || idx),
+        title: String(it?.title || it?.name || ''),
+        href: String(it?.url || it?.productUrl || it?.href || it?.link || ''),
+        image: String(it?.imageUrl || it?.image || ''),
+        bgColor: String(it?.bgColor || ''),
+      }))
+      .filter((it) => it.title || it.image || it.href),
+  };
+}
+
 function FlagBR(props) {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" {...props}>
@@ -99,6 +118,7 @@ function App() {
   const featuredIdsKey = (homeCfg.featuredReleaseIds || []).join('|');
 
   const [pagesContent, setPagesContent] = useState(null);
+  const [shopCfg, setShopCfg] = useState({ storeUrl: '', items: [] });
 
   useEffect(() => {
     const unsubHome = onSnapshot(doc(db, 'siteData', 'moadb_home'), (snap) => {
@@ -133,9 +153,21 @@ function App() {
       setDiscography(list);
     });
 
+    const unsubShop = onSnapshot(
+      doc(db, 'siteData', 'moadb_shop'),
+      (snap) => {
+        const data = snap.exists() ? snap.data() : {};
+        setShopCfg(normalizeShopFromDb(data));
+      },
+      () => {
+        // falha silenciosa: mantém defaults
+      }
+    );
+
     return () => {
       unsubHome();
       unsubDisco();
+      unsubShop();
     };
   }, []);
 
@@ -161,6 +193,26 @@ function App() {
 
   const langKey = useMemo(() => (String(lang || '').toLowerCase().startsWith('pt') ? 'pt' : 'en'), [lang]);
   const aboutFromDb = useMemo(() => normalizeAboutFromPagesDoc(pagesContent || {}), [pagesContent]);
+  const shopItems = useMemo(() => shopCfg?.items || [], [shopCfg]);
+  const shopStoreUrl = String(shopCfg?.storeUrl || '').trim();
+
+  const [shopIndex, setShopIndex] = useState(0);
+  const slidesPerPage = 5;
+  const totalSlides = shopItems.length + 1; // +1 for the "ver mais" card
+  const maxShopIndex = Math.max(0, totalSlides - slidesPerPage);
+
+  function clamp(n, min, max) {
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function goShopIndex(next) {
+    setShopIndex(() => clamp(next, 0, maxShopIndex));
+  }
+
+  useEffect(() => {
+    // se a lista diminuir, evita índice fora do range
+    setShopIndex((idx) => clamp(idx, 0, maxShopIndex));
+  }, [maxShopIndex]);
 
   useEffect(() => {
     // reset UI when featured release changes or gets disabled
@@ -202,45 +254,6 @@ function App() {
     { key: 'deezer', label: 'Deezer', href: featuredLinks?.deezer || '', icon: deezerIcon },
     { key: 'youtubeMusic', label: 'YouTube Music', href: featuredLinks?.youtubeMusic || '', icon: youtubeMusicIcon },
   ].filter((p) => String(p.href || '').trim());
-
-  const shopItems = [
-    {
-      id: 'tee-black-logo',
-      title: 'CAMISETA PRETA OFICIAL "MIND OF A DEAD BODY" - LOGO COR ORIGINAL.',
-      image: 'https://via.placeholder.com/400x400?text=Produto',
-      href: '#',
-    },
-    {
-      id: 'tee-white-inv',
-      title: 'CAMISETA BRANCA OFICIAL "MIND OF A DEAD BODY" - LOGO COR INVERTIDA.',
-      image: 'https://via.placeholder.com/400x400?text=Produto',
-      href: '#',
-    },
-    {
-      id: 'tee-white-box',
-      title: 'CAMISETA BRANCA OFICIAL "MIND OF A DEAD BODY" - LOGO BOX COR ORIGINAL',
-      image: 'https://via.placeholder.com/400x400?text=Produto',
-      href: '#',
-    },
-    {
-      id: 'tee-black-box-inv',
-      title: 'CAMISETA PRETA OFICIAL "MIND OF A DEAD BODY" - LOGO BOX COR INVERTIDA.',
-      image: 'https://via.placeholder.com/400x400?text=Produto',
-      href: '#',
-    },
-  ];
-
-  const [shopPage, setShopPage] = useState(0);
-  const slidesPerPage = 4;
-  const totalPages = Math.max(1, Math.ceil((shopItems.length + 1) / slidesPerPage)); // +1 for the "ver mais" card
-
-  function clamp(n, min, max) {
-    return Math.max(min, Math.min(max, n));
-  }
-
-  function goShopPage(next) {
-    setShopPage(p => clamp(next, 0, totalPages - 1));
-  }
 
   useEffect(() => {
     function onDocClick(e) {
@@ -461,59 +474,81 @@ function App() {
             <h2 className="shop-title">LOJA</h2>
 
             <div className="shop-carousel" aria-label="Carrossel de produtos">
-              <button
-                type="button"
-                className={`shop-nav-btn prev ${shopPage === 0 ? 'is-disabled' : ''}`}
-                onClick={() => goShopPage(shopPage - 1)}
-                disabled={shopPage === 0}
-                aria-label="Anterior"
-              >
-                ‹
-              </button>
+              {shopIndex > 0 && (
+                <button
+                  type="button"
+                  className="shop-nav-btn prev"
+                  onClick={() => goShopIndex(shopIndex - 1)}
+                  aria-label="Anterior"
+                >
+                  ‹
+                </button>
+              )}
 
               <div className="shop-viewport">
                 <div
                   className="shop-track"
-                  style={{ transform: `translateX(-${shopPage * 100}%)` }}
+                  style={{ transform: `translateX(-${shopIndex * (100 / slidesPerPage)}%)` }}
                 >
                   {shopItems.map(item => (
                     <div key={item.id} className="shop-slide">
-                      <article className="shop-card">
-                        <div className="shop-image">
+                      <a
+                        className="shop-card shop-card-link"
+                        href={item.href || shopStoreUrl || '#'}
+                        target={item.href || shopStoreUrl ? '_blank' : undefined}
+                        rel={item.href || shopStoreUrl ? 'noreferrer' : undefined}
+                        aria-label={`${langKey === 'pt' ? 'Comprar' : 'Buy'}: ${item.title || ''}`.trim()}
+                        onClick={(e) => {
+                          if (!(item.href || shopStoreUrl)) e.preventDefault();
+                        }}
+                      >
+                        <div className="shop-image" style={item.bgColor ? { background: item.bgColor } : undefined}>
                           <img src={item.image} alt="" />
                         </div>
                         <div className="shop-desc">{item.title}</div>
-                        <a className="shop-buy" href={item.href}>
-                          COMPRAR AGORA
-                        </a>
-                      </article>
+                        <span className="shop-buy" aria-hidden="true">
+                          {langKey === 'pt' ? 'COMPRAR' : 'BUY'}
+                        </span>
+                      </a>
                     </div>
                   ))}
 
                   <div className="shop-slide">
-                    <button type="button" className="shop-more" aria-label="Ver mais produtos">
+                    <a
+                      className="shop-more"
+                      href={shopStoreUrl || '#'}
+                      target={shopStoreUrl ? '_blank' : undefined}
+                      rel={shopStoreUrl ? 'noreferrer' : undefined}
+                      aria-label={langKey === 'pt' ? 'Ver mais produtos' : 'See more products'}
+                    >
                       <span className="shop-more-plus">+</span>
-                      <span className="shop-more-text">VER MAIS</span>
-                    </button>
+                      <span className="shop-more-text">{langKey === 'pt' ? 'VER MAIS' : 'SEE MORE'}</span>
+                    </a>
                   </div>
                 </div>
               </div>
 
-              <button
-                type="button"
-                className={`shop-nav-btn next ${shopPage >= totalPages - 1 ? 'is-disabled' : ''}`}
-                onClick={() => goShopPage(shopPage + 1)}
-                disabled={shopPage >= totalPages - 1}
-                aria-label="Próximo"
-              >
-                ›
-              </button>
+              {shopIndex < maxShopIndex && (
+                <button
+                  type="button"
+                  className="shop-nav-btn next"
+                  onClick={() => goShopIndex(shopIndex + 1)}
+                  aria-label="Próximo"
+                >
+                  ›
+                </button>
+              )}
             </div>
 
             <div className="shop-footer">
-              <button className="shop-full" type="button">
-                VER LOJA COMPLETA
-              </button>
+              <a
+                className="shop-full btn-outline"
+                href={shopStoreUrl || '#'}
+                target={shopStoreUrl ? '_blank' : undefined}
+                rel={shopStoreUrl ? 'noreferrer' : undefined}
+              >
+                {langKey === 'pt' ? 'VER LOJA COMPLETA' : 'SEE MORE'}
+              </a>
             </div>
           </div>
         </section>
