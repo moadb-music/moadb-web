@@ -553,6 +553,7 @@ function App() {
 
   const [supportOpen, setSupportOpen] = useState(false);
   const [supportPix, setSupportPix] = useState(false);
+  const [openNewsPost, setOpenNewsPost] = useState(null);
 
   return (
     <div className="app-container">
@@ -900,6 +901,7 @@ function App() {
                                 target="_blank"
                                 rel="noreferrer"
                                 aria-label={isVideo ? 'Abrir vídeo' : 'Abrir notícia'}
+                                onClick={(e) => { e.preventDefault(); setOpenNewsPost(post); }}
                               >
                                 {thumbSrc ? <img src={thumbSrc} alt="" /> : null}
                                 {isVideo ? <div className="news-play" aria-hidden="true" /> : null}
@@ -959,7 +961,7 @@ function App() {
                               <button
                                 type="button"
                                 className="news-readmore"
-                                onClick={() => toggleNewsExpanded(String(post.id))}
+                                onClick={() => setOpenNewsPost(post)}
                                 aria-expanded={isExpanded}
                               >
                                 {langKey === 'pt' ? (isExpanded ? 'Ler menos' : 'Ler mais…') : isExpanded ? 'Read less' : 'Read more…'}
@@ -967,7 +969,7 @@ function App() {
                             ) : null}
 
                             {hasCtaLink ? (
-                              <a className="news-cta" href={post.ctaUrl} target="_blank" rel="noreferrer">
+                              <a className="news-cta" href={post.ctaUrl} target="_blank" rel="noreferrer" onClick={(e) => { e.preventDefault(); setOpenNewsPost(post); }}>
                                 {post.ctaText || (langKey === 'pt' ? 'LER MAIS' : 'READ MORE')}
                               </a>
                             ) : null}
@@ -1282,6 +1284,52 @@ function App() {
           <div className="footer-copy">© {new Date().getFullYear()} MIND OF A DEAD BODY</div>
         </div>
       </footer>
+
+      {openNewsPost && (
+        <div className="news-modal-backdrop" onMouseDown={() => setOpenNewsPost(null)}>
+          <div className="news-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <button className="news-modal-close" onClick={() => setOpenNewsPost(null)} aria-label="Fechar">×</button>
+            <div className="news-modal-inner">
+            {(openNewsPost.mediaKind === 'video' || openNewsPost.mediaKind === 'video_vertical') && openNewsPost.mediaUrl ? (
+              openNewsPost.mediaUrl.includes('instagram.com') ? (
+                <a className="news-modal-external" href={openNewsPost.mediaUrl} target="_blank" rel="noreferrer">
+                  <span>&#9654;</span> Assistir no Instagram
+                </a>
+              ) : (
+              <div className="news-modal-video">
+                <iframe
+                  src={(() => { try { const u = new URL(openNewsPost.mediaUrl); const id = u.searchParams.get('v') || (u.hostname === 'youtu.be' ? u.pathname.slice(1) : u.pathname.split('/shorts/')[1]?.split('?')[0] || u.pathname.split('/embed/')[1]?.split('/')[0] || u.pathname.slice(1)); return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1` : openNewsPost.mediaUrl; } catch { return openNewsPost.mediaUrl; } })()}
+                  title={openNewsPost.title}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+              )
+            ) : openNewsPost.image ? (
+              <img className="news-modal-img" src={openNewsPost.image} alt="" />
+            ) : null}
+            <div className="news-modal-body">
+              {openNewsPost.tags?.length ? (
+                <div className="news-tags">{openNewsPost.tags.map(t => <span key={t} className="news-tag">{t.toUpperCase()}</span>)}</div>
+              ) : null}
+              <h2 className="news-modal-title">{openNewsPost.title}</h2>
+              {openNewsPost.date ? <div className="news-date">{openNewsPost.date}</div> : null}
+              {openNewsPost.excerptHtml ? (
+                <div className="news-modal-text" dangerouslySetInnerHTML={{ __html: openNewsPost.excerptHtml }} />
+              ) : openNewsPost.excerpt ? (
+                <p className="news-modal-text">{openNewsPost.excerpt}</p>
+              ) : null}
+              {openNewsPost.ctaUrl ? (
+                <a className="news-cta" href={openNewsPost.ctaUrl} target="_blank" rel="noreferrer">
+                  {openNewsPost.ctaText || (langKey === 'pt' ? 'LER MAIS' : 'READ MORE')}
+                </a>
+              ) : null}
+            </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="support-float">
         {supportOpen && (
