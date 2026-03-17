@@ -10,6 +10,8 @@ import spotifyIcon from './assets/spotify.png';
 import appleIcon from './assets/apple.png';
 import deezerIcon from './assets/deezer.png';
 import youtubeMusicIcon from './assets/youtube-music.png';
+import tiktokIcon from './assets/tiktok.png';
+import youtubeIcon from './assets/youtube.png';
 
 const PAGES_DOC_PATH = ['siteData', 'moadb_pages'];
 
@@ -1197,6 +1199,23 @@ function App() {
                     ai.mindofadeadbody@gmail.com
                   </a>
                 </div>
+
+                <div className="contact-block">
+                  <div className="contact-kicker">APOIE O PROJETO</div>
+                  <p className="contact-help">
+                    Sua contribuição ajuda a manter viva a chama do metal independente.
+                  </p>
+                  <div className="contact-support-btns">
+                    <button type="button" className="support-opt support-opt--pix" onClick={() => { setSupportPix(true); setSupportOpen(true); }}>
+                      <img className="contact-pix-icon" src={pixPng} alt="" aria-hidden="true" />
+                      PIX
+                    </button>
+                    <button type="button" className="support-opt support-opt--bmc" onClick={() => { const btn = document.querySelector('#bmc-wbtn'); if(btn){ btn.style.pointerEvents='auto'; btn.click(); btn.style.pointerEvents='none'; } }}>
+                      <img src="https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg" alt="" width="20" height="20" />
+                      BUY ME A COFFEE
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <form className="contact-form" onSubmit={(e) => e.preventDefault()}>
@@ -1232,12 +1251,32 @@ function App() {
       <footer className="site-footer" aria-label="Rodapé">
         <div className="site-footer-inner">
           <div className="footer-icons" aria-label="Links">
-            <a className="footer-icon" href="/" aria-label="Instagram">
-              <img src={instagramPng} alt="" />
-            </a>
-            <button className="footer-icon" type="button" aria-label="PIX">
-              <img src={pixPng} alt="" />
-            </button>
+            <div className="footer-platforms">
+              <a className="footer-icon" href="https://open.spotify.com/intl-pt/artist/7zLPRu5akdcZHeDbVMm3o8" target="_blank" rel="noreferrer" aria-label="Spotify">
+                <img src={spotifyIcon} alt="Spotify" />
+              </a>
+              <a className="footer-icon" href="https://music.apple.com/br/artist/mind-of-a-dead-body/1880815220" target="_blank" rel="noreferrer" aria-label="Apple Music">
+                <img src={appleIcon} alt="Apple Music" />
+              </a>
+              <a className="footer-icon" href="https://www.deezer.com/br/artist/375893561" target="_blank" rel="noreferrer" aria-label="Deezer">
+                <img src={deezerIcon} alt="Deezer" />
+              </a>
+              <a className="footer-icon" href="https://music.youtube.com/channel/UCWuiRQ6qg-tMImAazjifIGg" target="_blank" rel="noreferrer" aria-label="YouTube Music">
+                <img src={youtubeMusicIcon} alt="YouTube Music" />
+              </a>
+            </div>
+            <span className="footer-sep">|</span>
+            <div className="footer-socials">
+              <a className="footer-icon" href="https://www.instagram.com/mindofadeadbody" target="_blank" rel="noreferrer" aria-label="Instagram">
+                <img src={instagramPng} alt="Instagram" />
+              </a>
+              <a className="footer-icon" href="https://www.tiktok.com/@mindofadeadbody" target="_blank" rel="noreferrer" aria-label="TikTok">
+                <img src={tiktokIcon} alt="TikTok" />
+              </a>
+              <a className="footer-icon" href="https://www.youtube.com/@mindofadeadbody" target="_blank" rel="noreferrer" aria-label="YouTube">
+                <img src={youtubeIcon} alt="YouTube" />
+              </a>
+            </div>
           </div>
 
           <div className="footer-copy">© {new Date().getFullYear()} MIND OF A DEAD BODY</div>
@@ -1251,7 +1290,7 @@ function App() {
               <>
                 <div className="support-panel-title">APOIE O PROJETO</div>
                 <button className="support-opt support-opt--pix" onClick={() => setSupportPix(true)}>
-                  <span className="contact-pix-icon" aria-hidden="true" />
+                  <img className="contact-pix-icon" src={pixPng} alt="" aria-hidden="true" />
                   PIX
                 </button>
                 <a

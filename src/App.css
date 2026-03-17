@@ -1308,13 +1308,8 @@ a{color:inherit;text-decoration:none}
   width:18px;
   height:18px;
   display:inline-block;
-  background:#fff;
-  -webkit-mask: radial-gradient(circle at 30% 30%, transparent 6px, #000 6px),
-               radial-gradient(circle at 70% 30%, transparent 6px, #000 6px),
-               radial-gradient(circle at 30% 70%, transparent 6px, #000 6px),
-               radial-gradient(circle at 70% 70%, transparent 6px, #000 6px);
-  -webkit-mask-composite: source-in;
-  mask-composite: intersect;
+  flex-shrink:0;
+  filter:brightness(0) invert(1);
 }
 
 
@@ -1471,9 +1466,8 @@ a{color:inherit;text-decoration:none}
 /* FOOTER */
 .site-footer{
   padding:26px 20px;
-  border-top:1px solid rgba(139,0,0,.22);
-  background:#000000e8;
-  backdrop-filter:blur(10px);
+  border-top:none;
+  background:#000;
 }
 
 .site-footer-inner{
@@ -1487,25 +1481,31 @@ a{color:inherit;text-decoration:none}
   gap:14px;
 }
 
-.footer-icons{display:flex;gap:16px;align-items:center;justify-content:center}
+.footer-icons{display:flex;gap:12px;align-items:center;justify-content:center}
 
-/* FIX: bloco do Ã­cone estava sem seletor */
+.footer-platforms,.footer-socials{display:flex;gap:12px;align-items:center;}
+
+.footer-sep{
+  color:rgba(255,255,255,.25);
+  font-size:.9rem;
+  user-select:none;
+}
+
 .footer-icon{
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:42px;
-  height:42px;
-  border-radius:999px;
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.10);
+  background:none;
+  border:none;
   cursor:pointer;
   padding:0;
+  opacity:.6;
+  transition:opacity .2s ease;
 }
 
 .footer-icon img{width:22px;height:22px;object-fit:contain;display:block;filter:brightness(1.1)}
 
-.footer-icon:hover{border-color:rgba(139,0,0,.6);background:rgba(139,0,0,.10)}
+.footer-icon:hover{opacity:1;}
 
 /* FIX: havia duplicaÃ§Ã£o e abertura invÃ¡lida de bloco */
 .footer-copy{
@@ -2325,7 +2325,7 @@ a{color:inherit;text-decoration:none}
   flex-direction:column;
   align-items:center;
   gap:12px;
-  width:220px;
+  width:260px;
   box-shadow:0 8px 32px rgba(0,0,0,0.6);
   animation:fadeInDown .2s ease;
 }
@@ -2333,12 +2333,10 @@ a{color:inherit;text-decoration:none}
 .support-panel-title{
   font-family:Oswald,sans-serif;
   font-size:.75rem;
-  letter-spacing:3px;
-  color:var(--red);
-  text-transform:uppercase;
+  letter-spacing:3px;text-transform:uppercase;
   width:100%;
   text-align:center;
-  border-bottom:1px solid rgba(139,0,0,0.25);
+  border-bottom:1px solid rgba(255, 255, 255, 0.25);
   padding-bottom:10px;
 }
 
