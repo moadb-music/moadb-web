@@ -714,6 +714,53 @@ a{color:inherit;text-decoration:none}
   flex-basis: calc((100% - (22px * (var(--news-cols) - 1))) / var(--news-cols));
 }
 
+/* ===== FIX: NEWS card só texto não pode ficar com altura fixa ===== */
+.news-card.news-card--text{
+  height:auto;            /* não força 560px */
+  min-height:560px;       /* mantém baseline visual */
+}
+
+.news-card.news-card--text .news-body{
+  height:auto;            /* evita conflito com height:100% */
+}
+
+.news-card.news-card--text .news-excerpt{
+  flex: 0 0 auto;         /* não deixa o flex comprimir o texto */
+  min-height: 0;
+  max-height: var(--news-excerpt-max, 300em);
+}
+
+.news-card--text .news-body{
+  /* quando não há thumb, evita o "miolo" ficar sem altura e cortar o excerpt */
+  flex: 1 1 auto;
+  height: 100%;
+  justify-content:flex-start;
+}
+
+/* ===== Card de notícia só texto (sem mídia) =====
+   Mantém o mesmo height fixo dos outros cards (560px) para não quebrar o carrossel,
+   e garante que o excerpt seja o item que "flexa" (clamp/fade funciona sem cortar). */
+.news-card.news-card--text{
+  height:560px;          /* igual aos outros cards */
+  min-height:0;          /* remove regra anterior */
+}
+
+.news-card.news-card--text .news-body{
+  flex:1 1 auto;
+  min-height:0;
+  height:auto;           /* evita 100% que pode causar cálculos errados em alguns browsers */
+  justify-content:flex-start;
+}
+
+/* No card texto, o excerpt precisa ser o bloco elástico do body (para ocupar o espaço disponível) */
+.news-card.news-card--text .news-excerpt{
+  flex:1 1 auto;
+  min-height:0;
+}
+
+/* remove regras antigas duplicadas/contraditórias */
+.news-card--text .news-body{ height:auto; }
+
 /* Thumb: altura padronizada + imagem centralizada + fundo borrado */
 .news-media{
   position:relative;
@@ -840,11 +887,8 @@ a{color:inherit;text-decoration:none}
   .news-excerpt.news-excerpt--expanded::after{display:none;}
 }
 
-/* remove regras antigas duplicadas do overlay (agora só no fallback) */
-.news-excerpt::after{display:none;}
-.news-excerpt.is-overflow::after{display:none;}
-.news-excerpt.news-excerpt--expanded::after{display:none;}
-.news-excerpt--expanded::after{display:none;}
+/* Nota: não definimos regras globais para `::after` aqui.
+   O overlay existe apenas dentro do `@supports not(...)` (fallback). */
 
 /* Botão “Ler mais…”: não empurra o layout; fica logo abaixo do resumo */
 .news-readmore{
