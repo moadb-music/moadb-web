@@ -549,6 +549,9 @@ function App() {
     return () => clearInterval(iv);
   }, [previewTrackId, openRelease]);
 
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [supportPix, setSupportPix] = useState(false);
+
   return (
     <div className="app-container">
       <div className="bg-layer" aria-hidden="true" />
@@ -1194,19 +1197,6 @@ function App() {
                     ai.mindofadeadbody@gmail.com
                   </a>
                 </div>
-
-                <div className="contact-block">
-                  <div className="contact-kicker">APOIE O PROJETO</div>
-                  <p className="contact-help">
-                    Sua contribuição ajuda a manter viva a chama do metal
-                    independente. Apoie via PIX:
-                  </p>
-
-                  <button type="button" className="contact-pix">
-                    <span className="contact-pix-icon" aria-hidden="true" />
-                    APOIAR (PIX)
-                  </button>
-                </div>
               </div>
 
               <form className="contact-form" onSubmit={(e) => e.preventDefault()}>
@@ -1253,6 +1243,69 @@ function App() {
           <div className="footer-copy">© {new Date().getFullYear()} MIND OF A DEAD BODY</div>
         </div>
       </footer>
+
+      <div className="support-float">
+        {supportOpen && (
+          <div className="support-panel">
+            {!supportPix ? (
+              <>
+                <div className="support-panel-title">APOIE O PROJETO</div>
+                <button className="support-opt support-opt--pix" onClick={() => setSupportPix(true)}>
+                  <span className="contact-pix-icon" aria-hidden="true" />
+                  PIX
+                </button>
+                <a
+                  className="support-opt support-opt--bmc"
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); const btn = document.querySelector('#bmc-wbtn'); if(btn){ btn.style.pointerEvents='auto'; btn.click(); btn.style.pointerEvents='none'; } }}
+                >
+                  <img src="https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg" alt="" width="20" height="20" />
+                  BUY ME A COFFEE
+                </a>
+              </>
+            ) : (
+              <>
+                <button className="support-back" onClick={() => setSupportPix(false)}>← VOLTAR</button>
+                <div className="support-panel-title">PIX</div>
+                <a
+                  href="https://nubank.com.br/cobrar/31oy9/69b56c23-57b5-4a7e-b7cf-4622fdddce9b"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="contact-pix-qr-link"
+                >
+                  <img
+                    className="contact-pix-qr"
+                    src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=d9c7d8b2-52f0-4709-a8d0-ca826b1b7def&bgcolor=0d0d0d&color=ffffff&margin=10"
+                    alt="QR Code PIX"
+                  />
+                </a>
+                <div className="contact-pix-key-wrap">
+                  <span className="contact-pix-key-label">CHAVE PIX</span>
+                  <button
+                    type="button"
+                    className="contact-pix-copy"
+                    onClick={() => navigator.clipboard.writeText('d9c7d8b2-52f0-4709-a8d0-ca826b1b7def')}
+                  >
+                    <span className="contact-pix-key-value">d9c7d8b2-52f0-4709-a8d0-ca826b1b7def</span>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+                      <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                    </svg>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        <button
+          className="support-fab"
+          onClick={() => { setSupportOpen(v => !v); setSupportPix(false); }}
+          aria-label="Apoiar o projeto"
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24" aria-hidden="true">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }
