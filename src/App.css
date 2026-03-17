@@ -193,7 +193,7 @@ a{color:inherit;text-decoration:none}
   height:24px;
 }
 
-/* HERO (INÍCIO) */
+/* HERO (INÃCIO) */
 .hero{
   min-height:100vh;
   display:flex;
@@ -217,7 +217,7 @@ a{color:inherit;text-decoration:none}
 
 /* ABOUT */
 .about{
-  /* título no topo e conteúdo centralizado abaixo */
+  /* tÃ­tulo no topo e conteÃºdo centralizado abaixo */
   min-height:100vh;
   display:flex;
   align-items:stretch;
@@ -246,7 +246,7 @@ a{color:inherit;text-decoration:none}
 .about-grid{
   flex:1 1 auto;
   align-content:center;
-  /* garante centralização vertical do bloco todo */
+  /* garante centralizaÃ§Ã£o vertical do bloco todo */
   margin:0;
   display:grid;
   grid-template-columns:1fr 350px 1fr;
@@ -376,7 +376,7 @@ a{color:inherit;text-decoration:none}
   filter: brightness(1.03);
 }
 
-/* card inteiro clicável */
+/* card inteiro clicÃ¡vel */
 .shop-card-link{
   display:flex;
   flex-direction:column;
@@ -387,7 +387,7 @@ a{color:inherit;text-decoration:none}
   cursor:pointer;
 }
 
-/* hover do card também anima o CTA visual */
+/* hover do card tambÃ©m anima o CTA visual */
 .shop-card-link:hover .shop-buy,
 .shop-card-link:focus-visible .shop-buy{
   transform: translateY(-1px) scale(1.01);
@@ -403,7 +403,7 @@ a{color:inherit;text-decoration:none}
   outline-offset: 3px;
 }
 
-/* como agora o CTA é um <span>, garante comportamento igual */
+/* como agora o CTA Ã© um <span>, garante comportamento igual */
 .shop-buy{
   user-select:none;
 }
@@ -416,7 +416,7 @@ a{color:inherit;text-decoration:none}
   border-bottom: 1px solid rgba(255,255,255,0.10);
   padding:10px;
   margin: 20px;
-  overflow:hidden; /* necessário para o zoom da img */
+  overflow:hidden; /* necessÃ¡rio para o zoom da img */
   cursor:pointer;
   border-radius: 2px;
   transition: box-shadow .35s ease, transform .35s ease;
@@ -448,7 +448,7 @@ a{color:inherit;text-decoration:none}
   text-transform:uppercase;
   font-size:1.02rem;
   line-height:1.35;
-  /* garante “miolo” elástico para empurrar o botão para baixo */
+  /* garante â€œmioloâ€ elÃ¡stico para empurrar o botÃ£o para baixo */
   flex: 1 1 auto;
   display:flex;
   align-items:center;
@@ -565,7 +565,7 @@ a{color:inherit;text-decoration:none}
 .shop-full.btn-outline{
   margin: 0;
   font-size:1.12rem;
-  /* garante glow sempre visível no CTA */
+  /* garante glow sempre visÃ­vel no CTA */
   box-shadow: 0 0 22px rgba(139, 0, 0, 0.25);
 }
 
@@ -633,7 +633,7 @@ a{color:inherit;text-decoration:none}
 }
 
 .news-viewport{
-  /* mantém largo; cards ficam maiores porque agora são 4 */
+  /* mantÃ©m largo; cards ficam maiores porque agora sÃ£o 4 */
   width:min(1400px, 96vw);
   overflow:hidden;
   padding:10px 60px 20px;
@@ -673,11 +673,11 @@ a{color:inherit;text-decoration:none}
   will-change:transform;
 }
 
-/* Evita reflow no hover (quebra de linha): não aumenta borda no hover, usa outline */
+/* Evita reflow no hover (quebra de linha): nÃ£o aumenta borda no hover, usa outline */
 .news-card{
   /* evita o flexbox encolher os cards e quebrar o slide */
   flex-shrink:0;
-  /* largura dinâmica: preenche exatamente o viewport, sem corte e sem sobrar espaço */
+  /* largura dinÃ¢mica: preenche exatamente o viewport, sem corte e sem sobrar espaÃ§o */
   flex:0 0 calc((100% - (22px * (var(--news-cols) - 1))) / var(--news-cols));
   width:auto;
   min-width:0;
@@ -697,7 +697,7 @@ a{color:inherit;text-decoration:none}
 
 .news-card:hover{
   transform: translateY(-3px);
-  border-width:1px; /* mantém largura */
+  border-width:1px; /* mantÃ©m largura */
   border: 1px solid;
   border-color: rgba(255, 0, 0, 0.18);
   background-color: rgba(255, 0, 0, 0.04);
@@ -708,16 +708,16 @@ a{color:inherit;text-decoration:none}
   outline-offset: 0;
 }
 
-/* Quando for notícia só texto, não renderiza thumb */
+/* Quando for notÃ­cia sÃ³ texto, nÃ£o renderiza thumb */
 .news-card--text{
-  /* não tem mais “span maior” para notícias só texto */
+  /* nÃ£o tem mais â€œspan maiorâ€ para notÃ­cias sÃ³ texto */
   flex-basis: calc((100% - (22px * (var(--news-cols) - 1))) / var(--news-cols));
 }
 
-/* ===== FIX: NEWS card só texto não pode ficar com altura fixa ===== */
+/* ===== FIX: NEWS card sÃ³ texto nÃ£o pode ficar com altura fixa ===== */
 .news-card.news-card--text{
-  height:auto;            /* não força 560px */
-  min-height:560px;       /* mantém baseline visual */
+  height:auto;            /* nÃ£o forÃ§a 560px */
+  min-height:560px;       /* mantÃ©m baseline visual */
 }
 
 .news-card.news-card--text .news-body{
@@ -725,20 +725,20 @@ a{color:inherit;text-decoration:none}
 }
 
 .news-card.news-card--text .news-excerpt{
-  flex: 0 0 auto;         /* não deixa o flex comprimir o texto */
+  flex: 0 0 auto;         /* nÃ£o deixa o flex comprimir o texto */
   min-height: 0;
   max-height: var(--news-excerpt-max, 300em);
 }
 
 .news-card--text .news-body{
-  /* quando não há thumb, evita o "miolo" ficar sem altura e cortar o excerpt */
+  /* quando nÃ£o hÃ¡ thumb, evita o "miolo" ficar sem altura e cortar o excerpt */
   flex: 1 1 auto;
   height: 100%;
   justify-content:flex-start;
 }
 
-/* ===== Card de notícia só texto (sem mídia) =====
-   Mantém o mesmo height fixo dos outros cards (560px) para não quebrar o carrossel,
+/* ===== Card de notÃ­cia sÃ³ texto (sem mÃ­dia) =====
+   MantÃ©m o mesmo height fixo dos outros cards (560px) para nÃ£o quebrar o carrossel,
    e garante que o excerpt seja o item que "flexa" (clamp/fade funciona sem cortar). */
 .news-card.news-card--text{
   height:560px;          /* igual aos outros cards */
@@ -748,11 +748,11 @@ a{color:inherit;text-decoration:none}
 .news-card.news-card--text .news-body{
   flex:1 1 auto;
   min-height:0;
-  height:auto;           /* evita 100% que pode causar cálculos errados em alguns browsers */
+  height:auto;           /* evita 100% que pode causar cÃ¡lculos errados em alguns browsers */
   justify-content:flex-start;
 }
 
-/* No card texto, o excerpt precisa ser o bloco elástico do body (para ocupar o espaço disponível) */
+/* No card texto, o excerpt precisa ser o bloco elÃ¡stico do body (para ocupar o espaÃ§o disponÃ­vel) */
 .news-card.news-card--text .news-excerpt{
   flex:1 1 auto;
   min-height:0;
@@ -762,14 +762,14 @@ a{color:inherit;text-decoration:none}
   margin: 0;
 }
 
-/* remove regras antigas duplicadas/contraditórias */
+/* remove regras antigas duplicadas/contraditÃ³rias */
 .news-card--text .news-body{ height:auto; }
 
 /* Thumb: altura padronizada + imagem centralizada + fundo borrado */
 .news-media{
   position:relative;
   background:#000;
-  height:240px; /* um pouco mais alto para vídeo horizontal não parecer "miúdo" */
+  height:240px; /* um pouco mais alto para vÃ­deo horizontal nÃ£o parecer "miÃºdo" */
   display:block;
   overflow:hidden;
   color:inherit;
@@ -865,7 +865,7 @@ a{color:inherit;text-decoration:none}
   --news-fade-size: 3.8em;
 }
 
-/* Fade real (não overlay): usa máscara no próprio conteúdo */
+/* Fade real (nÃ£o overlay): usa mÃ¡scara no prÃ³prio conteÃºdo */
 .news-excerpt.is-overflow{
   -webkit-mask-image: linear-gradient(
     to bottom,
@@ -891,7 +891,7 @@ a{color:inherit;text-decoration:none}
   mask-image: none;
 }
 
-/* Fallback (se mask-image não funcionar): usa o overlay anterior */
+/* Fallback (se mask-image nÃ£o funcionar): usa o overlay anterior */
 @supports not ((mask-image: linear-gradient(#000, transparent)) or (-webkit-mask-image: linear-gradient(#000, transparent))){
   .news-excerpt::after{
     content:"";
@@ -914,10 +914,10 @@ a{color:inherit;text-decoration:none}
   .news-excerpt.news-excerpt--expanded::after{display:none;}
 }
 
-/* Nota: não definimos regras globais para `::after` aqui.
+/* Nota: nÃ£o definimos regras globais para `::after` aqui.
    O overlay existe apenas dentro do `@supports not(...)` (fallback). */
 
-/* Botão “Ler mais…”: não empurra o layout; fica logo abaixo do resumo */
+/* BotÃ£o â€œLer maisâ€¦â€: nÃ£o empurra o layout; fica logo abaixo do resumo */
 .news-readmore{
   margin-top: 0;
   align-self:flex-start;
@@ -941,7 +941,7 @@ a{color:inherit;text-decoration:none}
   outline-offset: 3px;
 }
 
-/* CTA: vai para o rodapé do card quando existir */
+/* CTA: vai para o rodapÃ© do card quando existir */
 .news-cta{
   margin-top:auto;
   color:var(--red);
@@ -983,14 +983,14 @@ a{color:inherit;text-decoration:none}
 .news-next{right:calc(50% - (min(1320px, 96vw) / 2) - 72px)}
 
 @media (max-width:1200px){
-  /* mantém o layout com 4 cards; só reduz levemente o viewport */
+  /* mantÃ©m o layout com 4 cards; sÃ³ reduz levemente o viewport */
   .news-viewport{width:min(1280px, 96vw);}
   .news-prev{left:calc(50% - (min(1280px, 96vw) / 2) - 72px)}
   .news-next{right:calc(50% - (min(1280px, 96vw) / 2) - 72px)}
 }
 
 @media (max-width:900px){
-  /* em telas pequenas, mantém 1 por vez (e preenche) */
+  /* em telas pequenas, mantÃ©m 1 por vez (e preenche) */
   .news-viewport{width:min(520px, 92vw);}
   .news-card{flex-basis:100%;}
   .news-card--text{flex-basis:100%;}
@@ -1028,7 +1028,7 @@ a{color:inherit;text-decoration:none}
   text-shadow:6px 6px 0 var(--red);
 }
 
-/* Grid agora é uma lista estilo catálogo (sem visual de "cards") */
+/* Grid agora Ã© uma lista estilo catÃ¡logo (sem visual de "cards") */
 .discography-grid{
   display: flex;
   flex-direction: column;
@@ -1095,7 +1095,7 @@ a{color:inherit;text-decoration:none}
   transform: scale(1.08);
 }
 
-/* Meta dados: organizados em linha horizontal ocupando o espaço restante */
+/* Meta dados: organizados em linha horizontal ocupando o espaÃ§o restante */
 .discography-meta{
   display: flex;
   flex-direction: row;
@@ -1107,7 +1107,7 @@ a{color:inherit;text-decoration:none}
   gap: 30px;
 }
 
-/* Agrupa informações de texto da discografia */
+/* Agrupa informaÃ§Ãµes de texto da discografia */
 .discography-info {
   display: flex;
   flex-direction: column;
@@ -1115,7 +1115,7 @@ a{color:inherit;text-decoration:none}
   gap: 4px;
 }
 
-/* Tipo de lançamento em cima (sem estilo de badge, só texto) */
+/* Tipo de lanÃ§amento em cima (sem estilo de badge, sÃ³ texto) */
 .discography-kind {
   font-family: Oswald, sans-serif;
   font-size: 0.9rem;
@@ -1126,7 +1126,7 @@ a{color:inherit;text-decoration:none}
   opacity: 0.9;
 }
 
-/* Número de faixas embaixo do título */
+/* NÃºmero de faixas embaixo do tÃ­tulo */
 .discography-tracks {
   font-family: 'Open Sans', 'Montserrat', sans-serif;
   font-size: 0.95rem;
@@ -1135,7 +1135,7 @@ a{color:inherit;text-decoration:none}
   letter-spacing: 1px;
 }
 
-/* Título ganha enorme destaque */
+/* TÃ­tulo ganha enorme destaque */
 .discography-name {
   margin: 0;
   font-family: Oswald, sans-serif;
@@ -1388,7 +1388,7 @@ a{color:inherit;text-decoration:none}
 
 .footer-icons{display:flex;gap:16px;align-items:center;justify-content:center}
 
-/* FIX: bloco do ícone estava sem seletor */
+/* FIX: bloco do Ã­cone estava sem seletor */
 .footer-icon{
   display:inline-flex;
   align-items:center;
@@ -1406,7 +1406,7 @@ a{color:inherit;text-decoration:none}
 
 .footer-icon:hover{border-color:rgba(139,0,0,.6);background:rgba(139,0,0,.10)}
 
-/* FIX: havia duplicação e abertura inválida de bloco */
+/* FIX: havia duplicaÃ§Ã£o e abertura invÃ¡lida de bloco */
 .footer-copy{
   opacity:.65;
   letter-spacing:2px;
@@ -1416,9 +1416,9 @@ a{color:inherit;text-decoration:none}
   text-align:center;
 }
 
-/* ===== HOME: Novos Lançamentos (destaques) ===== */
+/* ===== HOME: Novos LanÃ§amentos (destaques) ===== */
 /*
-  NOTE: este bloco foi reconstruído porque estava corrompido por edições manuais
+  NOTE: este bloco foi reconstruÃ­do porque estava corrompido por ediÃ§Ãµes manuais
   (ex.: tokens soltos como "92vw);" e chaves duplicadas) causando erro de build.
 */
 .home-featured{
@@ -1437,7 +1437,7 @@ a{color:inherit;text-decoration:none}
 
 .home-featured-head{margin-bottom:12px;}
 
-/* Linha 1 - TÍTULO (menor + destaque) */
+/* Linha 1 - TÃTULO (menor + destaque) */
 .home-featured-page-title{
   font-family: Oswald, sans-serif;
   letter-spacing: 4px;
@@ -1517,21 +1517,21 @@ a{color:inherit;text-decoration:none}
   letter-spacing:1px;
 }
 
-/* Linha 5 - BOTÃO */
+/* Linha 5 - BOTÃƒO */
 .home-featured-actions{
   margin-top:6px;
   display:flex;
   justify-content:center;
 }
 
-/* Mantém o hook do layout */
+/* MantÃ©m o hook do layout */
 .home-featured-btn{display:inline-flex;}
 
 /* legacy thumbs removed (single-featured layout) */
 .home-featured-thumbs,
 .home-featured-thumb{display:none;}
 
-/* Plataformas do destaque (abre ao clicar no botão) */
+/* Plataformas do destaque (abre ao clicar no botÃ£o) */
 .home-featured-platforms{
   margin-top:12px;
   display:grid;
@@ -1553,9 +1553,9 @@ a{color:inherit;text-decoration:none}
   max-height:220px;
 }
 
-/* HOME featured: plataformas (ícones) */
+/* HOME featured: plataformas (Ã­cones) */
 .home-featured-platform-icons-wrap{
-  /* mais respiro em relação ao texto acima */
+  /* mais respiro em relaÃ§Ã£o ao texto acima */
   padding-top:10px;
   width:100%;
   display:flex;
@@ -1573,7 +1573,7 @@ a{color:inherit;text-decoration:none}
   flex-wrap:wrap;
 }
 
-/* Mesmo efeito do botão outline: fundo vermelho quase transparente + outline vermelho + glow */
+/* Mesmo efeito do botÃ£o outline: fundo vermelho quase transparente + outline vermelho + glow */
 .home-featured-platform-icon{
   width:46px;
   height:46px;
@@ -1603,7 +1603,7 @@ a{color:inherit;text-decoration:none}
   filter: brightness(1.05);
 }
 
-/* Botão de fechar abaixo */
+/* BotÃ£o de fechar abaixo */
 .home-featured-platform-back{
   width:32px;
   height:32px;
@@ -1640,7 +1640,7 @@ a{color:inherit;text-decoration:none}
   .home-featured-platform-back{width:44px;height:44px;font-size:28px;}
 }
 
-/* Botão base (outline vermelho) - usado no HOME (listen/ouvir agora) e CTAs */
+/* BotÃ£o base (outline vermelho) - usado no HOME (listen/ouvir agora) e CTAs */
 .btn-outline{
   background-color: rgba(139, 0, 0, 0.10);
   border: 1px solid var(--red);
@@ -1667,7 +1667,7 @@ a{color:inherit;text-decoration:none}
   box-shadow: 0 0 30px rgba(139, 0, 0, 0.35);
 }
 
-/* HOME featured: garante o botão com espaçamento correto, sem perder o estilo base */
+/* HOME featured: garante o botÃ£o com espaÃ§amento correto, sem perder o estilo base */
 .home-featured-btn.btn-outline{margin:20px 0;}
 
 @media (max-width:520px){
@@ -1722,7 +1722,7 @@ a{color:inherit;text-decoration:none}
   padding: 20px 20px;
 }
 
-/* Header apenas para o botão de fechar */
+/* Header apenas para o botÃ£o de fechar */
 .site-modal-header{
   padding: 0;
   display:flex;
@@ -1755,12 +1755,12 @@ a{color:inherit;text-decoration:none}
   transform: scale(1.1);
 }
 
-/* O título do header foi removido pelo JS e colocado dentro do main content .disco-modal-title */
+/* O tÃ­tulo do header foi removido pelo JS e colocado dentro do main content .disco-modal-title */
 .site-modal-title{
   display: none;
 }
 
-/* Grip dentro do modal (Painel esquerdo com capa e infos + Painel direito só faixas) */
+/* Grip dentro do modal (Painel esquerdo com capa e infos + Painel direito sÃ³ faixas) */
 .disco-modal-grid{
   display:grid;
   grid-template-columns: 350px 1fr;
@@ -1801,7 +1801,7 @@ a{color:inherit;text-decoration:none}
   border-radius: 8px;
 }
 
-/* Novo título do lançamento movido para cá */
+/* Novo tÃ­tulo do lanÃ§amento movido para cÃ¡ */
 .disco-modal-title {
   margin: 0;
   font-family: Oswald, sans-serif;
@@ -1822,10 +1822,10 @@ a{color:inherit;text-decoration:none}
   opacity: .9;
   border-bottom: 1px solid rgba(255,255,255,0.1);
   padding-bottom: 15px;
-  margin-top: -5px; /* Aproxima o subtítulo do title */
+  margin-top: -5px; /* Aproxima o subtÃ­tulo do title */
 }
 
-/* Botoes de plataforma no modal convertidos em ícones redondos */
+/* Botoes de plataforma no modal convertidos em Ã­cones redondos */
 .disco-modal-links{
   display:flex;
   justify-content: center;
@@ -1862,16 +1862,20 @@ a{color:inherit;text-decoration:none}
   box-shadow: 0 8px 20px rgba(139,0,0,0.3);
 }
 
-/* Painel direito isolado pras faixas */
 .disco-modal-right-panel {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
-/* Seção de faixas */
+/* SeÃ§Ã£o de faixas */
 .disco-modal-tracks{
   padding: 0 25px 25px 0;
   border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
 }
 
 .disco-modal-empty-tracks {
@@ -1902,44 +1906,138 @@ a{color:inherit;text-decoration:none}
   list-style:none;
   display:flex;
   flex-direction:column;
+  flex: 1 1 auto;
   gap: 10px;
-  counter-reset: track-counter; /* Adiciona número antes do nome da faixa */
 }
 
 /* Linha de faixa individual */
 .disco-modal-track{
-  display:flex;
-  align-items:center;
-  gap: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   padding-bottom: 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   font-size: 1.05rem;
   position: relative;
-
-  /* FIX: mantém número + nome + botão na MESMA linha */
-  flex-wrap: nowrap;
-  min-width: 0; /* necessário pro ellipsis funcionar em flex */
+  min-width: 0;
 }
 
-.disco-modal-track::before {
-  counter-increment: track-counter;
-  content: counter(track-counter) ".";
+/* Linha horizontal: nÃºmero + nome + botÃµes */
+.disco-modal-track-row{
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+/* Painel de letra */
+.disco-modal-lyrics-wrap{
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+.disco-modal-lyrics-timeline{
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+  margin-bottom: 12px;
+  flex-shrink: 0;
+  width: 100%;
+  position: relative;
+}
+
+.disco-modal-lyrics-timeline::after{
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 1px;
+  width: var(--timeline-w, 0%);
+  background: var(--red);
+  transition: width 0.2s linear;
+}
+
+.disco-modal-lyrics{
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(65vh - 220px);
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.03);
+  border-left: 2px solid var(--red);
+  color: rgba(255,255,255,0.75);
+  font-size: 0.88rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  letter-spacing: 0.3px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139,0,0,0.5) transparent;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.disco-modal-lyrics::-webkit-scrollbar { width: 4px; }
+.disco-modal-lyrics::-webkit-scrollbar-track { background: transparent; }
+.disco-modal-lyrics::-webkit-scrollbar-thumb { background: rgba(139,0,0,0.5); border-radius: 2px; }
+
+/* Faixa com letra aberta ocupa todo o espaÃ§o restante */
+.disco-modal-track:has(.disco-modal-lyrics-wrap){
+  flex: 1 1 auto;
+  min-height: 0;
+  align-items: stretch;
+}
+
+/* Faixas ocultas quando outra estÃ¡ com letra aberta */
+.disco-modal-track--hidden{
+  display: none;
+}
+
+/* BotÃ£o de letra: menor e quadrado (sem arredondamento) */
+.disco-modal-track-link--lyrics{
+  padding: 3px 7px;
+  font-size: 0.72rem;
+  letter-spacing: 0.8px;
+  border-radius: 0;
+  gap: 0;
+}
+
+/* Timeline: linha vermelha que preenche o border-bottom durante o preview */
+.disco-modal-track::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  width: calc(var(--track-progress, 0) * 100%);
+  background: var(--red);
+  transition: width 0.2s linear;
+  pointer-events: none;
+  /* oculta quando a letra estÃ¡ aberta (timeline fica no lyrics-wrap) */
+}
+
+.disco-modal-track:has(.disco-modal-lyrics-wrap)::after {
+  display: none;
+}
+
+.disco-modal-track-num{
   color: #555;
   font-family: 'Oswald', sans-serif;
   font-size: 1rem;
-  width: 20px; /* Alinha os números */
-  flex: 0 0 auto; /* não deixa o número encolher/quebrar */
+  width: 20px;
+  flex: 0 0 auto;
 }
 
 .disco-modal-track-name{
   flex:1;
   color: #eee;
-
-  /* FIX: não quebra linha; corta com reticências */
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex-basis: 0; /* garante que nome + botÃµes fiquem na mesma linha */
 }
 
 .disco-modal-track-link{
@@ -1953,26 +2051,21 @@ a{color:inherit;text-decoration:none}
   border: 1px solid var(--red);
   border-radius: 20px;
   transition: all 0.2s ease;
-
-  /* botão (agora é <button>) */
   background: transparent;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-
-  /* FIX: botão não quebra linha */
   flex: 0 0 auto;
   white-space: nowrap;
-
-  /* pequeno glow base */
-  box-shadow: 0 0 18px rgba(139,0,0,0.18);
+  box-shadow: 0 0 6px rgba(139,0,0,0.10);
 }
 
-.disco-modal-track-link:hover{
+.disco-modal-track-link:hover,
+.disco-modal-track-link.is-playing{
   background: var(--red);
   color: #fff;
-  box-shadow: 0 0 26px rgba(139,0,0,0.32);
+  box-shadow: 0 0 10px rgba(139,0,0,0.22);
 }
 
 .disco-modal-track-link:focus-visible{
@@ -1980,22 +2073,18 @@ a{color:inherit;text-decoration:none}
   outline-offset: 3px;
 }
 
-/* Quando o botão estiver em hover (fundo vermelho), o ícone deve ficar branco */
-.disco-modal-track-link:hover .disco-modal-preview-icon::before{
+/* Ãcone branco no hover e quando ativo */
+.disco-modal-track-link:hover .disco-modal-preview-icon::before,
+.disco-modal-track-link.is-playing .disco-modal-preview-icon::before{
   border-left-color: #fff;
 }
 
-.disco-modal-track-link:hover .disco-modal-preview-icon::after{
-  background: #fff;
-}
-
-/* E também quando estiver tocando e em hover, as barras do pause ficam brancas */
-.disco-modal-track-link.is-playing:hover .disco-modal-preview-icon::before,
+.disco-modal-track-link:hover .disco-modal-preview-icon::after,
 .disco-modal-track-link.is-playing:hover .disco-modal-preview-icon::after{
   background: #fff;
 }
 
-/* Ícone play/pause do preview (CSS puro) */
+/* Ãcone play/pause do preview (CSS puro) */
 .disco-modal-preview-icon{
   position: relative;
   width: 16px;
@@ -2004,7 +2093,7 @@ a{color:inherit;text-decoration:none}
   flex: 0 0 auto;
 }
 
-/* PLAY (triângulo) */
+/* PLAY (triÃ¢ngulo) */
 .disco-modal-preview-icon::before{
   content: "";
   position: absolute;
@@ -2015,6 +2104,7 @@ a{color:inherit;text-decoration:none}
   border-top: 5px solid transparent;
   border-bottom: 5px solid transparent;
   border-left: 8px solid var(--red);
+  filter: drop-shadow(0 0 2px rgba(139,0,0,0.35));
 }
 
 /* PAUSE (duas barras) quando estiver tocando */
@@ -2025,7 +2115,7 @@ a{color:inherit;text-decoration:none}
   top: 3px;
   width: 3px;
   height: 10px;
-  background: var(--red);
+  background: #fff;
   border: 0;
 }
 
@@ -2036,7 +2126,7 @@ a{color:inherit;text-decoration:none}
   top: 3px;
   width: 3px;
   height: 10px;
-  background: var(--red);
+  background: #fff;
 }
 
 /* Responsividade do modal */
@@ -2076,18 +2166,18 @@ a{color:inherit;text-decoration:none}
   }
 }
 
-/* Adiciona CSS para esconder o vídeo do YouTube e mostrar só o player de áudio no preview da faixa */
+/* Adiciona CSS para esconder o vÃ­deo do YouTube e mostrar sÃ³ o player de Ã¡udio no preview da faixa */
 .disco-modal-preview-iframe-wrap {
   width: 100%;
-  height: 40px; /* altura só do player de áudio */
+  height: 40px; /* altura sÃ³ do player de Ã¡udio */
   overflow: hidden;
   position: relative;
 }
 .disco-modal-preview-iframe-wrap iframe {
   position: absolute;
-  top: -80px; /* ajusta para esconder o vídeo, só o player de áudio fica visível */
+  top: -80px; /* ajusta para esconder o vÃ­deo, sÃ³ o player de Ã¡udio fica visÃ­vel */
   left: 0;
   width: 100%;
-  height: 120px; /* altura suficiente para mostrar só o player de áudio */
+  height: 120px; /* altura suficiente para mostrar sÃ³ o player de Ã¡udio */
   pointer-events: auto;
 }

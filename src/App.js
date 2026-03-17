@@ -196,6 +196,15 @@ function App() {
   );
 
   useEffect(() => {
+    if (openReleaseId) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [openReleaseId]);
+
+  useEffect(() => {
     function onEsc(e) {
       if (e.key === 'Escape') setOpenReleaseId(null);
     }
@@ -214,6 +223,9 @@ function App() {
   const [newsError, setNewsError] = useState('');
 
   const [previewTrackId, setPreviewTrackId] = useState(null);
+  const [previewProgress, setPreviewProgress] = useState(0);
+  const previewStartRef = useRef(null);
+  const [lyricsTrackId, setLyricsTrackId] = useState(null);
 
   useEffect(() => {
     const unsubHome = onSnapshot(doc(db, 'siteData', 'moadb_home'), (snap) => {
@@ -254,9 +266,9 @@ function App() {
                     id: String(t?.id || idx),
                     name: String(t?.name || ''),
                     youtubeUrl: String(t?.youtubeUrl || ''),
-                    // FIX: respeita dados do admin
                     startSec: Number(t?.startSec ?? t?.start ?? t?.segmentStart ?? 0),
                     endSec: Number(t?.endSec ?? t?.end ?? t?.segmentEnd ?? 0),
+                    lyrics: String(t?.lyrics || t?.letra || ''),
                   }))
                 : [],
             }))
@@ -511,8 +523,31 @@ function App() {
   }, [maxNewsScrollIndex]);
 
   useEffect(() => {
-    if (!openRelease) setPreviewTrackId(null);
+    if (!openRelease) {
+      setPreviewTrackId(null);
+      setPreviewProgress(0);
+      setLyricsTrackId(null);
+    }
   }, [openRelease]);
+
+  useEffect(() => {
+    if (!previewTrackId) {
+      setPreviewProgress(0);
+      previewStartRef.current = null;
+      return;
+    }
+    const track = openRelease?.tracks?.find((t) => t.id === previewTrackId);
+    const duration = (track?.endSec || 0) - (track?.startSec || 0);
+    if (!duration) return;
+    previewStartRef.current = Date.now();
+    setPreviewProgress(0);
+    const iv = setInterval(() => {
+      const elapsed = (Date.now() - previewStartRef.current) / 1000;
+      setPreviewProgress(Math.min(elapsed / duration, 1));
+      if (elapsed >= duration) clearInterval(iv);
+    }, 200);
+    return () => clearInterval(iv);
+  }, [previewTrackId, openRelease]);
 
   return (
     <div className="app-container">
@@ -1064,8 +1099,7 @@ function App() {
                       <div className="disco-modal-tracks" aria-label={langKey === 'pt' ? 'Faixas' : 'Tracks'}>
                         <div className="disco-modal-section-title">{langKey === 'pt' ? 'FAIXAS' : 'TRACKS'}</div>
                         <ol className="disco-modal-tracklist">
-                          {openRelease.tracks.map((t) => {
-                            // Extrai o ID do vídeo do YouTube
+                          {openRelease.tracks.map((t, idx) => {
                             let youtubeId = '';
                             if (t.youtubeUrl) {
                               try {
@@ -1080,31 +1114,55 @@ function App() {
                                 }
                               } catch {}
                             }
+                            const isLyricsOpen = lyricsTrackId === t.id;
+                            const isHidden = lyricsTrackId && !isLyricsOpen;
                             return (
-                              <li key={t.id} className="disco-modal-track">
-                                <span className="disco-modal-track-name">{t.name}</span>
-                                {t.youtubeUrl ? (
-                                  <button
-                                    type="button"
-                                    className={`disco-modal-track-link${previewTrackId === t.id ? ' active' : ''}`}
-                                    aria-label={langKey === 'pt' ? 'Preview da faixa' : 'Track preview'}
-                                    onClick={() => setPreviewTrackId(previewTrackId === t.id ? null : t.id)}
-                                  >
-                                    <span className="disco-modal-preview-icon" aria-hidden="true" />
-                                    PREVIEW
-                                  </button>
-                                ) : null}
-                                {/* Mostra o iframe se o preview estiver aberto */}
-                                {previewTrackId === t.id && youtubeId ? (
-                                  <div className="disco-modal-preview-iframe-wrap" style={{ overflow: 'hidden', height: '1px', width: '1px', position: 'absolute', pointerEvents: 'none' }}>
-                                    <iframe
-                                      width="1"
-                                      height="1"
-                                      src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&start=${Math.floor(t.startSec || 0)}&end=${Math.floor(t.endSec || 0)}`}
-                                      title={t.name}
-                                      frameBorder="0"
-                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    />
+                              <li
+                                key={t.id}
+                                className={`disco-modal-track${isHidden ? ' disco-modal-track--hidden' : ''}`}
+                                style={previewTrackId === t.id ? { '--track-progress': previewProgress } : undefined}
+                              >
+                                <div className="disco-modal-track-row">
+                                  <span className="disco-modal-track-num">{idx + 1}.</span>
+                                  <span className="disco-modal-track-name">{t.name}</span>
+                                  {t.lyrics ? (
+                                    <button
+                                      type="button"
+                                      className={`disco-modal-track-link disco-modal-track-link--lyrics${isLyricsOpen ? ' is-playing' : ''}`}
+                                      aria-label={langKey === 'pt' ? 'Ver letra' : 'View lyrics'}
+                                      onClick={() => setLyricsTrackId(isLyricsOpen ? null : t.id)}
+                                    >
+                                      {langKey === 'pt' ? 'LETRA' : 'LYRICS'}
+                                    </button>
+                                  ) : null}
+                                  {t.youtubeUrl ? (
+                                    <button
+                                      type="button"
+                                      className={`disco-modal-track-link${previewTrackId === t.id ? ' is-playing' : ''}`}
+                                      aria-label={langKey === 'pt' ? 'Preview da faixa' : 'Track preview'}
+                                      onClick={() => setPreviewTrackId(previewTrackId === t.id ? null : t.id)}
+                                    >
+                                      <span className="disco-modal-preview-icon" aria-hidden="true" />
+                                      PREVIEW
+                                    </button>
+                                  ) : null}
+                                  {previewTrackId === t.id && youtubeId ? (
+                                    <div className="disco-modal-preview-iframe-wrap" style={{ overflow: 'hidden', height: '1px', width: '1px', position: 'absolute', pointerEvents: 'none' }}>
+                                      <iframe
+                                        width="1"
+                                        height="1"
+                                        src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&start=${Math.floor(t.startSec || 0)}&end=${Math.floor(t.endSec || 0)}`}
+                                        title={t.name}
+                                        frameBorder="0"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                      />
+                                    </div>
+                                  ) : null}
+                                </div>
+                                {isLyricsOpen ? (
+                                  <div className="disco-modal-lyrics-wrap">
+                                    <div className="disco-modal-lyrics-timeline" style={{ '--timeline-w': `${Math.round((previewTrackId === t.id ? previewProgress : 0) * 100)}%` }} />
+                                    <div className="disco-modal-lyrics">{t.lyrics}</div>
                                   </div>
                                 ) : null}
                               </li>
