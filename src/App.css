@@ -365,7 +365,6 @@ a{color:inherit;text-decoration:none}
   border: 1px solid rgba(255, 255, 255, 0.11);
   box-shadow: 0 18px 40px rgba(0,0,0,0.65);
   transition: transform .48s cubic-bezier(.22, 1, .36, 1), box-shadow .45s ease, border-color .45s ease, background-color .45s ease, filter .45s ease;
-  padding-bottom: 14px;
 }
 
 .shop-card:hover{
@@ -634,11 +633,34 @@ a{color:inherit;text-decoration:none}
 }
 
 .news-viewport{
-  /* largura dinâmica (preenche o container) */
-  width:min(1106px, 94vw);
+  /* mantém largo; cards ficam maiores porque agora são 4 */
+  width:min(1400px, 96vw);
   overflow:hidden;
-  padding:10px 0 20px;
+  padding:10px 60px 20px;
   position:relative;
+  --news-cols: 4;
+}
+
+/* Fade lateral do carrossel (esquerda/direita) */
+.news-viewport::before,
+.news-viewport::after{
+  content:"";
+  position:absolute;
+  top:0;
+  bottom:0;
+  width:86px;
+  pointer-events:none;
+  z-index:5;
+}
+
+.news-viewport::before{
+  left:0;
+  background:linear-gradient(90deg, rgba(0,0,0,0.98), rgba(0,0,0,0));
+}
+
+.news-viewport::after{
+  right:0;
+  background:linear-gradient(270deg, rgba(0,0,0,0.98), rgba(0,0,0,0));
 }
 
 .news-track{
@@ -646,81 +668,94 @@ a{color:inherit;text-decoration:none}
   gap:22px;
   align-items:stretch;
   flex-wrap:nowrap;
+  width:100%;
+  transition:transform .9s cubic-bezier(.22, 1, .36, 1);
+  will-change:transform;
 }
 
+/* Evita reflow no hover (quebra de linha): não aumenta borda no hover, usa outline */
 .news-card{
-  /* 4 por vez (desktop/tablet): (100% - 3*gaps) / 4 */
-  flex:0 0 calc((100% - (22px * 3)) / 4);
+  /* evita o flexbox encolher os cards e quebrar o slide */
+  flex-shrink:0;
+  /* largura dinâmica: preenche exatamente o viewport, sem corte e sem sobrar espaço */
+  flex:0 0 calc((100% - (22px * (var(--news-cols) - 1))) / var(--news-cols));
   width:auto;
   min-width:0;
-  background:#111111f2;
-  border:1px solid #ffffff14;
-  box-shadow:0 15px 30px #00000080;
+  background: rgba(8, 8, 8, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.65);
   display:flex;
   flex-direction:column;
   overflow:hidden;
   /* altura fixa (cards todos iguais) */
   height: 560px;
+  transition: transform .48s cubic-bezier(.22, 1, .36, 1), box-shadow .45s ease, border-color .45s ease, background-color .45s ease, filter .45s ease;
+  /* usado pelo fade do texto para combinar com o fundo do card */
+  --news-card-bg: rgba(8, 8, 8, 0.72);
+  box-sizing:border-box;
+}
+
+.news-card:hover{
+  transform: translateY(-3px);
+  border-width:1px; /* mantém largura */
+  border: 1px solid;
+  border-color: rgba(255, 0, 0, 0.18);
+  background-color: rgba(255, 0, 0, 0.04);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.78);
+  filter: brightness(1.03);
+  --news-card-bg: rgba(255, 0, 0, 0.04);
+  outline: 1px solid rgba(255, 0, 0, 0.18);
+  outline-offset: 0;
 }
 
 /* Quando for notícia só texto, não renderiza thumb */
 .news-card--text{
-  /* mais largo (equivale a ~2 colunas) */
-  flex-basis: calc(((100% - (22px * 3)) / 4) * 2 + 22px);
+  /* não tem mais “span maior” para notícias só texto */
+  flex-basis: calc((100% - (22px * (var(--news-cols) - 1))) / var(--news-cols));
 }
 
+/* Thumb: altura padronizada + imagem centralizada + fundo borrado */
 .news-media{
   position:relative;
   background:#000;
-  height:auto;
-  aspect-ratio:1/1;
+  height:240px; /* um pouco mais alto para vídeo horizontal não parecer "miúdo" */
   display:block;
+  overflow:hidden;
   color:inherit;
   text-decoration:none;
 }
 
-.news-media:focus-visible{
-  outline:2px solid rgba(139, 0, 0, 0.9);
-  outline-offset:2px;
+/* fundo blur (somente quando existir thumb) */
+.news-media::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background-image: var(--news-thumb-url);
+  background-size: cover;
+  background-position: center;
+  filter: blur(16px) brightness(0.45) saturate(0.95);
+  transform: scale(1.18);
+  opacity: 1;
+  z-index:0;
 }
 
+.news-media:not(.has-thumb-bg)::before{content:none;}
+
 .news-media img{
+  position:relative;
+  z-index:1;
   width:100%;
   height:100%;
-  object-fit:cover;
   display:block;
-  filter:saturate(.9) contrast(1.05);
+  object-fit:contain;
+  object-position:center;
+  filter:saturate(.95) contrast(1.05);
   transition:transform .18s ease, filter .18s ease;
 }
 
 .news-card:hover .news-media img{
   transform:scale(1.03);
   filter:saturate(1) contrast(1.1);
-}
-
-.news-play{
-  position:absolute;
-  left:50%;
-  top:50%;
-  width:64px;
-  height:64px;
-  transform:translate(-50%,-50%);
-  border-radius:999px;
-  background:rgba(0,0,0,.45);
-  border:1px solid rgba(255,255,255,.15);
-  backdrop-filter:blur(2px);
-}
-
-.news-play::before{
-  content:"";
-  position:absolute;
-  left:50%;
-  top:50%;
-  transform:translate(-38%,-50%);
-  width:0;height:0;
-  border-left:18px solid rgba(255,255,255,.85);
-  border-top:11px solid transparent;
-  border-bottom:11px solid transparent;
 }
 
 .news-body{
@@ -730,49 +765,112 @@ a{color:inherit;text-decoration:none}
   gap:10px;
   min-height: 0;
   flex: 1 1 auto;
+  min-width:0;
 }
 
-.news-card--text .news-body{
-  padding-top: 18px;
+.news-headline {
+  margin: 0px 0 10px 0;
 }
 
-.news-tag{
-  align-self:flex-start;
-  background:var(--red);
-  color:#fff;
-  font-family:Oswald,sans-serif;
-  font-size:.75rem;
-  letter-spacing:2px;
-  padding:6px 10px;
-  text-transform:uppercase;
-}
-
-.news-date{
-  opacity:.65;
-  font-size:.85rem;
-  letter-spacing:1px;
-}
-
-.news-headline{
-  margin:0;
-  font-family:Oswald,sans-serif;
-  text-transform:uppercase;
-  letter-spacing:1px;
-  font-size:1.25rem;
-  line-height:1.1;
-}
-
+/* Excerpt: truncamento + fade quando overflow */
 .news-excerpt{
-  margin:0;
-  opacity:.85;
-  font-size:.92rem;
-  line-height:1.55;
+  display:block;
+  position:relative;
   overflow:hidden;
-  display:-webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
+  max-height: var(--news-excerpt-max, 10em);
+  left:auto;
+  right:auto;
+  bottom:auto;
+  height:auto;
+  pointer-events:auto;
+
+  /* garante que o fade use exatamente o mesmo fundo do card */
+  --news-excerpt-bg: var(--news-card-bg, rgba(8, 8, 8, 0.72));
+
+  /* controle do fade (altura) */
+  --news-fade-size: 3.8em;
 }
 
+/* Fade real (não overlay): usa máscara no próprio conteúdo */
+.news-excerpt.is-overflow{
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0,0,0,1) 0%,
+    rgba(0,0,0,1) calc(100% - var(--news-fade-size)),
+    rgba(0,0,0,0) 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0,0,0,1) 0%,
+    rgba(0,0,0,1) calc(100% - var(--news-fade-size)),
+    rgba(0,0,0,0) 100%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+/* expandido: sem fade */
+.news-excerpt--expanded{
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* Fallback (se mask-image não funcionar): usa o overlay anterior */
+@supports not ((mask-image: linear-gradient(#000, transparent)) or (-webkit-mask-image: linear-gradient(#000, transparent))){
+  .news-excerpt::after{
+    content:"";
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    height:4.2em;
+    pointer-events:none;
+    display:none;
+    background: linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0%,
+      rgba(0,0,0,0.55) 35%,
+      rgba(0,0,0,0.92) 70%,
+      rgba(0,0,0,1) 100%
+    );
+  }
+  .news-excerpt.is-overflow::after{display:block;}
+  .news-excerpt.news-excerpt--expanded::after{display:none;}
+}
+
+/* remove regras antigas duplicadas do overlay (agora só no fallback) */
+.news-excerpt::after{display:none;}
+.news-excerpt.is-overflow::after{display:none;}
+.news-excerpt.news-excerpt--expanded::after{display:none;}
+.news-excerpt--expanded::after{display:none;}
+
+/* Botão “Ler mais…”: não empurra o layout; fica logo abaixo do resumo */
+.news-readmore{
+  margin-top: 0;
+  align-self:flex-start;
+  background: transparent;
+  border: 0;
+  padding: 2px 0;
+  color: var(--red);
+  font-family: Oswald,sans-serif;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  font-size: .85rem;
+  cursor: pointer;
+  transition: transform .2s ease, color .2s ease, opacity .2s ease;
+  margin-top:auto;
+}
+
+.news-readmore:hover{opacity:1;transform: translateY(-1px)}
+
+.news-readmore:focus-visible{
+  outline: 2px solid rgba(139,0,0,.55);
+  outline-offset: 3px;
+}
+
+/* CTA: vai para o rodapé do card quando existir */
 .news-cta{
   margin-top:auto;
   color:var(--red);
@@ -810,16 +908,14 @@ a{color:inherit;text-decoration:none}
 
 .news-nav:hover{opacity:1}
 
-.news-prev{left:calc(50% - (min(1106px, 94vw) / 2) - 62px)}
-.news-next{right:calc(50% - (min(1106px, 94vw) / 2) - 62px)}
+.news-prev{left:calc(50% - (min(1320px, 96vw) / 2) - 72px)}
+.news-next{right:calc(50% - (min(1320px, 96vw) / 2) - 72px)}
 
 @media (max-width:1200px){
-  /* segue 4 por vez, apenas reduz a largura máxima do viewport */
-  .news-viewport{width:min(1026px, 94vw);}
-  .news-card{flex-basis:calc((100% - (22px * 3)) / 4);}
-  .news-card--text{flex-basis: calc(((100% - (22px * 3)) / 4) * 2 + 22px);}
-  .news-prev{left:calc(50% - (min(1026px, 94vw) / 2) - 62px)}
-  .news-next{right:calc(50% - (min(1026px, 94vw) / 2) - 62px)}
+  /* mantém o layout com 4 cards; só reduz levemente o viewport */
+  .news-viewport{width:min(1280px, 96vw);}
+  .news-prev{left:calc(50% - (min(1280px, 96vw) / 2) - 72px)}
+  .news-next{right:calc(50% - (min(1280px, 96vw) / 2) - 72px)}
 }
 
 @media (max-width:900px){
@@ -829,6 +925,12 @@ a{color:inherit;text-decoration:none}
   .news-card--text{flex-basis:100%;}
   .news-prev{left:calc(50% - (min(520px, 92vw) / 2) - 26px)}
   .news-next{right:calc(50% - (min(520px, 92vw) / 2) - 26px)}
+  .news-viewport::before,
+  .news-viewport::after{width:34px;}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .news-track{transition:none !important}
 }
 
 /* DISCOGRAPHY */

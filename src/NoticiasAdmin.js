@@ -119,6 +119,41 @@ function serializeNewsToDb(items) {
   };
 }
 
+function escapeHtml(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function plainTextToHtml(text) {
+  const safe = escapeHtml(text);
+  // mantém parágrafos simples
+  const lines = safe.split(/\r?\n/);
+  return lines
+    .map((l) => l.trim())
+    .filter((l, idx, arr) => l || (idx > 0 && arr[idx - 1]))
+    .map((l) => (l ? `<p>${l}</p>` : '<p><br/></p>'))
+    .join('');
+}
+
+function insertTextAtSelection(text) {
+  const sel = window.getSelection?.();
+  if (!sel || sel.rangeCount === 0) return false;
+  const range = sel.getRangeAt(0);
+  range.deleteContents();
+  const node = document.createTextNode(text);
+  range.insertNode(node);
+  // move cursor para o fim do texto inserido
+  range.setStartAfter(node);
+  range.setEndAfter(node);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  return true;
+}
+
 export default function NoticiasAdmin() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -575,7 +610,22 @@ export default function NoticiasAdmin() {
                   style={{ minHeight: 140, padding: 12, borderRadius: 12 }}
                   contentEditable
                   suppressContentEditableWarning
-                  onInput={(e) => applyDraft({ excerptHtml: e.currentTarget.innerHTML })}
+                  onPaste={(e) => {
+                    // cola SOMENTE texto (sem estilos do Ctrl+V)
+                    e.preventDefault();
+                    const text = e.clipboardData?.getData('text/plain') ?? '';
+                    if (text) {
+                      insertTextAtSelection(text);
+                      // salva com HTML mínimo (p/br), para o site renderizar sem herdar estilos
+                      const html = plainTextToHtml(e.currentTarget.innerText);
+                      applyDraft({ excerptHtml: html });
+                    }
+                  }}
+                  onInput={(e) => {
+                    // normaliza sempre para HTML limpo
+                    const html = plainTextToHtml(e.currentTarget.innerText);
+                    applyDraft({ excerptHtml: html });
+                  }}
                   dangerouslySetInnerHTML={{ __html: draft.excerptHtml || '' }}
                 />
               </div>

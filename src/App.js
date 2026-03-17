@@ -399,27 +399,73 @@ function App() {
 
   const isPt = lang === 'pt-BR';
 
-  // ===== NEWS carousel state (4 por vez / 12 no total) =====
+  // ===== NEWS carousel state =====
   const [newsIndex, setNewsIndex] = useState(0);
+  const newsVisibleCount = 4;
+  const newsViewportRef = useRef(null);
+
+  // controla “Ler mais…” (expansão inline) e detecção de clamp por item
+  const [expandedNewsIds, setExpandedNewsIds] = useState(() => new Set());
+  const [clampedNewsIds, setClampedNewsIds] = useState(() => new Set());
+  const excerptRefs = useRef({});
+
+  const toggleNewsExpanded = (id) => {
+    setExpandedNewsIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // mede se o texto está clampado (scrollHeight > clientHeight)
+  useEffect(() => {
+    const capped = (newsItems || []).slice(0, 12);
+    const windowItems = capped.slice(newsIndex, newsIndex + newsVisibleCount);
+    const idsInView = windowItems.map((p) => String(p.id));
+
+    const raf = requestAnimationFrame(() => {
+      setClampedNewsIds((prev) => {
+        let changed = false;
+        const next = new Set(prev);
+
+        for (const id of idsInView) {
+          const el = excerptRefs.current?.[id];
+          if (!el) continue;
+          const isClamped = el.scrollHeight - el.clientHeight > 1;
+          const had = next.has(id);
+          if (isClamped && !had) {
+            next.add(id);
+            changed = true;
+          } else if (!isClamped && had) {
+            next.delete(id);
+            changed = true;
+          }
+        }
+
+        return changed ? next : prev;
+      });
+    });
+
+    return () => cancelAnimationFrame(raf);
+  }, [newsItems, newsIndex, newsVisibleCount]);
 
   const visibleNewsItems = useMemo(() => {
     const list = Array.isArray(newsItems) ? newsItems : [];
     return list.slice(0, 12);
   }, [newsItems]);
 
-  // ===== NEWS carousel state (anda de 1 em 1 item; 4 visíveis) =====
-  const newsVisibleCount = 4;
   const maxNewsScrollIndex = Math.max(0, visibleNewsItems.length - newsVisibleCount);
 
-  const scrolledNewsItems = useMemo(() => visibleNewsItems.slice(newsIndex, newsIndex + newsVisibleCount), [visibleNewsItems, newsIndex]);
+  // renderizamos o track inteiro para permitir animação por translateX (igual ao carrossel da Loja)
+  // o índice continua avançando de 1 em 1
+  function goNewsScrollIndex(next) {
+    setNewsIndex(() => Math.max(0, Math.min(next, maxNewsScrollIndex)));
+  }
 
   useEffect(() => {
     setNewsIndex((i) => Math.min(i, maxNewsScrollIndex));
   }, [maxNewsScrollIndex]);
-
-  function goNewsScrollIndex(next) {
-    setNewsIndex(() => Math.max(0, Math.min(next, maxNewsScrollIndex)));
-  }
 
   return (
     <div className="app-container">
@@ -619,11 +665,11 @@ function App() {
           <div className="shop-inner">
             <h2 className="shop-title">LOJA</h2>
 
-            <div className="shop-carousel" aria-label="Carrossel de produtos">
+            <div class="shop-carousel" aria-label="Carrossel de produtos">
               {shopIndex > 0 && (
                 <button
                   type="button"
-                  className="shop-nav-btn prev"
+                  class="shop-nav-btn prev"
                   onClick={() => goShopIndex(shopIndex - 1)}
                   aria-label="Anterior"
                 >
@@ -631,15 +677,15 @@ function App() {
                 </button>
               )}
 
-              <div className="shop-viewport">
+              <div class="shop-viewport">
                 <div
-                  className="shop-track"
+                  class="shop-track"
                   style={{ transform: `translateX(-${shopIndex * (100 / slidesPerPage)}%)` }}
                 >
                   {shopItems.map(item => (
-                    <div key={item.id} className="shop-slide">
+                    <div key={item.id} class="shop-slide">
                       <a
-                        className="shop-card shop-card-link"
+                        class="shop-card shop-card-link"
                         href={item.href || shopStoreUrl || '#'}
                         target={item.href || shopStoreUrl ? '_blank' : undefined}
                         rel={item.href || shopStoreUrl ? 'noreferrer' : undefined}
@@ -648,27 +694,27 @@ function App() {
                           if (!(item.href || shopStoreUrl)) e.preventDefault();
                         }}
                       >
-                        <div className="shop-image" style={item.bgColor ? { background: item.bgColor } : undefined}>
+                        <div class="shop-image" style={item.bgColor ? { background: item.bgColor } : undefined}>
                           <img src={item.image} alt="" />
                         </div>
-                        <div className="shop-desc">{item.title}</div>
-                        <span className="shop-buy" aria-hidden="true">
+                        <div class="shop-desc">{item.title}</div>
+                        <span class="shop-buy" aria-hidden="true">
                           {langKey === 'pt' ? 'COMPRAR' : 'BUY'}
                         </span>
                       </a>
                     </div>
                   ))}
 
-                  <div className="shop-slide">
+                  <div class="shop-slide">
                     <a
-                      className="shop-more"
+                      class="shop-more"
                       href={shopStoreUrl || '#'}
                       target={shopStoreUrl ? '_blank' : undefined}
                       rel={shopStoreUrl ? 'noreferrer' : undefined}
                       aria-label={langKey === 'pt' ? 'Ver mais produtos' : 'See more products'}
                     >
-                      <span className="shop-more-plus">+</span>
-                      <span className="shop-more-text">{langKey === 'pt' ? 'VER MAIS' : 'SEE MORE'}</span>
+                      <span class="shop-more-plus">+</span>
+                      <span class="shop-more-text">{langKey === 'pt' ? 'VER MAIS' : 'SEE MORE'}</span>
                     </a>
                   </div>
                 </div>
@@ -677,7 +723,7 @@ function App() {
               {shopIndex < maxShopIndex && (
                 <button
                   type="button"
-                  className="shop-nav-btn next"
+                  class="shop-nav-btn next"
                   onClick={() => goShopIndex(shopIndex + 1)}
                   aria-label="Próximo"
                 >
@@ -686,9 +732,9 @@ function App() {
               )}
             </div>
 
-            <div className="shop-footer">
+            <div class="shop-footer">
               <a
-                className="shop-full btn-outline"
+                class="shop-full btn-outline"
                 href={shopStoreUrl || '#'}
                 target={shopStoreUrl ? '_blank' : undefined}
                 rel={shopStoreUrl ? 'noreferrer' : undefined}
@@ -715,14 +761,18 @@ function App() {
                 </button>
               ) : null}
 
-              <div className="news-viewport">
+              <div
+                className="news-viewport"
+                ref={newsViewportRef}
+                style={{
+                  // expõe para o CSS calcular o flex-basis (4 cards)
+                  '--news-cols': newsVisibleCount,
+                }}
+              >
                 <div
                   className="news-track"
                   style={{
-                    width: '100%',
-                    transform: `translateX(-${newsIndex * (100 / Math.max(1, newsVisibleCount))}%)`,
-                    transition: 'transform .55s cubic-bezier(.22, 1, .36, 1)',
-                    willChange: 'transform',
+                    transform: `translateX(-${newsIndex * (100 / newsVisibleCount)}%)`,
                   }}
                 >
                   {newsError ? (
@@ -740,18 +790,25 @@ function App() {
                       {langKey === 'pt' ? 'Sem notícias no momento.' : 'No news yet.'}
                     </div>
                   ) : (
-                    (scrolledNewsItems || []).map((post) => {
+                    (visibleNewsItems || []).map((post) => {
                       const isVideo = post.mediaKind === 'video' || post.mediaKind === 'video_vertical';
                       const mediaHref = post.mediaUrl || post.ctaUrl || '';
                       const thumbSrc = post.image || (isVideo ? getVideoThumbnail(post.mediaUrl) : '') || '';
                       const hasMedia = Boolean(thumbSrc || (isVideo && post.mediaUrl));
+                      const hasCtaLink = Boolean(post.ctaUrl);
+                      const isExpanded = expandedNewsIds.has(String(post.id));
+                      const isClamped = clampedNewsIds.has(String(post.id));
 
                       return (
-                        <article key={post.id} className={`news-card ${hasMedia ? '' : 'news-card--text'}`.trim()}>
+                        <article
+                          key={post.id}
+                          className={`news-card ${hasMedia ? '' : 'news-card--text'} ${isExpanded ? 'news-card--expanded' : ''}`.trim()}
+                        >
                           {hasMedia ? (
                             mediaHref ? (
                               <a
-                                className="news-media"
+                                className={`news-media ${thumbSrc ? 'has-thumb-bg' : ''}`.trim()}
+                                style={thumbSrc ? { '--news-thumb-url': `url(${thumbSrc})` } : undefined}
                                 href={mediaHref}
                                 target="_blank"
                                 rel="noreferrer"
@@ -761,7 +818,10 @@ function App() {
                                 {isVideo ? <div className="news-play" aria-hidden="true" /> : null}
                               </a>
                             ) : (
-                              <div className="news-media">
+                              <div
+                                className={`news-media ${thumbSrc ? 'has-thumb-bg' : ''}`.trim()}
+                                style={thumbSrc ? { '--news-thumb-url': `url(${thumbSrc})` } : undefined}
+                              >
                                 {thumbSrc ? <img src={thumbSrc} alt="" /> : null}
                                 {isVideo ? <div className="news-play" aria-hidden="true" /> : null}
                               </div>
@@ -779,22 +839,40 @@ function App() {
                             <h3 className="news-headline">{post.title}</h3>
 
                             {post.excerptHtml ? (
-                              <div className="news-excerpt" dangerouslySetInnerHTML={{ __html: post.excerptHtml }} />
+                              <div
+                                ref={(el) => {
+                                  excerptRefs.current[String(post.id)] = el;
+                                }}
+                                className={`news-excerpt ${isExpanded ? 'news-excerpt--expanded' : ''} ${isClamped ? 'is-overflow' : ''}`.trim()}
+                                dangerouslySetInnerHTML={{ __html: post.excerptHtml }}
+                              />
                             ) : post.excerpt ? (
-                              <p className="news-excerpt">{post.excerpt}</p>
+                              <p
+                                ref={(el) => {
+                                  excerptRefs.current[String(post.id)] = el;
+                                }}
+                                className={`news-excerpt ${isExpanded ? 'news-excerpt--expanded' : ''} ${isClamped ? 'is-overflow' : ''}`.trim()}
+                              >
+                                {post.excerpt}
+                              </p>
                             ) : null}
 
-                            <a
-                              className="news-cta"
-                              href={post.ctaUrl || '#'}
-                              onClick={(e) => {
-                                if (!post.ctaUrl) e.preventDefault();
-                              }}
-                              target={post.ctaUrl ? '_blank' : undefined}
-                              rel={post.ctaUrl ? 'noreferrer' : undefined}
-                            >
-                              {post.ctaText || (langKey === 'pt' ? 'LER MAIS' : 'READ MORE')}
-                            </a>
+                            {isClamped ? (
+                              <button
+                                type="button"
+                                className="news-readmore"
+                                onClick={() => toggleNewsExpanded(String(post.id))}
+                                aria-expanded={isExpanded}
+                              >
+                                {langKey === 'pt' ? (isExpanded ? 'Ler menos' : 'Ler mais…') : isExpanded ? 'Read less' : 'Read more…'}
+                              </button>
+                            ) : null}
+
+                            {hasCtaLink ? (
+                              <a className="news-cta" href={post.ctaUrl} target="_blank" rel="noreferrer">
+                                {post.ctaText || (langKey === 'pt' ? 'LER MAIS' : 'READ MORE')}
+                              </a>
+                            ) : null}
                           </div>
                         </article>
                       );
