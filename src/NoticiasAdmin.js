@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
 import { db, storage } from './firebase';
@@ -177,6 +177,9 @@ export default function NoticiasAdmin() {
 
   const selected = useMemo(() => items.find((i) => i.id === selectedId) || null, [items, selectedId]);
 
+  const excerptRef = useRef(null);
+  const lastExcerptHtmlRef = useRef('');
+
   useEffect(() => {
     let cancelled = false;
 
@@ -223,6 +226,15 @@ export default function NoticiasAdmin() {
     setSaveState('');
     setMode('preview');
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // quando troca a notícia selecionada, sincroniza o HTML do editor sem usar dangerouslySetInnerHTML
+  useEffect(() => {
+    if (!selected) return;
+    if (!excerptRef.current) return;
+    const nextHtml = String(selected.excerptHtml || '');
+    excerptRef.current.innerHTML = nextHtml;
+    lastExcerptHtmlRef.current = nextHtml;
+  }, [selectedId, selected]);
 
   async function persist(nextItems) {
     const payload = serializeNewsToDb(nextItems);
@@ -278,7 +290,14 @@ export default function NoticiasAdmin() {
   }
 
   function applyDraft(patch) {
-    setDraft((d) => ({ ...(d || {}), ...(patch || {}) }));
+    setDraft((d) => {
+      const next = { ...(d || {}), ...(patch || {}) };
+      // mantém um espelho do HTML para sincronizar o contentEditable sem brigar com o cursor
+      if (Object.prototype.hasOwnProperty.call(patch || {}, 'excerptHtml')) {
+        lastExcerptHtmlRef.current = String(next.excerptHtml || '');
+      }
+      return next;
+    });
     setIsDirty(true);
     setSaveState('');
   }
@@ -381,6 +400,12 @@ export default function NoticiasAdmin() {
     setIsDirty(false);
     setSaveState('');
     setMode('preview');
+
+    // garante reset visual do editor quando cancelar
+    if (excerptRef.current) {
+      excerptRef.current.innerHTML = String(selected.excerptHtml || '');
+      lastExcerptHtmlRef.current = String(selected.excerptHtml || '');
+    }
   }
 
   function safeText(html) {
@@ -606,6 +631,7 @@ export default function NoticiasAdmin() {
                 </div>
 
                 <div
+                  ref={excerptRef}
                   className="admin-input"
                   style={{ minHeight: 140, padding: 12, borderRadius: 12 }}
                   contentEditable
@@ -616,7 +642,6 @@ export default function NoticiasAdmin() {
                     const text = e.clipboardData?.getData('text/plain') ?? '';
                     if (text) {
                       insertTextAtSelection(text);
-                      // salva com HTML mínimo (p/br), para o site renderizar sem herdar estilos
                       const html = plainTextToHtml(e.currentTarget.innerText);
                       applyDraft({ excerptHtml: html });
                     }
@@ -624,9 +649,20 @@ export default function NoticiasAdmin() {
                   onInput={(e) => {
                     // normaliza sempre para HTML limpo
                     const html = plainTextToHtml(e.currentTarget.innerText);
-                    applyDraft({ excerptHtml: html });
+                    // evita setState em loop quando nada mudou (isso é o que geralmente “inverte” o cursor)
+                    if (html !== lastExcerptHtmlRef.current) {
+                      lastExcerptHtmlRef.current = html;
+                      applyDraft({ excerptHtml: html });
+                    }
                   }}
-                  dangerouslySetInnerHTML={{ __html: draft.excerptHtml || '' }}
+                  onBlur={(e) => {
+                    // garante sincronização final ao sair do campo
+                    const html = plainTextToHtml(e.currentTarget.innerText);
+                    if (html !== lastExcerptHtmlRef.current) {
+                      lastExcerptHtmlRef.current = html;
+                      applyDraft({ excerptHtml: html });
+                    }
+                  }}
                 />
               </div>
 

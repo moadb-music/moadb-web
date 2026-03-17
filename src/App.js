@@ -188,6 +188,21 @@ function App() {
   });
   const [discography, setDiscography] = useState([]);
 
+  // Discography modal
+  const [openReleaseId, setOpenReleaseId] = useState(null);
+  const openRelease = useMemo(
+    () => discography.find((r) => String(r.id) === String(openReleaseId)) || null,
+    [discography, openReleaseId]
+  );
+
+  useEffect(() => {
+    function onEsc(e) {
+      if (e.key === 'Escape') setOpenReleaseId(null);
+    }
+    if (openReleaseId) document.addEventListener('keydown', onEsc);
+    return () => document.removeEventListener('keydown', onEsc);
+  }, [openReleaseId]);
+
   // UI state: toggle platform links for featured release
   const [featuredPlatformsOpen, setFeaturedPlatformsOpen] = useState(false);
   const featuredIdsKey = (homeCfg.featuredReleaseIds || []).join('|');
@@ -197,6 +212,8 @@ function App() {
   const [newsItems, setNewsItems] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsError, setNewsError] = useState('');
+
+  const [previewTrackId, setPreviewTrackId] = useState(null);
 
   useEffect(() => {
     const unsubHome = onSnapshot(doc(db, 'siteData', 'moadb_home'), (snap) => {
@@ -210,26 +227,52 @@ function App() {
       });
     });
 
-    const unsubDisco = onSnapshot(doc(db, 'siteData', 'moadb_discography'), (snap) => {
-      const raw = snap.exists() ? (snap.data()?.content ?? snap.data() ?? {}) : {};
-      const content = Array.isArray(raw) ? raw : Array.isArray(raw.content) ? raw.content : Array.isArray(snap.data()?.content) ? snap.data().content : [];
-      const list = (content || [])
-        .map((e) => ({
-          id: String(e?.id ?? ''),
-          title: String(e?.title ?? ''),
-          year: String(e?.year ?? ''),
-          type: String(e?.type ?? ''),
-          coverUrl: String(e?.coverUrl ?? e?.coverURL ?? e?.cover ?? ''),
-          links: {
-            spotify: String(e?.links?.spotify ?? ''),
-            apple: String(e?.links?.apple ?? ''),
-            deezer: String(e?.links?.deezer ?? ''),
-            youtubeMusic: String(e?.links?.youtube ?? e?.links?.youtubeMusic ?? ''),
-          },
-        }))
-        .filter((x) => x.id);
-      setDiscography(list);
-    });
+    const unsubDisco = onSnapshot(
+      doc(db, 'siteData', 'moadb_discography'),
+      (snap) => {
+        try {
+          const data = snap.exists() ? (snap.data() ?? {}) : {};
+
+          // Schema: siteData/moadb_discography { content: [ ...releases ] }
+          const content = Array.isArray(data?.content) ? data.content : [];
+
+          const list = content
+            .map((e) => ({
+              id: String(e?.id ?? ''),
+              title: String(e?.title ?? ''),
+              year: String(e?.year ?? ''),
+              type: String(e?.type ?? ''),
+              coverUrl: String(e?.coverUrl ?? e?.coverURL ?? e?.cover ?? ''),
+              links: {
+                spotify: String(e?.links?.spotify ?? ''),
+                apple: String(e?.links?.apple ?? ''),
+                deezer: String(e?.links?.deezer ?? ''),
+                youtubeMusic: String(e?.links?.youtube ?? e?.links?.youtubeMusic ?? ''),
+              },
+              tracks: Array.isArray(e?.tracks)
+                ? e.tracks.map((t, idx) => ({
+                    id: String(t?.id || idx),
+                    name: String(t?.name || ''),
+                    youtubeUrl: String(t?.youtubeUrl || ''),
+                    // FIX: respeita dados do admin
+                    startSec: Number(t?.startSec ?? t?.start ?? t?.segmentStart ?? 0),
+                    endSec: Number(t?.endSec ?? t?.end ?? t?.segmentEnd ?? 0),
+                  }))
+                : [],
+            }))
+            .filter((x) => x.id);
+
+          setDiscography(list);
+        } catch (e) {
+          console.error('[DISCO] normalize failed', e);
+          setDiscography([]);
+        }
+      },
+      (err) => {
+        console.error('[DISCO] onSnapshot error', err);
+        setDiscography([]);
+      }
+    );
 
     const unsubShop = onSnapshot(
       doc(db, 'siteData', 'moadb_shop'),
@@ -466,6 +509,10 @@ function App() {
   useEffect(() => {
     setNewsIndex((i) => Math.min(i, maxNewsScrollIndex));
   }, [maxNewsScrollIndex]);
+
+  useEffect(() => {
+    if (!openRelease) setPreviewTrackId(null);
+  }, [openRelease]);
 
   return (
     <div className="app-container">
@@ -830,13 +877,24 @@ function App() {
 
                           <div className="news-body">
                             {Array.isArray(post.tags) && post.tags.length ? (
-                              <div className="news-tag">{String(post.tags[0] || '').toUpperCase()}</div>
+                              <div className="news-tags" aria-label="Tags">
+                                {post.tags
+                                  .map((t) => String(t || '').trim())
+                                  .filter(Boolean)
+                                  .map((t) => (
+                                    <span key={t} className="news-tag">
+                                      {t.toUpperCase()}
+                                    </span>
+                                  ))}
+                              </div>
                             ) : post.type ? (
-                              <div className="news-tag">{post.type}</div>
+                              <div className="news-tags" aria-label="Tags">
+                                <span className="news-tag">{String(post.type || '').toUpperCase()}</span>
+                              </div>
                             ) : null}
 
-                            {post.date ? <div className="news-date">{post.date}</div> : null}
                             <h3 className="news-headline">{post.title}</h3>
+                            {post.date ? <div className="news-date">{post.date}</div> : null}
 
                             {post.excerptHtml ? (
                               <div
@@ -900,23 +958,171 @@ function App() {
             <h2 className="discography-title">DISCOGRAFIA</h2>
 
             <div className="discography-grid" aria-label="Lançamentos">
-              <article className="discography-card" aria-label="Silent Rebirth (2024)">
-                <div className="discography-cover">
-                  <img
-                    src="https://via.placeholder.com/800x800?text=Cover"
-                    alt="Capa do álbum Silent Rebirth"
-                  />
-                </div>
+              {discography.length ? (
+                discography.map((rel) => {
+                  const kind = String(rel.type || '').toUpperCase();
+                  const year = String(rel.year || '').trim();
+                  const title = String(rel.title || '').trim();
+                  const cover = String(rel.coverUrl || '').trim();
 
-                <div className="discography-meta">
-                  <div className="discography-kind">ALBUM</div>
-                  <div className="discography-name">SILENT REBIRTH</div>
-                  <div className="discography-year">2024</div>
-                </div>
-              </article>
+                  return (
+                    <article
+                      key={rel.id}
+                      className="discography-card"
+                      style={cover ? { '--disco-cover-url': `url(${cover})` } : undefined}
+                      aria-label={`${title || (langKey === 'pt' ? 'Lançamento' : 'Release')}${year ? ` (${year})` : ''}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setOpenReleaseId(String(rel.id))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') setOpenReleaseId(String(rel.id));
+                      }}
+                    >
+                      <div className="discography-cover">
+                        <img src={cover || 'https://via.placeholder.com/800x800?text=Cover'} alt={title ? `Capa de ${title}` : 'Capa do lançamento'} />
+                      </div>
+
+                      <div className="discography-meta">
+                        <div className="discography-info">
+                          <div className="discography-kind">{kind || 'RELEASE'}</div>
+                          <div className="discography-name">{title || (langKey === 'pt' ? 'LANÇAMENTO' : 'RELEASE')}</div>
+                          <div className="discography-tracks">
+                            {rel.tracks && rel.tracks.length > 0
+                              ? `${rel.tracks.length} ${langKey === 'pt' ? (rel.tracks.length === 1 ? 'FAIXA' : 'FAIXAS') : (rel.tracks.length === 1 ? 'TRACK' : 'TRACKS')}`
+                              : (langKey === 'pt' ? 'SEM FAIXAS' : 'NO TRACKS')}
+                          </div>
+                        </div>
+                        {year ? <div className="discography-year">{year}</div> : null}
+                      </div>
+                    </article>
+                  );
+                })
+              ) : (
+                <div className="discography-empty">{langKey === 'pt' ? 'SEM ITENS' : 'NO ITEMS'}</div>
+              )}
             </div>
           </div>
         </section>
+
+        {openRelease ? (
+          <div
+            className="site-modal-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-label={langKey === 'pt' ? 'Detalhes do lançamento' : 'Release details'}
+            onMouseDown={() => setOpenReleaseId(null)}
+          >
+            <div className="site-modal" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="site-modal-header">
+                <button type="button" className="site-modal-close" onClick={() => setOpenReleaseId(null)} aria-label="Fechar">
+                  ×
+                </button>
+              </div>
+
+              <div className="site-modal-body">
+                <div className="disco-modal-grid">
+                  <div className="disco-modal-left-panel">
+                    <div className="disco-modal-cover">
+                      <img src={openRelease.coverUrl || 'https://via.placeholder.com/800x800?text=Cover'} alt={openRelease.title ? `Capa de ${openRelease.title}` : 'Capa do lançamento'} />
+                    </div>
+
+                    <div className="disco-modal-info">
+                      <h2 className="disco-modal-title">{String(openRelease.title || '').toUpperCase()}</h2>
+                      <div className="disco-modal-kicker">
+                        {String(openRelease.type || '').toUpperCase()}
+                        {openRelease.year ? ` • ${openRelease.year}` : ''}
+                        {openRelease.tracks && openRelease.tracks.length > 0 ? ` • ${openRelease.tracks.length} ${langKey === 'pt' ? (openRelease.tracks.length === 1 ? 'FAIXA' : 'FAIXAS') : (openRelease.tracks.length === 1 ? 'TRACK' : 'TRACKS')}` : ''}
+                      </div>
+
+                      <div className="disco-modal-links" aria-label={langKey === 'pt' ? 'Plataformas' : 'Platforms'}>
+                        {openRelease?.links?.spotify ? (
+                          <a className="disco-modal-link-icon" href={openRelease.links.spotify} target="_blank" rel="noreferrer" title="Spotify">
+                            <img src={require('./assets/spotify.png')} alt="Spotify" />
+                          </a>
+                        ) : null}
+                        {openRelease?.links?.apple ? (
+                          <a className="disco-modal-link-icon" href={openRelease.links.apple} target="_blank" rel="noreferrer" title="Apple Music">
+                            <img src={require('./assets/apple.png')} alt="Apple Music" />
+                          </a>
+                        ) : null}
+                        {openRelease?.links?.deezer ? (
+                          <a className="disco-modal-link-icon" href={openRelease.links.deezer} target="_blank" rel="noreferrer" title="Deezer">
+                            <img src={require('./assets/deezer.png')} alt="Deezer" />
+                          </a>
+                        ) : null}
+                        {openRelease?.links?.youtubeMusic ? (
+                          <a className="disco-modal-link-icon" href={openRelease.links.youtubeMusic} target="_blank" rel="noreferrer" title="YouTube Music">
+                            <img src={require('./assets/youtube-music.png')} alt="YouTube Music" />
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="disco-modal-right-panel">
+                    {Array.isArray(openRelease.tracks) && openRelease.tracks.length ? (
+                      <div className="disco-modal-tracks" aria-label={langKey === 'pt' ? 'Faixas' : 'Tracks'}>
+                        <div className="disco-modal-section-title">{langKey === 'pt' ? 'FAIXAS' : 'TRACKS'}</div>
+                        <ol className="disco-modal-tracklist">
+                          {openRelease.tracks.map((t) => {
+                            // Extrai o ID do vídeo do YouTube
+                            let youtubeId = '';
+                            if (t.youtubeUrl) {
+                              try {
+                                const url = new URL(t.youtubeUrl);
+                                if (url.hostname.includes('youtu.be')) {
+                                  youtubeId = url.pathname.replace('/', '');
+                                } else if (url.hostname.includes('youtube.com')) {
+                                  youtubeId = url.searchParams.get('v') || '';
+                                  if (!youtubeId && url.pathname.startsWith('/embed/')) {
+                                    youtubeId = url.pathname.split('/embed/')[1]?.split('/')[0] || '';
+                                  }
+                                }
+                              } catch {}
+                            }
+                            return (
+                              <li key={t.id} className="disco-modal-track">
+                                <span className="disco-modal-track-name">{t.name}</span>
+                                {t.youtubeUrl ? (
+                                  <button
+                                    type="button"
+                                    className={`disco-modal-track-link${previewTrackId === t.id ? ' active' : ''}`}
+                                    aria-label={langKey === 'pt' ? 'Preview da faixa' : 'Track preview'}
+                                    onClick={() => setPreviewTrackId(previewTrackId === t.id ? null : t.id)}
+                                  >
+                                    <span className="disco-modal-preview-icon" aria-hidden="true" />
+                                    PREVIEW
+                                  </button>
+                                ) : null}
+                                {/* Mostra o iframe se o preview estiver aberto */}
+                                {previewTrackId === t.id && youtubeId ? (
+                                  <div className="disco-modal-preview-iframe-wrap" style={{ overflow: 'hidden', height: '1px', width: '1px', position: 'absolute', pointerEvents: 'none' }}>
+                                    <iframe
+                                      width="1"
+                                      height="1"
+                                      src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&start=${Math.floor(t.startSec || 0)}&end=${Math.floor(t.endSec || 0)}`}
+                                      title={t.name}
+                                      frameBorder="0"
+                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    />
+                                  </div>
+                                ) : null}
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      </div>
+                    ) : (
+                      <div className="disco-modal-empty-tracks">
+                        {langKey === 'pt' ? 'Nenhuma faixa cadastrada.' : 'No tracks listed.'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <section id="contato" className="contact" aria-label="Contato">
           <div className="contact-inner">
@@ -962,7 +1168,7 @@ function App() {
                 </label>
 
                 <label className="contact-field contact-field-message">
-                  <span className="sr-only">Mensagem</span>
+                  <span class="sr-only">Mensagem</span>
                   <textarea name="message" placeholder="MENSAGEM" rows={6} />
                 </label>
 

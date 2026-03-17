@@ -347,11 +347,69 @@ export default function DiscografiaAdmin() {
   }
 
   function cancelTrackEdit() {
-    setEditingTrackId(null);
-  }
+    // Se estiver editando uma faixa existente, pode haver alterações no draft.
+    if (editingTrackId && editingTrackId !== 'new') {
+      const original = (form.tracks || []).find(t => t.id === editingTrackId);
+      const draft = form._editTrack;
 
-  function startEditTrack(id) {
-    setEditingTrackId(id);
+      const hasChanges = Boolean(original && draft) && (
+        String(original.name || '') !== String(draft.name || '') ||
+        String(original.youtubeUrl || '') !== String(draft.youtubeUrl || '') ||
+        String(original.lyrics || '') !== String(draft.lyrics || '') ||
+        Number(original.startSec ?? 0) !== Number(draft.startSec ?? 0) ||
+        Number(original.endSec ?? 0) !== Number(draft.endSec ?? 0)
+      );
+
+      if (hasChanges) {
+        const ok = window.confirm('Você fez alterações nesta faixa. Deseja GRAVAR antes de fechar?');
+        if (ok) {
+          commitEditTrack(editingTrackId);
+          return;
+        }
+      }
+
+      // descarta alterações do draft
+      setForm(prev => {
+        const { _editTrack, ...rest } = prev;
+        return rest;
+      });
+
+      setOpenPickerByTrackId(prev => ({ ...prev, [editingTrackId]: false }));
+      setEditingTrackId(null);
+      return;
+    }
+
+    // Se estiver criando uma nova faixa, pode haver um draft preenchido.
+    if (editingTrackId === 'new') {
+      const draft = form._newTrack;
+      const hasAnyInput = Boolean(draft) && (
+        String(draft.name || '').trim() ||
+        String(draft.youtubeUrl || '').trim() ||
+        String(draft.lyrics || '').trim() ||
+        Number(draft.startSec ?? 0) !== 0 ||
+        Number(draft.endSec ?? 15) !== 15
+      );
+
+      if (hasAnyInput) {
+        const ok = window.confirm('Descartar a nova faixa sem gravar?');
+        if (!ok) return;
+      }
+
+      setForm(prev => {
+        const { _newTrack, ...rest } = prev;
+        return rest;
+      });
+
+      setOpenPickerByTrackId(prev => {
+        const next = { ...prev };
+        delete next.new;
+        return next;
+      });
+      setEditingTrackId(null);
+      return;
+    }
+
+    setEditingTrackId(null);
   }
 
   async function upsertLocal() {
@@ -489,6 +547,11 @@ export default function DiscografiaAdmin() {
       },
     }));
     setOpenPickerByTrackId(prev => ({ ...prev, [id]: false }));
+  }
+
+  // FIX: o botão "EDITAR" das faixas precisa também ativar o modo de edição.
+  function startEditTrack(id) {
+    setEditingTrackId(id);
   }
 
   function updateTrackDraft(kind, patch) {
@@ -1045,7 +1108,7 @@ export default function DiscografiaAdmin() {
                         />
                         <div className="admin-track-actions">
                           <button type="button" className="admin-track-btn" onClick={() => commitEditTrack(t.id)} title="Gravar">GRAVAR</button>
-                          <button type="button" className="admin-track-btn" onClick={() => { cancelTrackEdit(); }} title="Fechar">FECHAR</button>
+                          <button type="button" className="admin-track-btn" onClick={cancelTrackEdit} title="Fechar">FECHAR</button>
                         </div>
                       </div>
 
