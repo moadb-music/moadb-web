@@ -70,7 +70,7 @@ a{color:inherit;text-decoration:none}
   background:#000000f2;
   border-bottom:1px solid #8b000033;
   backdrop-filter:blur(10px);
-  overflow:hidden;
+  overflow:visible;
 }
 
 /* Links visíveis só no desktop */
@@ -2632,7 +2632,17 @@ a.news-media:focus-visible .news-play::after{
   gap:12px;
   width:min(260px, calc(100vw - 52px));
   box-shadow:0 8px 32px rgba(0,0,0,0.6);
-  animation:fadeInDown .2s ease;
+  animation: fadeInDown .2s ease;
+}
+
+.support-panel--out {
+  animation: fadeOutDown .25s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes fadeOutDown {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(10px) scale(.96); }
 }
 
 .support-panel-title{
@@ -2690,6 +2700,14 @@ a.news-media:focus-visible .news-play::after{
 }
 
 .support-back:hover{color:#fff;}
+
+.support-close{
+  align-self:flex-end;
+  font-size:1rem;
+  line-height:1;
+  padding:2px 4px;
+  letter-spacing:0;
+}
 
 /* ── News Modal ──────────────────────────────────────────────────────────── */
 .news-modal-backdrop{
@@ -3092,3 +3110,73 @@ a.news-media:focus-visible .news-play::after{
   .discography-card::before { display: none; }
   .hero-inner { will-change: auto; }
 }
+
+/* ===== LOADING SCREEN ===== */
+.app-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  pointer-events: all;
+}
+
+.app-loading--out {
+  animation: loading-fade-out .7s cubic-bezier(.4,0,1,1) forwards;
+  pointer-events: none;
+}
+
+@keyframes loading-fade-out {
+  0%   { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+
+.app-loading-logo {
+  width: min(220px, 55vw);
+  opacity: 0;
+  animation: loading-logo-in .9s cubic-bezier(.22,1,.36,1) .1s forwards;
+}
+
+.app-loading--out .app-loading-logo {
+  animation: none;
+  opacity: 1;
+}
+
+@keyframes loading-logo-in {
+  from { opacity: 0; transform: scale(.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.app-loading-bar {
+  width: min(180px, 45vw);
+  height: 2px;
+  background: rgba(255,255,255,.1);
+  overflow: hidden;
+}
+
+.app-loading-bar-fill {
+  height: 100%;
+  background: var(--red);
+  animation: loading-bar 1.4s cubic-bezier(.4,0,.2,1) .3s forwards;
+  transform-origin: left;
+  transform: scaleX(0);
+}
+
+@keyframes loading-bar {
+  0%   { transform: scaleX(0); }
+  60%  { transform: scaleX(.75); }
+  100% { transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-loading-logo { animation: none; opacity: 1; }
+  .app-loading-bar-fill { animation: none; transform: scaleX(1); }
+  .app-loading--out { animation: none; display: none; }
+}
+
+/* Oculta o ícone flutuante nativo do Buy Me a Coffee — usamos o nosso próprio widget */
+#bmc-wbtn { display: none !important; }

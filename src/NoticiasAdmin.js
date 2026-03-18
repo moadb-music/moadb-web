@@ -4,6 +4,29 @@ import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage
 import { db, storage } from './firebase';
 import ImageGalleryModal from './components/ImageGalleryModal';
 
+function FlagBR(props) {
+  return (
+    <svg viewBox="0 0 28 18" aria-hidden="true" {...props}>
+      <rect width="28" height="18" fill="#009b3a" />
+      <polygon points="14,2 26,9 14,16 2,9" fill="#ffdf00" />
+      <circle cx="14" cy="9" r="4" fill="#002776" />
+      <path d="M10 8.5c1.8-.8 5.4-.8 8 .1" fill="none" stroke="#fff" strokeWidth="1" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function FlagUK(props) {
+  return (
+    <svg viewBox="0 0 28 18" aria-hidden="true" {...props}>
+      <rect width="28" height="18" fill="#012169" />
+      <path d="M0 0L28 18M28 0L0 18" stroke="#fff" strokeWidth="5" />
+      <path d="M0 0L28 18M28 0L0 18" stroke="#C8102E" strokeWidth="2.5" />
+      <path d="M14 0v18M0 9h28" stroke="#fff" strokeWidth="6" />
+      <path d="M14 0v18M0 9h28" stroke="#C8102E" strokeWidth="3" />
+    </svg>
+  );
+}
+
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
@@ -59,6 +82,15 @@ function splitTags(input) {
     .filter(Boolean);
 }
 
+// Normaliza um campo de texto que pode ser string (legado) ou { pt, en }
+function normalizeI18n(value, fallback = '') {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return { pt: String(value.pt || '').trim(), en: String(value.en || '').trim() };
+  }
+  const str = String(value || fallback).trim();
+  return { pt: str, en: '' };
+}
+
 function normalizeNewsFromDb(data) {
   const d = data || {};
   const content = d.content && typeof d.content === 'object' ? d.content : {};
@@ -71,22 +103,23 @@ function normalizeNewsFromDb(data) {
           ? it.tags.map((t) => String(t).trim()).filter(Boolean)
           : splitTags(it?.tags || it?.type || it?.tag || '');
 
-        // compat: campos antigos
         const date = String(it?.date || it?.publishedAt || '').trim();
-        const excerptHtml = String(it?.excerptHtml || it?.excerpt || it?.description || it?.text || '').trim();
-
-        const ctaText = String(it?.ctaText || it?.cta || '').trim();
         const ctaUrl = String(it?.ctaUrl || it?.url || it?.href || it?.link || '').trim();
-
         const imageUrl = String(it?.imageUrl || it?.image || it?.thumbUrl || '').trim();
         const mediaUrl = String(it?.mediaUrl || it?.media || it?.videoUrl || '').trim();
         const mediaKind = String(it?.mediaKind || (mediaUrl ? 'video' : 'image'));
+
+        // campos i18n
+        const excerptFallback = String(it?.excerptHtml || it?.excerpt || it?.description || it?.text || '').trim();
+        const title = normalizeI18n(it?.title, '');
+        const excerptHtml = normalizeI18n(it?.excerptHtml, excerptFallback);
+        const ctaText = normalizeI18n(it?.ctaText || it?.cta, '');
 
         return {
           id: String(it?.id ?? idx),
           tags,
           date,
-          title: String(it?.title || '').trim(),
+          title,
           excerptHtml,
           ctaText,
           ctaUrl,
@@ -95,7 +128,7 @@ function normalizeNewsFromDb(data) {
           mediaKind,
         };
       })
-      .filter((x) => x.title || x.excerptHtml || x.ctaUrl || x.imageUrl || x.mediaUrl),
+      .filter((x) => x.title?.pt || x.title?.en || x.excerptHtml?.pt || x.excerptHtml?.en || x.ctaUrl || x.imageUrl || x.mediaUrl),
   };
 }
 
@@ -107,9 +140,9 @@ function serializeNewsToDb(items) {
         id: String(it?.id || uid()),
         tags: Array.isArray(it?.tags) ? it.tags.map((t) => String(t).trim()).filter(Boolean) : [],
         date: String(it?.date || '').trim(),
-        title: String(it?.title || '').trim(),
-        excerptHtml: String(it?.excerptHtml || '').trim(),
-        ctaText: String(it?.ctaText || '').trim(),
+        title: { pt: String(it?.title?.pt || '').trim(), en: String(it?.title?.en || '').trim() },
+        excerptHtml: { pt: String(it?.excerptHtml?.pt || '').trim(), en: String(it?.excerptHtml?.en || '').trim() },
+        ctaText: { pt: String(it?.ctaText?.pt || '').trim(), en: String(it?.ctaText?.en || '').trim() },
         ctaUrl: String(it?.ctaUrl || '').trim(),
         imageUrl: String(it?.imageUrl || '').trim(),
         mediaUrl: String(it?.mediaUrl || '').trim(),
@@ -154,6 +187,44 @@ function insertTextAtSelection(text) {
   return true;
 }
 
+function LangDropdown({ lang, open, onToggle, onSelect, dropRef }) {
+  const isPt = lang === 'pt';
+  return (
+    <div className="lang-dropdown" ref={dropRef} style={{ minWidth: 'unset' }}>
+      <button
+        type="button"
+        className="lang-dropdown-toggle"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={onToggle}
+        style={{ fontSize: '0.9rem', padding: '4px 8px' }}
+      >
+        <span className="lang-flag" aria-hidden="true">{isPt ? <FlagBR /> : <FlagUK />}</span>
+        <span className="lang-current" style={{ fontSize: '0.8rem' }}>{isPt ? 'PT' : 'EN'}</span>
+        <span className="lang-arrow" aria-hidden="true">▼</span>
+      </button>
+      {open && (
+        <ul className="lang-dropdown-menu" role="menu" aria-label="Selecionar idioma">
+          <li>
+            <button type="button" className={`lang-dropdown-item${isPt ? ' active' : ''}`} role="menuitem"
+              onClick={() => { onSelect('pt'); }}>
+              <span className="lang-flag" aria-hidden="true"><FlagBR /></span>
+              <span>Português</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" className={`lang-dropdown-item${!isPt ? ' active' : ''}`} role="menuitem"
+              onClick={() => { onSelect('en'); }}>
+              <span className="lang-flag" aria-hidden="true"><FlagUK /></span>
+              <span>English</span>
+            </button>
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function NoticiasAdmin({ onDirtyChange }) {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -171,6 +242,19 @@ export default function NoticiasAdmin({ onDirtyChange }) {
 
   // Gallery modal
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+
+  // idioma do formulário de edição
+  const [newsLang, setNewsLang] = useState('pt');
+  const [newsLangOpen, setNewsLangOpen] = useState(false);
+  const newsLangRef = useRef(null);
+
+  useEffect(() => {
+    function onDocClick(e) {
+      if (newsLangRef.current && !newsLangRef.current.contains(e.target)) setNewsLangOpen(false);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
 
   // upload "padrão do site"
   const [uploadState, setUploadState] = useState(''); // '', 'uploading', 'error'
@@ -246,16 +330,16 @@ export default function NoticiasAdmin({ onDirtyChange }) {
     setMode('preview');
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // quando troca a notícia selecionada OU entra no modo edit, sincroniza o HTML do editor
+  // quando troca a notícia selecionada OU entra no modo edit OU muda o idioma, sincroniza o HTML do editor
   useEffect(() => {
     if (mode !== 'edit') return;
     if (!excerptRef.current) return;
-    const nextHtml = String(draft?.excerptHtml || '');
+    const nextHtml = String(draft?.excerptHtml?.[newsLang] || draft?.excerptHtml || '');
     if (excerptRef.current.innerHTML !== nextHtml) {
       excerptRef.current.innerHTML = nextHtml;
       lastExcerptHtmlRef.current = nextHtml;
     }
-  }, [selectedId, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedId, mode, newsLang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function persist(nextItems) {
     const payload = serializeNewsToDb(nextItems);
@@ -278,15 +362,14 @@ export default function NoticiasAdmin({ onDirtyChange }) {
       id,
       tags: ['NEWS'],
       date: today,
-      title: 'NOVA NOTÍCIA',
-      excerptHtml: '',
-      ctaText: '',
+      title: { pt: 'NOVA NOTÍCIA', en: 'NEW POST' },
+      excerptHtml: { pt: '', en: '' },
+      ctaText: { pt: '', en: '' },
       ctaUrl: '',
       imageUrl: '',
       mediaUrl: '',
       mediaKind: 'image',
     };
-    // guarda como pendente — só entra na lista ao salvar
     setPendingNew(newItem);
     setSelectedId(null);
     setDraft({ ...newItem, tagsText: 'NEWS' });
@@ -314,12 +397,22 @@ export default function NoticiasAdmin({ onDirtyChange }) {
     }
   }
 
+  const I18N_FIELDS = ['title', 'excerptHtml', 'ctaText'];
+
   function applyDraft(patch) {
     setDraft((d) => {
-      const next = { ...(d || {}), ...(patch || {}) };
-      // mantém um espelho do HTML para sincronizar o contentEditable sem brigar com o cursor
-      if (Object.prototype.hasOwnProperty.call(patch || {}, 'excerptHtml')) {
-        lastExcerptHtmlRef.current = String(next.excerptHtml || '');
+      const next = { ...(d || {}) };
+      for (const [k, v] of Object.entries(patch || {})) {
+        if (I18N_FIELDS.includes(k)) {
+          // escreve só no idioma atual
+          const prev = next[k] && typeof next[k] === 'object' ? next[k] : { pt: '', en: '' };
+          next[k] = { ...prev, [newsLang]: v };
+          if (k === 'excerptHtml') {
+            lastExcerptHtmlRef.current = String(v || '');
+          }
+        } else {
+          next[k] = v;
+        }
       }
       return next;
     });
@@ -376,11 +469,19 @@ export default function NoticiasAdmin({ onDirtyChange }) {
     const normalizedDraft = {
       ...draft,
       tags: splitTags(draft.tagsText),
-      // garante string YYYY-MM-DD ou vazio
       date: String(draft.date || '').trim(),
-      title: String(draft.title || '').trim(),
-      excerptHtml: String(draft.excerptHtml || '').trim(),
-      ctaText: String(draft.ctaText || '').trim(),
+      title: {
+        pt: String(draft.title?.pt || '').trim(),
+        en: String(draft.title?.en || '').trim(),
+      },
+      excerptHtml: {
+        pt: String(draft.excerptHtml?.pt || '').trim(),
+        en: String(draft.excerptHtml?.en || '').trim(),
+      },
+      ctaText: {
+        pt: String(draft.ctaText?.pt || '').trim(),
+        en: String(draft.ctaText?.en || '').trim(),
+      },
       ctaUrl: String(draft.ctaUrl || '').trim(),
       mediaKind,
       imageUrl: String(draft.imageUrl || '').trim(),
@@ -446,8 +547,9 @@ export default function NoticiasAdmin({ onDirtyChange }) {
     setMode('preview');
 
     if (excerptRef.current) {
-      excerptRef.current.innerHTML = String(selected.excerptHtml || '');
-      lastExcerptHtmlRef.current = String(selected.excerptHtml || '');
+      const html = String(selected.excerptHtml?.[newsLang] || selected.excerptHtml || '');
+      excerptRef.current.innerHTML = html;
+      lastExcerptHtmlRef.current = html;
     }
   }
 
@@ -463,7 +565,7 @@ export default function NoticiasAdmin({ onDirtyChange }) {
       setPreviewClamped(el.scrollHeight - el.clientHeight > 1);
     });
     return () => cancelAnimationFrame(raf);
-  }, [draft?.excerptHtml, mode]);
+  }, [draft?.excerptHtml, mode, newsLang]);
 
   function safeText(html) {
     return String(html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -528,7 +630,7 @@ export default function NoticiasAdmin({ onDirtyChange }) {
                       <div style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.06)', borderRadius: 6, flexShrink: 0 }} />
                     )}
                     <div style={{ minWidth: 0 }}>
-                      <div className="admin-list-item-title">{(it.title || 'SEM TÍTULO').toUpperCase()}</div>
+                      <div className="admin-list-item-title">{(it.title?.pt || it.title?.en || 'SEM TÍTULO').toUpperCase()}</div>
                       <div className="admin-list-item-meta">
                         {(it.tags || []).slice(0, 2).map((t) => String(t).toUpperCase()).join(' / ') || 'NEWS'}
                         {it.date ? ` • ${it.date}` : ''}
@@ -573,6 +675,9 @@ export default function NoticiasAdmin({ onDirtyChange }) {
                 const hasMedia = Boolean(thumbSrc || (isVideo && draft.mediaUrl));
                 const hasCtaLink = Boolean(draft.ctaUrl);
                 const tags = draft.tags && draft.tags.length ? draft.tags : splitTags(draft.tagsText || '');
+                const previewTitle = draft.title?.[newsLang] || draft.title?.pt || '—';
+                const previewExcerpt = draft.excerptHtml?.[newsLang] || draft.excerptHtml?.pt || '';
+                const previewCta = draft.ctaText?.[newsLang] || draft.ctaText?.pt || 'LER MAIS';
 
                 return (
                   <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -598,31 +703,42 @@ export default function NoticiasAdmin({ onDirtyChange }) {
                             {tags.map((t) => <span key={t} className="news-tag">{String(t).toUpperCase()}</span>)}
                           </div>
                         ) : null}
-                        <h3 className="news-headline">{draft.title || '—'}</h3>
+                        <h3 className="news-headline">{previewTitle}</h3>
                         {draft.date ? <div className="news-date">{draft.date}</div> : null}
-                        {draft.excerptHtml ? (
+                        {previewExcerpt ? (
                           <div
                             ref={previewExcerptRef}
                             className={`news-excerpt${previewExpanded ? ' news-excerpt--expanded' : ''}${previewClamped && !previewExpanded ? ' is-overflow' : ''}`}
-                            dangerouslySetInnerHTML={{ __html: draft.excerptHtml }}
+                            dangerouslySetInnerHTML={{ __html: previewExcerpt }}
                           />
                         ) : null}
                         {previewClamped ? (
                           <button type="button" className="news-readmore" onClick={() => setPreviewModalOpen(true)}>Ler mais…</button>
                         ) : null}
                         {hasCtaLink ? (
-                          <span className="news-cta" style={{ cursor: 'pointer' }} onClick={() => setPreviewModalOpen(true)}>{draft.ctaText || 'LER MAIS'}</span>
+                          <span className="news-cta" style={{ cursor: 'pointer' }} onClick={() => setPreviewModalOpen(true)}>{previewCta}</span>
                         ) : null}
                       </div>
                     </article>
 
                     {/* Informações completas */}
                     <div style={{ flex: '1 1 260px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                      <div className="admin-label" style={{ marginBottom: 2 }}>INFORMAÇÕES</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                        <div className="admin-label">INFORMAÇÕES</div>
+                        <div style={{ marginLeft: 'auto' }}>
+                          <LangDropdown
+                            lang={newsLang}
+                            open={newsLangOpen}
+                            onToggle={() => setNewsLangOpen(v => !v)}
+                            onSelect={(l) => { setNewsLang(l); setNewsLangOpen(false); }}
+                            dropRef={newsLangRef}
+                          />
+                        </div>
+                      </div>
 
                       <div>
                         <div className="admin-muted">TÍTULO</div>
-                        <div style={{ fontWeight: 700, marginTop: 2 }}>{draft.title || '—'}</div>
+                        <div style={{ fontWeight: 700, marginTop: 2 }}>{previewTitle}</div>
                       </div>
 
                       <div>
@@ -642,17 +758,15 @@ export default function NoticiasAdmin({ onDirtyChange }) {
                         <div style={{ marginTop: 2 }}>{draft.mediaKind === 'video' ? 'Vídeo' : draft.mediaKind === 'video_vertical' ? 'Vídeo vertical' : 'Imagem'}</div>
                       </div>
 
-
-
                       {draft.ctaUrl ? (
                         <div>
                           <div className="admin-muted">BOTÃO CTA</div>
-                          <div style={{ marginTop: 2 }}>{draft.ctaText || 'LER MAIS'}</div>
+                          <div style={{ marginTop: 2 }}>{previewCta}</div>
                           <div style={{ marginTop: 2, wordBreak: 'break-all', fontSize: 12, opacity: 0.8 }}>{draft.ctaUrl}</div>
                         </div>
                       ) : null}
 
-                      {draft.excerptHtml ? (
+                      {previewExcerpt ? (
                         <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
                           <div className="admin-muted">TEXTO</div>
                           <div
@@ -666,7 +780,7 @@ export default function NoticiasAdmin({ onDirtyChange }) {
                               scrollbarWidth: 'thin',
                               scrollbarColor: 'rgba(139,0,0,0.4) transparent',
                             }}
-                            dangerouslySetInnerHTML={{ __html: draft.excerptHtml }}
+                            dangerouslySetInnerHTML={{ __html: previewExcerpt }}
                           />
                         </div>
                       ) : null}
@@ -679,7 +793,7 @@ export default function NoticiasAdmin({ onDirtyChange }) {
           ) : (
             <div className="admin-form">
               <div className="admin-section-actions" style={{ marginBottom: 12, alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                   <button
                     type="button"
                     className="admin-btn admin-btn-primary"
@@ -691,6 +805,17 @@ export default function NoticiasAdmin({ onDirtyChange }) {
                   <button type="button" className="admin-btn" onClick={discardDraft} disabled={saveState === 'saving'}>
                     {isDirty ? 'DESCARTAR' : 'CANCELAR'}
                   </button>
+
+                  {/* Dropdown de idioma */}
+                  <div style={{ marginLeft: 8 }}>
+                    <LangDropdown
+                      lang={newsLang}
+                      open={newsLangOpen}
+                      onToggle={() => setNewsLangOpen(v => !v)}
+                      onSelect={(l) => { setNewsLang(l); setNewsLangOpen(false); }}
+                      dropRef={newsLangRef}
+                    />
+                  </div>
                 </div>
 
                 <div style={{ opacity: 0.75, fontSize: 12 }}>
@@ -723,7 +848,7 @@ export default function NoticiasAdmin({ onDirtyChange }) {
 
               <label className="admin-field">
                 <div className="admin-label">TÍTULO</div>
-                <input className="admin-input" value={draft.title || ''} onChange={(e) => applyDraft({ title: e.target.value })} />
+                <input className="admin-input" value={draft.title?.[newsLang] || ''} onChange={(e) => applyDraft({ title: e.target.value })} />
               </label>
 
               <div className="admin-field">
@@ -785,7 +910,7 @@ export default function NoticiasAdmin({ onDirtyChange }) {
                     <div className="admin-label">TEXTO DO BOTÃO</div>
                     <input
                       className="admin-input"
-                      value={draft.ctaText || ''}
+                      value={draft.ctaText?.[newsLang] || ''}
                       onChange={(e) => applyDraft({ ctaText: e.target.value })}
                       placeholder="LER MAIS"
                     />
@@ -923,6 +1048,9 @@ export default function NoticiasAdmin({ onDirtyChange }) {
                 const hasMedia = Boolean(thumbSrc || (isVideo && draft.mediaUrl));
                 const hasCtaLink = Boolean(draft.ctaUrl);
                 const tags = draft.tags && draft.tags.length ? draft.tags : splitTags(draft.tagsText || '');
+                const previewTitle = draft.title?.[newsLang] || draft.title?.pt || '—';
+                const previewExcerpt = draft.excerptHtml?.[newsLang] || draft.excerptHtml?.pt || '';
+                const previewCta = draft.ctaText?.[newsLang] || draft.ctaText?.pt || 'LER MAIS';
                 return (
                   <div style={{ marginTop: 18 }}>
                     <div className="admin-label" style={{ marginBottom: 10 }}>PREVIEW DO CARD</div>
@@ -945,13 +1073,13 @@ export default function NoticiasAdmin({ onDirtyChange }) {
                             {tags.map((t) => <span key={t} className="news-tag">{String(t).toUpperCase()}</span>)}
                           </div>
                         ) : null}
-                        <h3 className="news-headline">{draft.title || '—'}</h3>
+                        <h3 className="news-headline">{previewTitle}</h3>
                         {draft.date ? <div className="news-date">{draft.date}</div> : null}
-                        {draft.excerptHtml ? (
-                          <div className="news-excerpt is-overflow" dangerouslySetInnerHTML={{ __html: draft.excerptHtml }} />
+                        {previewExcerpt ? (
+                          <div className="news-excerpt is-overflow" dangerouslySetInnerHTML={{ __html: previewExcerpt }} />
                         ) : null}
                         {hasCtaLink ? (
-                          <span className="news-cta">{draft.ctaText || 'LER MAIS'}</span>
+                          <span className="news-cta">{previewCta}</span>
                         ) : null}
                       </div>
                     </article>
@@ -1002,6 +1130,9 @@ export default function NoticiasAdmin({ onDirtyChange }) {
                 const isVideo = draft.mediaKind === 'video' || draft.mediaKind === 'video_vertical';
                 const thumbSrc = draft.imageUrl || (isVideo ? getVideoThumbnail(draft.mediaUrl) : '') || '';
                 const tags = draft.tags && draft.tags.length ? draft.tags : splitTags(draft.tagsText || '');
+                const modalTitle = draft.title?.[newsLang] || draft.title?.pt || '';
+                const modalExcerpt = draft.excerptHtml?.[newsLang] || draft.excerptHtml?.pt || '';
+                const modalCta = draft.ctaText?.[newsLang] || draft.ctaText?.pt || 'LER MAIS';
                 return (
                   <>
                     {isVideo && draft.mediaUrl ? (
@@ -1013,7 +1144,7 @@ export default function NoticiasAdmin({ onDirtyChange }) {
                         <div className="news-modal-video">
                           <iframe
                             src={(() => { try { const u = new URL(draft.mediaUrl); const id = u.searchParams.get('v') || (u.hostname === 'youtu.be' ? u.pathname.slice(1) : u.pathname.split('/shorts/')[1]?.split('?')[0] || u.pathname.split('/embed/')[1]?.split('/')[0] || u.pathname.slice(1)); return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1` : draft.mediaUrl; } catch { return draft.mediaUrl; } })()}
-                            title={draft.title}
+                            title={modalTitle}
                             frameBorder="0"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowFullScreen
@@ -1027,14 +1158,14 @@ export default function NoticiasAdmin({ onDirtyChange }) {
                       {tags.length ? (
                         <div className="news-tags">{tags.map(t => <span key={t} className="news-tag">{t.toUpperCase()}</span>)}</div>
                       ) : null}
-                      <h2 className="news-modal-title">{draft.title}</h2>
+                      <h2 className="news-modal-title">{modalTitle}</h2>
                       {draft.date ? <div className="news-date">{draft.date}</div> : null}
-                      {draft.excerptHtml ? (
-                        <div className="news-modal-text" dangerouslySetInnerHTML={{ __html: draft.excerptHtml }} />
+                      {modalExcerpt ? (
+                        <div className="news-modal-text" dangerouslySetInnerHTML={{ __html: modalExcerpt }} />
                       ) : null}
                       {draft.ctaUrl ? (
                         <a className="news-cta" href={draft.ctaUrl} target="_blank" rel="noreferrer">
-                          {draft.ctaText || 'LER MAIS'}
+                          {modalCta}
                         </a>
                       ) : null}
                     </div>

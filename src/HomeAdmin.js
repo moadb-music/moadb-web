@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -8,19 +8,87 @@ const DISCO_DOC_PATH = ['siteData', 'moadb_discography'];
 const DEFAULT_CONFIG = {
   featuredEnabled: false,
   featuredReleaseIds: [],
-  featuredTitle: 'OUÇA AGORA',
-  featuredButtonLabel: 'OUVIR AGORA',
+  featuredTitle: { pt: 'OUÇA AGORA', en: 'LISTEN NOW' },
+  featuredButtonLabel: { pt: 'OUVIR AGORA', en: 'LISTEN NOW' },
 };
+
+function normalizeI18n(value, fallbackPt = '', fallbackEn = '') {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return { pt: String(value.pt || fallbackPt).trim(), en: String(value.en || fallbackEn).trim() };
+  }
+  const str = String(value || fallbackPt).trim();
+  return { pt: str, en: fallbackEn };
+}
 
 function normalizeHomeDoc(data) {
   const raw = data?.content ?? data ?? {};
   return {
     featuredEnabled: typeof raw.featuredEnabled === 'boolean' ? raw.featuredEnabled : false,
     featuredReleaseIds: Array.isArray(raw.featuredReleaseIds) ? raw.featuredReleaseIds.map(String) : [],
-    featuredTitle: typeof raw.featuredTitle === 'string' && raw.featuredTitle.trim() ? raw.featuredTitle : 'OUÇA AGORA',
-    featuredButtonLabel:
-      typeof raw.featuredButtonLabel === 'string' && raw.featuredButtonLabel.trim() ? raw.featuredButtonLabel : 'OUVIR AGORA',
+    featuredTitle: normalizeI18n(raw.featuredTitle, 'OUÇA AGORA', 'LISTEN NOW'),
+    featuredButtonLabel: normalizeI18n(raw.featuredButtonLabel, 'OUVIR AGORA', 'LISTEN NOW'),
   };
+}
+
+function FlagBR(props) {
+  return (
+    <svg viewBox="0 0 28 18" aria-hidden="true" {...props}>
+      <rect width="28" height="18" fill="#009b3a" />
+      <polygon points="14,2 26,9 14,16 2,9" fill="#ffdf00" />
+      <circle cx="14" cy="9" r="4" fill="#002776" />
+      <path d="M10 8.5c1.8-.8 5.4-.8 8 .1" fill="none" stroke="#fff" strokeWidth="1" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function FlagUK(props) {
+  return (
+    <svg viewBox="0 0 28 18" aria-hidden="true" {...props}>
+      <rect width="28" height="18" fill="#012169" />
+      <path d="M0 0L28 18M28 0L0 18" stroke="#fff" strokeWidth="5" />
+      <path d="M0 0L28 18M28 0L0 18" stroke="#C8102E" strokeWidth="2.5" />
+      <path d="M14 0v18M0 9h28" stroke="#fff" strokeWidth="6" />
+      <path d="M14 0v18M0 9h28" stroke="#C8102E" strokeWidth="3" />
+    </svg>
+  );
+}
+
+function LangDropdown({ lang, open, onToggle, onSelect, dropRef }) {
+  const isPt = lang === 'pt';
+  return (
+    <div className="lang-dropdown" ref={dropRef} style={{ minWidth: 'unset' }}>
+      <button
+        type="button"
+        className="lang-dropdown-toggle"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={onToggle}
+        style={{ fontSize: '0.9rem', padding: '4px 8px' }}
+      >
+        <span className="lang-flag" aria-hidden="true">{isPt ? <FlagBR /> : <FlagUK />}</span>
+        <span className="lang-current" style={{ fontSize: '0.8rem' }}>{isPt ? 'PT' : 'EN'}</span>
+        <span className="lang-arrow" aria-hidden="true">▼</span>
+      </button>
+      {open && (
+        <ul className="lang-dropdown-menu" role="menu" aria-label="Selecionar idioma">
+          <li>
+            <button type="button" className={`lang-dropdown-item${isPt ? ' active' : ''}`} role="menuitem"
+              onClick={() => onSelect('pt')}>
+              <span className="lang-flag" aria-hidden="true"><FlagBR /></span>
+              <span>Português</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" className={`lang-dropdown-item${!isPt ? ' active' : ''}`} role="menuitem"
+              onClick={() => onSelect('en')}>
+              <span className="lang-flag" aria-hidden="true"><FlagUK /></span>
+              <span>English</span>
+            </button>
+          </li>
+        </ul>
+      )}
+    </div>
+  );
 }
 
 function normalizeDiscographyDoc(data) {
@@ -51,6 +119,18 @@ export default function HomeAdmin() {
 
   const [discography, setDiscography] = useState([]);
   const [draft, setDraft] = useState(DEFAULT_CONFIG);
+
+  const [homeLang, setHomeLang] = useState('pt');
+  const [homeLangOpen, setHomeLangOpen] = useState(false);
+  const homeLangRef = useRef(null);
+
+  useEffect(() => {
+    function onDocClick(e) {
+      if (homeLangRef.current && !homeLangRef.current.contains(e.target)) setHomeLangOpen(false);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,8 +188,14 @@ export default function HomeAdmin() {
       const payload = {
         featuredEnabled: !!draft.featuredEnabled,
         featuredReleaseIds: Array.isArray(draft.featuredReleaseIds) ? draft.featuredReleaseIds.map(String) : [],
-        featuredTitle: String(draft.featuredTitle || '').trim(),
-        featuredButtonLabel: String(draft.featuredButtonLabel || '').trim(),
+        featuredTitle: {
+          pt: String(draft.featuredTitle?.pt || '').trim(),
+          en: String(draft.featuredTitle?.en || '').trim(),
+        },
+        featuredButtonLabel: {
+          pt: String(draft.featuredButtonLabel?.pt || '').trim(),
+          en: String(draft.featuredButtonLabel?.en || '').trim(),
+        },
       };
 
       await setDoc(ref, { content: payload, updatedAt: serverTimestamp() }, { merge: true });
@@ -160,14 +246,27 @@ export default function HomeAdmin() {
           <div className="admin-home-featured-body">
             {draft.featuredEnabled ? (
               <div className="admin-card admin-home-featured-settings">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div className="admin-label" style={{ margin: 0 }}>TEXTOS</div>
+                  <LangDropdown
+                    lang={homeLang}
+                    open={homeLangOpen}
+                    onToggle={() => setHomeLangOpen(v => !v)}
+                    onSelect={(l) => { setHomeLang(l); setHomeLangOpen(false); }}
+                    dropRef={homeLangRef}
+                  />
+                </div>
                 <div className="admin-field-row admin-home-featured-settings-row">
                   <div className="admin-field">
                     <div className="admin-label">TÍTULO</div>
                     <input
                       className="admin-input"
-                      value={draft.featuredTitle}
-                      onChange={(e) => setDraft((v) => ({ ...v, featuredTitle: e.target.value }))}
-                      placeholder="Ouça agora"
+                      value={draft.featuredTitle?.[homeLang] || ''}
+                      onChange={(e) => setDraft((v) => ({
+                        ...v,
+                        featuredTitle: { ...(v.featuredTitle || {}), [homeLang]: e.target.value },
+                      }))}
+                      placeholder={homeLang === 'pt' ? 'Ouça agora' : 'Listen now'}
                     />
                   </div>
 
@@ -175,9 +274,12 @@ export default function HomeAdmin() {
                     <div className="admin-label">BOTÃO</div>
                     <input
                       className="admin-input"
-                      value={draft.featuredButtonLabel}
-                      onChange={(e) => setDraft((v) => ({ ...v, featuredButtonLabel: e.target.value }))}
-                      placeholder="Ouvir agora"
+                      value={draft.featuredButtonLabel?.[homeLang] || ''}
+                      onChange={(e) => setDraft((v) => ({
+                        ...v,
+                        featuredButtonLabel: { ...(v.featuredButtonLabel || {}), [homeLang]: e.target.value },
+                      }))}
+                      placeholder={homeLang === 'pt' ? 'Ouvir agora' : 'Listen now'}
                     />
                   </div>
                 </div>
@@ -220,7 +322,7 @@ export default function HomeAdmin() {
                       {primarySelected.coverUrl ? <img src={primarySelected.coverUrl} alt="" /> : <div className="admin-thumb-empty">SEM CAPA</div>}
                     </div>
                     <div className="admin-home-featured-preview-meta">
-                      <div className="admin-home-featured-preview-kicker">{String(draft.featuredTitle || 'OUÇA AGORA').toUpperCase()}</div>
+                      <div className="admin-home-featured-preview-kicker">{String(draft.featuredTitle?.[homeLang] || draft.featuredTitle?.pt || 'OUÇA AGORA').toUpperCase()}</div>
                       <div className="admin-home-featured-preview-title">{primarySelected.title}</div>
                       <div className="admin-home-featured-preview-sub">
                         {primarySelected.type ? String(primarySelected.type).toUpperCase() : ''}

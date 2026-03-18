@@ -7,6 +7,7 @@ import LojaAdmin from './LojaAdmin';
 import PaginasAdmin from './PaginasAdmin';
 import HomeAdmin from './HomeAdmin';
 import NoticiasAdmin from './NoticiasAdmin';
+import TreeAdmin from './TreeAdmin';
 import './Admin.css';
 
 export default function Admin() {
@@ -70,7 +71,14 @@ export default function Admin() {
               className={`admin-tab ${activeTab === 'home' ? 'is-active' : ''}`}
               onClick={() => trySetTab('home')}
             >
-              HOME
+              DESTAQUE
+            </button>
+            <button
+              type="button"
+              className={`admin-tab ${activeTab === 'tree' ? 'is-active' : ''}`}
+              onClick={() => trySetTab('tree')}
+            >
+              TREE
             </button>
             <button
               type="button"
@@ -102,6 +110,8 @@ export default function Admin() {
           <DiscografiaAdmin />
         ) : activeTab === 'home' ? (
           <HomeAdmin />
+        ) : activeTab === 'tree' ? (
+          <TreeAdmin />
         ) : activeTab === 'loja' ? (
           <LojaAdmin />
         ) : activeTab === 'paginas' ? (

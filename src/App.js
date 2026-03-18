@@ -78,7 +78,7 @@ function normalizeShopFromDb(data) {
   };
 }
 
-function normalizeNewsFromDb(data) {
+function normalizeNewsFromDb(data, langKey = 'pt') {
   const d = data || {};
   const content = d.content && typeof d.content === 'object' ? d.content : {};
   const rawItems = Array.isArray(content.items)
@@ -88,6 +88,14 @@ function normalizeNewsFromDb(data) {
       : Array.isArray(d.items)
         ? d.items
         : [];
+
+  // resolve campo i18n ou string legada
+  function resolveI18n(value, fallback = '') {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return String(value[langKey] || value.pt || value.en || fallback).trim();
+    }
+    return String(value || fallback).trim();
+  }
 
   return rawItems
     .map((it, idx) => {
@@ -105,10 +113,10 @@ function normalizeNewsFromDb(data) {
         tags,
         type: String(it?.type || it?.tag || ''),
         date: String(it?.date || it?.publishedAt || it?.timestamp || ''),
-        title: String(it?.title || ''),
-        excerptHtml: String(it?.excerptHtml || ''),
+        title: resolveI18n(it?.title),
+        excerptHtml: resolveI18n(it?.excerptHtml, it?.excerpt || it?.description || it?.text || ''),
         excerpt: String(it?.excerpt || it?.description || it?.text || ''),
-        ctaText: String(it?.ctaText || it?.cta || ''),
+        ctaText: resolveI18n(it?.ctaText || it?.cta),
         ctaUrl: String(it?.ctaUrl || it?.href || it?.url || it?.link || ''),
         image: String(it?.imageUrl || it?.image || it?.thumbUrl || ''),
         mediaUrl,
@@ -345,8 +353,9 @@ function App() {
   const featuredIdsKey = (homeCfg.featuredReleaseIds || []).join('|');
 
   const [pagesContent, setPagesContent] = useState(null);
+  const [appReady, setAppReady] = useState(false);
   const [shopCfg, setShopCfg] = useState({ storeUrl: '', items: [] });
-  const [newsItems, setNewsItems] = useState([]);
+  const [rawNewsData, setRawNewsData] = useState(null);
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsError, setNewsError] = useState('');
 
@@ -361,9 +370,12 @@ function App() {
       setHomeCfg({
         featuredEnabled: typeof raw.featuredEnabled === 'boolean' ? raw.featuredEnabled : false,
         featuredReleaseIds: Array.isArray(raw.featuredReleaseIds) ? raw.featuredReleaseIds.map(String) : [],
-        featuredTitle: typeof raw.featuredTitle === 'string' && raw.featuredTitle.trim() ? raw.featuredTitle : '',
-        featuredButtonLabel:
-          typeof raw.featuredButtonLabel === 'string' && raw.featuredButtonLabel.trim() ? raw.featuredButtonLabel : '',
+        featuredTitle: (raw.featuredTitle && typeof raw.featuredTitle === 'object')
+          ? raw.featuredTitle
+          : { pt: String(raw.featuredTitle || '').trim(), en: '' },
+        featuredButtonLabel: (raw.featuredButtonLabel && typeof raw.featuredButtonLabel === 'object')
+          ? raw.featuredButtonLabel
+          : { pt: String(raw.featuredButtonLabel || '').trim(), en: '' },
       });
     });
 
@@ -431,42 +443,21 @@ function App() {
         try {
           setNewsLoading(false);
           setNewsError('');
-
           const exists = snap.exists();
           const data = exists ? snap.data() : {};
-          const normalized = normalizeNewsFromDb(data);
-
-          // Diagnóstico: ajuda a entender se o doc existe, qual o shape e quantos itens saíram da normalização
-          console.info('[NEWS] onSnapshot ok', {
-            path: 'siteData/moadb_news',
-            exists,
-            keys: data && typeof data === 'object' ? Object.keys(data) : [],
-            contentKeys:
-              data?.content && typeof data.content === 'object' ? Object.keys(data.content) : [],
-            rawItemsCount: Array.isArray(data?.content?.items)
-              ? data.content.items.length
-              : Array.isArray(data?.content?.posts)
-                ? data.content.posts.length
-                : Array.isArray(data?.items)
-                  ? data.items.length
-                  : 0,
-            normalizedCount: normalized.length,
-          });
-
-          setNewsItems(normalized);
+          setRawNewsData(data);
         } catch (e) {
           console.error('[NEWS] normalize failed', e);
           setNewsLoading(false);
           setNewsError('normalize-failed');
-          setNewsItems([]);
+          setRawNewsData(null);
         }
       },
       (err) => {
-        // Não deixa falhar silenciosamente: isso é a causa mais comum de "não aparece"
         console.error('[NEWS] onSnapshot error', err);
         setNewsLoading(false);
         setNewsError(String(err?.code || err?.message || 'unknown'));
-        setNewsItems([]);
+        setRawNewsData(null);
       }
     );
 
@@ -485,12 +476,14 @@ function App() {
       const data = snap.data();
       const content = data?.content ?? data;
       setPagesContent(content);
+      setAppReady(true);
     }, () => { /* silencioso */ });
     return unsub;
   }, []);
 
   const langKey = useMemo(() => (String(lang || '').toLowerCase().startsWith('pt') ? 'pt' : 'en'), [lang]);
   const aboutFromDb = useMemo(() => normalizeAboutFromPagesDoc(pagesContent || {}), [pagesContent]);
+  const newsItems = useMemo(() => normalizeNewsFromDb(rawNewsData, langKey), [rawNewsData, langKey]);
 
   const sectionBgStyle = useMemo(() => {
     const order = Array.isArray(pagesContent?.sectionOrder) ? pagesContent.sectionOrder : [];
@@ -729,6 +722,31 @@ function App() {
 
   const [supportOpen, setSupportOpen] = useState(false);
   const [supportPix, setSupportPix] = useState(false);
+  const [supportClosing, setSupportClosing] = useState(false);
+
+  const openSupport = () => { setSupportClosing(false); setSupportOpen(true); };
+  const closeSupport = () => {
+    setSupportClosing(true);
+    setTimeout(() => { setSupportOpen(false); setSupportClosing(false); setSupportPix(false); }, 250);
+  };
+  const toggleSupport = () => { if (supportOpen && !supportClosing) closeSupport(); else openSupport(); };
+
+  // fechar ao clicar fora
+  useEffect(() => {
+    if (!supportOpen || supportClosing) return;
+    function onDocClick(e) {
+      if (!e.target.closest('.support-panel') && !e.target.closest('.support-fab')) {
+        closeSupport();
+      }
+    }
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('touchstart', onDocClick, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('touchstart', onDocClick);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supportOpen, supportClosing]);
   const [openNewsPost, setOpenNewsPost] = useState(null);
 
   useScrollReveal([discography.length, visibleNewsItems.length]);
@@ -754,6 +772,16 @@ function App() {
 
   return (
     <div className="app-container">
+      {!appReady && (
+        <div className="app-loading" aria-label="Carregando" aria-live="polite">
+          <img src={logoPng} alt="Mind of a Dead Body" className="app-loading-logo" />
+          <div className="app-loading-bar"><div className="app-loading-bar-fill" /></div>
+        </div>
+      )}
+      {appReady && <div className="app-loading app-loading--out" aria-hidden="true">
+        <img src={logoPng} alt="" className="app-loading-logo" />
+        <div className="app-loading-bar"><div className="app-loading-bar-fill" /></div>
+      </div>}
       <div className="bg-layer" aria-hidden="true" style={(() => {
         const bg = pagesContent?.backgroundsBySection?.main;
         if (!bg) return {};
@@ -903,7 +931,7 @@ function App() {
             {homeCfg.featuredEnabled && featuredPrimary ? (
               <div className="home-featured" aria-label="Novos Lançamentos">
                 <div className="home-featured-head">
-                  <div className="home-featured-page-title">{(homeCfg.featuredTitle || (isPt ? 'OUÇA AGORA' : 'LISTEN NOW')).toUpperCase()}</div>
+                  <div className="home-featured-page-title">{(homeCfg.featuredTitle?.[langKey] || homeCfg.featuredTitle?.pt || (isPt ? 'OUÇA AGORA' : 'LISTEN NOW')).toUpperCase()}</div>
                 </div>
 
                 <div className="home-featured-row">
@@ -934,7 +962,7 @@ function App() {
                           }}
                           title={platformList.length === 0 ? (isPt ? 'Sem links configurados — rolando para a Discografia' : 'No links configured — scrolling to Discography') : (isPt ? 'Mostrar plataformas' : 'Show platforms')}
                         >
-                          {(homeCfg.featuredButtonLabel || (isPt ? 'OUVIR AGORA' : 'LISTEN NOW')).toUpperCase()}
+                          {(homeCfg.featuredButtonLabel?.[langKey] || homeCfg.featuredButtonLabel?.pt || (isPt ? 'OUVIR AGORA' : 'LISTEN NOW')).toUpperCase()}
                         </button>
                       ) : (
                         <div className={`home-featured-platform-icons-wrap${platformsClosing ? ' is-closing' : ''}`} aria-label="Plataformas">
@@ -1620,7 +1648,7 @@ function App() {
 
       <div className="support-float">
         {supportOpen && (
-          <div className="support-panel">
+          <div className={`support-panel${supportClosing ? ' support-panel--out' : ''}`}>
             {!supportPix ? (
               <>
                 <div className="support-panel-title">{isPt ? 'APOIE O PROJETO' : 'SUPPORT THE PROJECT'}</div>
@@ -1639,7 +1667,7 @@ function App() {
               </>
             ) : (
               <>
-                <button className="support-back" onClick={() => setSupportPix(false)}>{isPt ? '← VOLTAR' : '← BACK'}</button>
+                <button className="support-back support-close" onClick={closeSupport} aria-label="Fechar">✕</button>
                 <div className="support-panel-title">PIX</div>
                 <a
                   href="https://nubank.com.br/cobrar/31oy9/69b56c23-57b5-4a7e-b7cf-4622fdddce9b"
@@ -1672,8 +1700,9 @@ function App() {
         )}
         <button
           className="support-fab"
-          onClick={() => { setSupportOpen(v => !v); setSupportPix(false); }}
+          onClick={toggleSupport}
           aria-label={isPt ? 'Apoiar o projeto' : 'Support the project'}
+          aria-expanded={supportOpen && !supportClosing}
         >
           <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24" aria-hidden="true">
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
