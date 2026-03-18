@@ -300,6 +300,15 @@ function useTouchSwipe(onSwipeLeft, onSwipeRight) {
 }
 
 function App() {
+  // Redirect: mobile + domínio moadb.com.br → /tree
+  useEffect(() => {
+    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isMoadb = window.location.hostname.includes('moadb.com.br');
+    if (isMobile && isMoadb) {
+      window.location.replace('/tree');
+    }
+  }, []);
+
   const [langOpen, setLangOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [lang, setLang] = useState(() => {
