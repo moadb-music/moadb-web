@@ -31,6 +31,8 @@ function makeDefaultBackground() {
     imageOpacity: 0.35,
     visible: true,
     divider: 'line',
+    dividerTop: 'none',
+    dividerBottom: 'none',
   };
 }
 
@@ -122,6 +124,8 @@ function normalizeBackground(rawBg) {
   next.imageOpacity = clamp01(bg.imageOpacity ?? bg.overlayOpacity ?? next.imageOpacity);
   next.visible = typeof bg.visible === 'boolean' ? bg.visible : true;
   next.divider = ['none', 'line', 'fade'].includes(bg.divider) ? bg.divider : 'line';
+  next.dividerTop = ['none', 'line', 'fade'].includes(bg.dividerTop) ? bg.dividerTop : 'none';
+  next.dividerBottom = ['none', 'line', 'fade'].includes(bg.dividerBottom) ? bg.dividerBottom : 'none';
   return next;
 }
 
@@ -419,7 +423,7 @@ export default function PaginasAdmin() {
                       <span style={{ opacity: 0.6, fontSize: '0.75rem' }}>#{idx + 1}</span>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0, alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       className="admin-track-btn"
@@ -438,8 +442,7 @@ export default function PaginasAdmin() {
                     >▼</button>
                     <button
                       type="button"
-                      className="admin-track-btn"
-                      style={{ padding: '3px 7px', fontSize: '0.7rem', lineHeight: 1, opacity: config.backgroundsBySection?.[s.key]?.visible === false ? 0.4 : 1 }}
+                      className={`admin-switch admin-switch-sm ${config.backgroundsBySection?.[s.key]?.visible !== false ? 'is-on' : ''}`}
                       onClick={() => setConfig((prev) => ({
                         ...prev,
                         backgroundsBySection: {
@@ -447,8 +450,9 @@ export default function PaginasAdmin() {
                           [s.key]: { ...(prev.backgroundsBySection?.[s.key] ?? makeDefaultBackground()), visible: !(prev.backgroundsBySection?.[s.key]?.visible !== false) },
                         },
                       }))}
+                      aria-label={config.backgroundsBySection?.[s.key]?.visible === false ? 'Mostrar seção' : 'Ocultar seção'}
                       title={config.backgroundsBySection?.[s.key]?.visible === false ? 'Mostrar seção' : 'Ocultar seção'}
-                    >{config.backgroundsBySection?.[s.key]?.visible === false ? '👁' : '🙈'}</button>
+                    />
                   </div>
                 </div>
               );
@@ -462,11 +466,8 @@ export default function PaginasAdmin() {
           {!isEditorOpen ? (
             <div className="admin-form">
               <div className="admin-pages-preview-box admin-pages-preview-box-lg" style={previewStyle}>
-                <div className="admin-pages-preview-overlay" />
                 <div className="admin-pages-preview-content">
-                  <div className="admin-pages-preview-h1">MIND OF A</div>
-                  <div className="admin-pages-preview-h1">DEAD BODY</div>
-                  <div className="admin-pages-preview-chip">{sectionLabel}</div>
+                  <div className="admin-pages-preview-section-label">{sectionLabel}</div>
                 </div>
               </div>
 
@@ -497,209 +498,239 @@ export default function PaginasAdmin() {
             <div className="admin-form">
               <div className="admin-pages-editor-stack">
                 <div className="admin-pages-editor-top" style={editorMode === 'content' ? { display: 'none' } : undefined}>
-                  <div className="admin-card admin-pages-card">
-                    <div className="admin-pages-degrade-head">
-                      <div className="admin-pages-label">DEGRADÊ</div>
-                      <button
-                        type="button"
-                        className={`admin-switch ${draft.gradientEnabled ? 'is-on' : ''}`}
-                        onClick={() => setDraft((v) => ({ ...v, gradientEnabled: !v.gradientEnabled }))}
-                        aria-label="Ativar/desativar degradê"
-                        title="Ativar/desativar degradê"
-                      />
-                    </div>
-
-                    <div className="admin-pages-divider" />
-
-                    <div className="admin-pages-row" style={{ marginTop: 12 }}>
-                      <div className="admin-pages-row-spacer" aria-hidden="true" />
-                      <div className="admin-pages-controls">
-                        <div className="admin-color-field">
-                          <div className="admin-color-top">
-                            <input
-                              type="color"
-                              value={draft.gradientFrom}
-                              onChange={(e) => setDraft((v) => ({ ...v, gradientFrom: e.target.value }))}
-                              className="admin-color admin-color-swatch admin-color-swatch-xl"
-                              aria-label="Cor inicial"
-                              title="Cor inicial"
-                              disabled={!draft.gradientEnabled}
-                            />
-                          </div>
-                          <input
-                            type="text"
-                            value={draft.gradientFrom}
-                            onChange={(e) => {
-                              const v = String(e.target.value || '').trim();
-                              setDraft((prev) => ({ ...prev, gradientFrom: v }));
-                            }}
-                            className="admin-input admin-color-hex admin-color-hex-subtle"
-                            placeholder="#000000"
-                            aria-label="Hex cor inicial"
-                            disabled={!draft.gradientEnabled}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, alignItems: 'stretch' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {/* Painel Degradê */}
+                      <div className="admin-card admin-pages-card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <div className="admin-pages-degrade-head">
+                          <div className="admin-pages-label">DEGRADÊ</div>
+                          <button
+                            type="button"
+                            className={`admin-switch ${draft.gradientEnabled ? 'is-on' : ''}`}
+                            onClick={() => setDraft((v) => ({ ...v, gradientEnabled: !v.gradientEnabled }))}
+                            aria-label="Ativar/desativar degradê"
+                            title="Ativar/desativar degradê"
                           />
                         </div>
 
-                        <div className="admin-color-field">
-                          <div className="admin-color-top">
+                        <div className="admin-pages-divider" />
+
+                        <div className="admin-pages-controls" style={{ marginTop: 12, justifyContent: 'flex-start' }}>
+                            <div className="admin-color-field">
+                              <div className="admin-color-top">
+                                <input
+                                  type="color"
+                                  value={draft.gradientFrom}
+                                  onChange={(e) => setDraft((v) => ({ ...v, gradientFrom: e.target.value }))}
+                                  className="admin-color admin-color-swatch admin-color-swatch-xl"
+                                  aria-label="Cor inicial"
+                                  title="Cor inicial"
+                                  disabled={!draft.gradientEnabled}
+                                />
+                              </div>
+                              <input
+                                type="text"
+                                value={draft.gradientFrom}
+                                onChange={(e) => {
+                                  const v = String(e.target.value || '').trim();
+                                  setDraft((prev) => ({ ...prev, gradientFrom: v }));
+                                }}
+                                className="admin-input admin-color-hex admin-color-hex-subtle"
+                                placeholder="#000000"
+                                aria-label="Hex cor inicial"
+                                disabled={!draft.gradientEnabled}
+                              />
+                            </div>
+
+                            <div className="admin-color-field">
+                              <div className="admin-color-top">
+                                <input
+                                  type="color"
+                                  value={draft.gradientTo}
+                                  onChange={(e) => setDraft((v) => ({ ...v, gradientTo: e.target.value }))}
+                                  className="admin-color admin-color-swatch admin-color-swatch-xl"
+                                  aria-label="Cor final"
+                                  title="Cor final"
+                                  disabled={!draft.gradientEnabled}
+                                />
+                              </div>
+                              <input
+                                type="text"
+                                value={draft.gradientTo}
+                                onChange={(e) => {
+                                  const v = String(e.target.value || '').trim();
+                                  setDraft((prev) => ({ ...prev, gradientTo: v }));
+                                }}
+                                className="admin-input admin-color-hex admin-color-hex-subtle"
+                                placeholder="#120000"
+                                aria-label="Hex cor final"
+                                disabled={!draft.gradientEnabled}
+                              />
+                            </div>
+                          </div>
+
+                        <div className="admin-pages-slider-grid">
+                          <div className="admin-pages-slider">
+                            <div className="admin-range-top">
+                              <span>ÂNGULO</span>
+                              <span>{Math.round(clampAngle(draft.gradientAngle))}°</span>
+                            </div>
                             <input
-                              type="color"
-                              value={draft.gradientTo}
-                              onChange={(e) => setDraft((v) => ({ ...v, gradientTo: e.target.value }))}
-                              className="admin-color admin-color-swatch admin-color-swatch-xl"
-                              aria-label="Cor final"
-                              title="Cor final"
+                              className="admin-slider"
+                              type="range"
+                              min="0"
+                              max="360"
+                              step="1"
+                              value={draft.gradientAngle}
+                              onChange={(e) => setDraft((v) => ({ ...v, gradientAngle: clampAngle(e.target.value) }))}
                               disabled={!draft.gradientEnabled}
                             />
                           </div>
-                          <input
-                            type="text"
-                            value={draft.gradientTo}
-                            onChange={(e) => {
-                              const v = String(e.target.value || '').trim();
-                              setDraft((prev) => ({ ...prev, gradientTo: v }));
+
+                          <div className="admin-pages-slider">
+                            <div className="admin-range-top">
+                              <span>OPACIDADE COR INICIAL</span>
+                              <span>{Math.round(clamp01(draft.gradientFromOpacity ?? 1) * 100)}%</span>
+                            </div>
+
+                            <input
+                              className="admin-slider"
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.01"
+                              value={draft.gradientFromOpacity ?? 1}
+                              onChange={(e) => setDraft((v) => ({ ...v, gradientFromOpacity: clamp01(e.target.value) }))}
+                              disabled={!draft.gradientEnabled}
+                            />
+                          </div>
+
+                          <div className="admin-pages-slider">
+                            <div className="admin-range-top">
+                              <span>OPACIDADE COR FINAL</span>
+                              <span>{Math.round(clamp01(draft.gradientToOpacity ?? 1) * 100)}%</span>
+                            </div>
+                            <input
+                              className="admin-slider"
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.01"
+                              value={draft.gradientToOpacity ?? 1}
+                              onChange={(e) => setDraft((v) => ({ ...v, gradientToOpacity: clamp01(e.target.value) }))}
+                              disabled={!draft.gradientEnabled}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="admin-pages-divider" style={{ marginTop: 14 }} />
+                        <div style={{ marginTop: 10 }}>
+                          <div className="admin-pages-label" style={{ marginBottom: 8 }}>LINHA</div>
+                          <select
+                            className="admin-input"
+                            value={draft.dividerTop === 'line' && draft.dividerBottom === 'line' ? 'both' : draft.dividerTop === 'line' ? 'top' : draft.dividerBottom === 'line' ? 'bottom' : 'none'}
+                            onChange={e => {
+                              const v = e.target.value;
+                              setDraft(prev => ({
+                                ...prev,
+                                dividerTop: v === 'top' || v === 'both' ? 'line' : prev.dividerTop === 'line' ? 'none' : prev.dividerTop,
+                                dividerBottom: v === 'bottom' || v === 'both' ? 'line' : prev.dividerBottom === 'line' ? 'none' : prev.dividerBottom,
+                              }));
                             }}
-                            className="admin-input admin-color-hex admin-color-hex-subtle"
-                            placeholder="#120000"
-                            aria-label="Hex cor final"
-                            disabled={!draft.gradientEnabled}
+                            style={{ width: '100%', maxWidth: 180 }}
+                          >
+                            <option value="none">Nenhum</option>
+                            <option value="top">Cima</option>
+                            <option value="bottom">Baixo</option>
+                            <option value="both">Ambos</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {/* Painel Imagem */}
+                      <div className="admin-card admin-pages-card" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <div className="admin-pages-degrade-head">
+                          <div className="admin-pages-label">IMAGEM</div>
+                          <button
+                            type="button"
+                            className={`admin-switch ${draft.imageEnabled ? 'is-on' : ''}`}
+                            onClick={() => setDraft((v) => ({ ...v, imageEnabled: !v.imageEnabled }))}
+                            aria-label="Ativar/desativar imagem"
+                            title="Ativar/desativar imagem"
                           />
                         </div>
-                      </div>
-                    </div>
 
-                    <div className="admin-pages-slider-grid">
-                      <div className="admin-pages-slider">
-                        <div className="admin-range-top">
-                          <span>ÂNGULO</span>
-                          <span>{Math.round(clampAngle(draft.gradientAngle))}°</span>
+                        <div className="admin-pages-divider" />
+
+                        <div className="admin-pages-controls admin-pages-controls-image" style={{ marginTop: 12, justifyContent: 'flex-start' }}>
+                            <button
+                              type="button"
+                              className="admin-btn admin-btn-ghost admin-pages-remove-image"
+                              onClick={() => setDraft((v) => ({ ...v, imageUrl: '' }))}
+                              disabled={!draft.imageUrl || !draft.imageEnabled}
+                            >
+                              REMOVER
+                            </button>
+
+                            <button
+                              type="button"
+                              className="admin-cover-drop admin-cover-drop-xl"
+                              onClick={() => { setGalleryTarget('bg'); setIsGalleryOpen(true); }}
+                              aria-label="Selecionar imagem"
+                              title="Selecionar imagem"
+                              disabled={!draft.imageEnabled}
+                            >
+                              {draft.imageUrl ? (
+                                <img src={draft.imageUrl} alt="" className="admin-cover-drop-img" />
+                              ) : (
+                                <span className="admin-cover-drop-empty">SEM IMAGEM</span>
+                              )}
+                            </button>
+                          </div>
+
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', gap: 12, marginTop: 12 }}>
+                        <div className="admin-pages-slider">
+                          <div className="admin-range-top">
+                            <span>OPACIDADE DA IMAGEM</span>
+                            <span>{Math.round(clamp01(draft.imageOpacity) * 100)}%</span>
+                          </div>
+                          <input
+                            className="admin-slider"
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={draft.imageOpacity}
+                            onChange={(e) => setDraft((v) => ({ ...v, imageOpacity: clamp01(e.target.value) }))}
+                            disabled={!draft.imageEnabled}
+                          />
                         </div>
-                        <input
-                          className="admin-slider"
-                          type="range"
-                          min="0"
-                          max="360"
-                          step="1"
-                          value={draft.gradientAngle}
-                          onChange={(e) => setDraft((v) => ({ ...v, gradientAngle: clampAngle(e.target.value) }))}
-                          disabled={!draft.gradientEnabled}
-                        />
-                      </div>
-
-                      <div className="admin-pages-slider">
-                        <div className="admin-range-top">
-                          <span>OPACIDADE COR INICIAL</span>
-                          <span>{Math.round(clamp01(draft.gradientFromOpacity ?? 1) * 100)}%</span>
                         </div>
-                        <input
-                          className="admin-slider"
-                          type="range"
-                          min="0"
-                          max="1"
-                          step="0.01"
-                          value={draft.gradientFromOpacity ?? 1}
-                          onChange={(e) => setDraft((v) => ({ ...v, gradientFromOpacity: clamp01(e.target.value) }))}
-                          disabled={!draft.gradientEnabled}
-                        />
-                      </div>
 
-                      <div className="admin-pages-slider">
-                        <div className="admin-range-top">
-                          <span>OPACIDADE COR FINAL</span>
-                          <span>{Math.round(clamp01(draft.gradientToOpacity ?? 1) * 100)}%</span>
+                        <div className="admin-pages-divider" style={{ marginTop: 14 }} />
+                        <div style={{ marginTop: 10 }}>
+                          <div className="admin-pages-label" style={{ marginBottom: 8 }}>FADE</div>
+                          <select
+                            className="admin-input"
+                            value={draft.dividerTop === 'fade' && draft.dividerBottom === 'fade' ? 'both' : draft.dividerTop === 'fade' ? 'top' : draft.dividerBottom === 'fade' ? 'bottom' : 'none'}
+                            onChange={e => {
+                              const v = e.target.value;
+                              setDraft(prev => ({
+                                ...prev,
+                                dividerTop: v === 'top' || v === 'both' ? 'fade' : prev.dividerTop === 'fade' ? 'none' : prev.dividerTop,
+                                dividerBottom: v === 'bottom' || v === 'both' ? 'fade' : prev.dividerBottom === 'fade' ? 'none' : prev.dividerBottom,
+                              }));
+                            }}
+                            style={{ width: '100%', maxWidth: 180 }}
+                          >
+                            <option value="none">Nenhum</option>
+                            <option value="top">Cima</option>
+                            <option value="bottom">Baixo</option>
+                            <option value="both">Ambos</option>
+                          </select>
                         </div>
-                        <input
-                          className="admin-slider"
-                          type="range"
-                          min="0"
-                          max="1"
-                          step="0.01"
-                          value={draft.gradientToOpacity ?? 1}
-                          onChange={(e) => setDraft((v) => ({ ...v, gradientToOpacity: clamp01(e.target.value) }))}
-                          disabled={!draft.gradientEnabled}
-                        />
                       </div>
-                    </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  </div>
-                  <div className="admin-card admin-pages-card">
-                    <div className="admin-pages-degrade-head">
-                      <div className="admin-pages-label">IMAGEM</div>
-                      <button
-                        type="button"
-                        className={`admin-switch ${draft.imageEnabled ? 'is-on' : ''}`}
-                        onClick={() => setDraft((v) => ({ ...v, imageEnabled: !v.imageEnabled }))}
-                        aria-label="Ativar/desativar imagem"
-                        title="Ativar/desativar imagem"
-                      />
-                    </div>
-
-                    <div className="admin-pages-divider" />
-
-                    <div className="admin-pages-row" style={{ marginTop: 12 }}>
-                      <div className="admin-pages-row-spacer" aria-hidden="true" />
-                      <div className="admin-pages-controls admin-pages-controls-image">
-                        <button
-                          type="button"
-                          className="admin-btn admin-btn-ghost admin-pages-remove-image"
-                          onClick={() => setDraft((v) => ({ ...v, imageUrl: '' }))}
-                          disabled={!draft.imageUrl || !draft.imageEnabled}
-                        >
-                          REMOVER
-                        </button>
-
-                        <button
-                          type="button"
-                          className="admin-cover-drop admin-cover-drop-xl"
-                          onClick={() => { setGalleryTarget('bg'); setIsGalleryOpen(true); }}
-                          aria-label="Selecionar imagem"
-                          title="Selecionar imagem"
-                          disabled={!draft.imageEnabled}
-                        >
-                          {draft.imageUrl ? (
-                            <img src={draft.imageUrl} alt="" className="admin-cover-drop-img" />
-                          ) : (
-                            <span className="admin-cover-drop-empty">SEM IMAGEM</span>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="admin-pages-slider">
-                      <div className="admin-range-top">
-                        <span>OPACIDADE DA IMAGEM</span>
-                        <span>{Math.round(clamp01(draft.imageOpacity) * 100)}%</span>
-                      </div>
-                      <input
-                        className="admin-slider"
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.01"
-                        value={draft.imageOpacity}
-                        onChange={(e) => setDraft((v) => ({ ...v, imageOpacity: clamp01(e.target.value) }))}
-                        disabled={!draft.imageEnabled}
-                      />
-                    </div>
-                  </div>
-                  </div>
-                  <div className="admin-card admin-pages-card" style={{ marginTop: 14 }}>
-                    <div className="admin-pages-degrade-head">
-                      <div className="admin-pages-label">DIVISOR</div>
-                    </div>
-                    <div className="admin-pages-divider" />
-                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                      {['none', 'line', 'fade'].map((opt) => (
-                        <button
-                          key={opt}
-                          type="button"
-                          className={`admin-track-btn${draft.divider === opt ? ' is-active' : ''}`}
-                          style={{ flex: 1, padding: '6px 4px', fontSize: '0.7rem', letterSpacing: 1 }}
-                          onClick={() => setDraft((v) => ({ ...v, divider: opt }))}
-                        >
-                          {opt === 'none' ? 'NENHUM' : opt === 'line' ? 'LINHA' : 'FADE'}
-                        </button>
-                      ))}
                     </div>
                   </div>
                 </div>
@@ -902,12 +933,15 @@ export default function PaginasAdmin() {
                   </div>
 
                   <div className="admin-pages-preview-box admin-pages-preview-box-lg" style={previewStyle}>
-                    <div className="admin-pages-preview-overlay" />
                     <div className="admin-pages-preview-content">
-                      <div className="admin-pages-preview-h1">MIND OF A</div>
-                      <div className="admin-pages-preview-h1">DEAD BODY</div>
-                      <div className="admin-pages-preview-chip">{sectionLabel}</div>
+                      <div className="admin-pages-preview-section-label">{sectionLabel}</div>
                     </div>
+                    {/* indicador divisor topo */}
+                    {draft.dividerTop === 'line' && <div className="admin-preview-divider admin-preview-divider--line" style={{ top: 0, bottom: 'auto' }} />}
+                    {draft.dividerTop === 'fade' && <div className="admin-preview-divider admin-preview-divider--fade admin-preview-divider--fade-top" />}
+                    {/* indicador divisor base */}
+                    {draft.dividerBottom === 'line' && <div className="admin-preview-divider admin-preview-divider--line" />}
+                    {draft.dividerBottom === 'fade' && <div className="admin-preview-divider admin-preview-divider--fade" />}
                   </div>
                 </div>
               </div>

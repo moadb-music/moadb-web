@@ -9,7 +9,10 @@
 
 *{box-sizing:border-box}
 
-html{scroll-behavior:smooth}
+html{
+  scroll-behavior:smooth;
+  overflow-x:hidden;
+}
 
 body{
   margin:0;
@@ -308,6 +311,7 @@ a{color:inherit;text-decoration:none}
   justify-content:center;
   padding:120px 20px 60px;
   text-align:center;
+  overflow:hidden;
 }
 
 .hero-title{
@@ -324,12 +328,12 @@ a{color:inherit;text-decoration:none}
 
 /* ABOUT */
 .about{
-  /* tÃ­tulo no topo e conteÃºdo centralizado abaixo */
   min-height:100vh;
   display:flex;
   align-items:stretch;
   justify-content:center;
   padding:120px 20px 80px;
+  overflow:hidden;
 }
 
 .about-inner{
@@ -338,6 +342,7 @@ a{color:inherit;text-decoration:none}
   display:flex;
   flex-direction:column;
   min-height:calc(100vh - 120px - 80px);
+  overflow:hidden;
 }
 
 .about-title{
@@ -421,6 +426,7 @@ a{color:inherit;text-decoration:none}
   align-items:center;
   justify-content:center;
   padding:120px 20px 90px;
+  overflow:hidden;
 }
 
 .shop-inner{width:min(75vw, 100%)}
@@ -716,12 +722,14 @@ a{color:inherit;text-decoration:none}
   background: linear-gradient(90deg, transparent, var(--red) 40%, var(--red) 60%, transparent);
 }
 
-.section-divider--fade {
-  height: 80px;
-  background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.85));
+/* -- Background dinamico por secao (divs reais: gradiente + imagem) -- */
+.section-bg-layers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
 }
 
-/* -- Background dinamico por secao (divs reais: gradiente + imagem) -- */
 .section-bg-gradient,
 .section-bg-image {
   position: absolute;
@@ -741,20 +749,20 @@ a{color:inherit;text-decoration:none}
   position: relative;
 }
 
+.section-bg-layers,
 .section-bg-gradient,
 .section-bg-image,
-.section-divider--line,
-.section-divider--fade {
+.section-divider--line {
   position: absolute;
   z-index: 0;
 }
 
-.hero > *:not(.section-bg-gradient):not(.section-bg-image):not(.section-divider--line):not(.section-divider--fade),
-.about > *:not(.section-bg-gradient):not(.section-bg-image):not(.section-divider--line):not(.section-divider--fade),
-.shop > *:not(.section-bg-gradient):not(.section-bg-image):not(.section-divider--line):not(.section-divider--fade),
-.news > *:not(.section-bg-gradient):not(.section-bg-image):not(.section-divider--line):not(.section-divider--fade),
-.discography > *:not(.section-bg-gradient):not(.section-bg-image):not(.section-divider--line):not(.section-divider--fade),
-.contact > *:not(.section-bg-gradient):not(.section-bg-image):not(.section-divider--line):not(.section-divider--fade) {
+.hero > *:not(.section-bg-layers):not(.section-bg-gradient):not(.section-bg-image):not(.section-divider--line),
+.about > *:not(.section-bg-layers):not(.section-bg-gradient):not(.section-bg-image):not(.section-divider--line),
+.shop > *:not(.section-bg-layers):not(.section-bg-gradient):not(.section-bg-image):not(.section-divider--line),
+.news > *:not(.section-bg-layers):not(.section-bg-gradient):not(.section-bg-image):not(.section-divider--line),
+.discography > *:not(.section-bg-layers):not(.section-bg-gradient):not(.section-bg-image):not(.section-divider--line),
+.contact > *:not(.section-bg-layers):not(.section-bg-gradient):not(.section-bg-image):not(.section-divider--line) {
   position: relative;
   z-index: 1;
 }
@@ -766,6 +774,7 @@ a{color:inherit;text-decoration:none}
   align-items:flex-start;
   justify-content:center;
   padding:120px 20px 90px;
+  overflow:hidden;
 }
 .news-empty{
   padding:28px 18px;
@@ -1234,6 +1243,7 @@ a.news-media:focus-visible .news-play::after{
   min-height:100vh;
   display:block;
   padding:180px 20px 90px;
+  overflow:hidden;
 }
 
 .discography-inner{
@@ -1448,6 +1458,7 @@ a.news-media:focus-visible .news-play::after{
   align-items:flex-start;
   justify-content:center;
   padding:120px 20px 110px;
+  overflow:hidden;
 }
 
 .contact-inner{width:100%;max-width:1400px}
@@ -1895,7 +1906,6 @@ a.news-media:focus-visible .news-play::after{
 
 /* HOME featured: plataformas (Ã­cones) */
 .home-featured-platform-icons-wrap{
-  /* mais respiro em relaÃ§Ã£o ao texto acima */
   padding-top:10px;
   width:100%;
   display:flex;
@@ -1903,6 +1913,29 @@ a.news-media:focus-visible .news-play::after{
   align-items:center;
   justify-content:center;
   gap:12px;
+  animation: platforms-in .4s cubic-bezier(.22,1,.36,1) both;
+}
+.home-featured-platform-icons-wrap.is-closing {
+  animation: platforms-out .28s cubic-bezier(.55,0,1,.45) both;
+}
+
+@keyframes platforms-in {
+  from { opacity: 0; transform: scale(.88) translateY(10px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+@keyframes platforms-out {
+  from { opacity: 1; transform: scale(1)   translateY(0); }
+  to   { opacity: 0; transform: scale(.88) translateY(10px); }
+}
+
+.home-featured-btn {
+  display: inline-flex;
+  animation: btn-listen-in .4s cubic-bezier(.22,1,.36,1) both;
+}
+
+@keyframes btn-listen-in {
+  from { opacity: 0; transform: scale(.88) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
 }
 
 .home-featured-platform-icons{
@@ -2820,20 +2853,7 @@ a.news-media:focus-visible .news-play::after{
 }
 
 /* -- Linha vermelha no rodap� do hero -------------------------------------- */
-.hero::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--red) 40%, var(--red) 60%, transparent);
-  animation: borderWipe 1.8s cubic-bezier(.22,1,.36,1) .6s forwards;
-  z-index: 2;
-  pointer-events: none;
-}
 
-@keyframes borderWipe { to { width: 100%; } }
 
 /* -- Parallax hero inner --------------------------------------------------- */
 .hero-inner {
@@ -2993,26 +3013,25 @@ a.news-media:focus-visible .news-play::after{
 
 .nav-links a:hover::after { width: 100%; left: 0; }
 
-/* -- About logo: float + glow pulsante ------------------------------------- */
+/* -- About logo: zoom in na entrada, zoom out na saída --------------------- */
 .about-logo {
-  transition: transform .5s cubic-bezier(.22,1,.36,1), filter .5s ease;
-  filter: drop-shadow(0 0 8px rgba(139,0,0,.18)) drop-shadow(0 2px 8px rgba(0,0,0,.4));
+  transition: transform .5s cubic-bezier(.22,1,.36,1), filter .5s ease, opacity .5s ease;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,.4));
 }
 .about-logo:hover {
   transform: scale(1.07);
-  filter: drop-shadow(0 0 28px rgba(139,0,0,.55)) drop-shadow(0 6px 18px rgba(0,0,0,.5));
+  filter: drop-shadow(0 6px 18px rgba(0,0,0,.5));
 }
 
-/* -- Colunas do About: fade + slide --------------------------------------- */
+/* -- Colunas do About: slide dos lados + logo zoom ------------------------- */
 .about-col {
   opacity: 0;
-  transform: translateY(24px);
-  transition: opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1);
+  transition: opacity 1.4s cubic-bezier(.22,1,.36,1), transform 1.4s cubic-bezier(.22,1,.36,1);
 }
-.about-col.about-left   { transition-delay: .22s; }
-.about-col.about-center { transition-delay: .06s; }
-.about-col.about-right  { transition-delay: .38s; }
-.revealed .about-col { opacity: 1; transform: translateY(0); }
+.about-col.about-left   { transform: translateX(-80px); transition-delay: .2s; }
+.about-col.about-center { transform: scale(.78); transition-delay: 0s; }
+.about-col.about-right  { transform: translateX(80px); transition-delay: .2s; }
+.revealed .about-col { opacity: 1; transform: translateX(0) scale(1); }
 
 /* -- Campos do formul�rio: slide da esquerda ------------------------------- */
 .contact-field {
@@ -3064,6 +3083,7 @@ a.news-media:focus-visible .news-play::after{
   .about-logo { animation: none; filter: none; }
   .btn-outline, .contact-submit { animation: none; }
   .footer-icon { animation: none; }
+  .home-featured-platform-icons-wrap, .home-featured-btn { animation: none; }
   .reveal, .reveal-item { opacity: 1 !important; transform: none !important; transition: none !important; }
   .about-title,.shop-title,.news-title,.discography-title,.contact-title { opacity: 1 !important; transform: none !important; transition: none !important; }
   .about-col { opacity: 1 !important; transform: none !important; transition: none !important; }

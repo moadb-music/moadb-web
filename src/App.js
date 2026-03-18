@@ -202,24 +202,42 @@ function SectionBg({ bg }) {
   const angle = Math.max(0, Math.min(360, parseFloat(bg.gradientAngle) || 180));
   const from = gradOn ? aHex(bg.gradientFrom || '#000000', bg.gradientFromOpacity ?? bg.gradientOpacity ?? 1) : 'transparent';
   const to = gradOn ? aHex(bg.gradientTo || '#000000', bg.gradientToOpacity ?? bg.gradientOpacity ?? 1) : 'transparent';
-  const divider = bg.divider ?? 'line';
+  const dividerTop = bg.dividerTop ?? bg.divider ?? 'none';
+  const dividerBottom = bg.dividerBottom ?? 'none';
+
+  // máscara aplicada no wrapper que contém todos os layers de bg
+  let maskImage = undefined;
+  if (dividerBottom === 'fade' && dividerTop === 'fade') {
+    maskImage = 'linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)';
+  } else if (dividerBottom === 'fade') {
+    maskImage = 'linear-gradient(to bottom, black 93%, transparent 100%)';
+  } else if (dividerTop === 'fade') {
+    maskImage = 'linear-gradient(to bottom, transparent 0%, black 15%)';
+  }
+
   return (
     <>
-      {gradOn && (
-        <div className="section-bg-gradient" aria-hidden="true" style={{ background: `linear-gradient(${angle}deg, ${from}, ${to})` }} />
-      )}
-      {imgOn && (
-        <div className="section-bg-image" aria-hidden="true" style={{ backgroundImage: `url('${bg.imageUrl}')`, opacity: c01(bg.imageOpacity ?? 0.35) }} />
-      )}
-      {divider === 'line' && <div className="section-divider section-divider--line" aria-hidden="true" />}
-      {divider === 'fade' && <div className="section-divider section-divider--fade" aria-hidden="true" />}
+      <div
+        className="section-bg-layers"
+        aria-hidden="true"
+        style={maskImage ? { maskImage, WebkitMaskImage: maskImage } : undefined}
+      >
+        {gradOn && (
+          <div className="section-bg-gradient" style={{ background: `linear-gradient(${angle}deg, ${from}, ${to})` }} />
+        )}
+        {imgOn && (
+          <div className="section-bg-image" style={{ backgroundImage: `url('${bg.imageUrl}')`, opacity: c01(bg.imageOpacity ?? 0.35) }} />
+        )}
+      </div>
+      {dividerTop === 'line' && <div className="section-divider section-divider--line" aria-hidden="true" style={{ top: 0, bottom: 'auto' }} />}
+      {dividerBottom === 'line' && <div className="section-divider section-divider--line" aria-hidden="true" />}
     </>
   );
 }
 
 function useScrollReveal(deps = []) {
   useEffect(() => {
-    const els = document.querySelectorAll('.reveal');
+    const els = Array.from(document.querySelectorAll('.reveal')).filter(el => !el.classList.contains('about'));
     if (!els.length) return;
     const obs = new IntersectionObserver(
       (entries) => entries.forEach((e) => {
@@ -229,7 +247,7 @@ function useScrollReveal(deps = []) {
           e.target.classList.remove('revealed');
         }
       }),
-      { threshold: 0.1 }
+      { threshold: 0.25, rootMargin: '0px 0px -80px 0px' }
     );
     els.forEach((el) => obs.observe(el));
     return () => obs.disconnect();
@@ -317,6 +335,13 @@ function App() {
 
   // UI state: toggle platform links for featured release
   const [featuredPlatformsOpen, setFeaturedPlatformsOpen] = useState(false);
+  const [platformsClosing, setPlatformsClosing] = useState(false);
+
+  const openPlatforms = () => { setPlatformsClosing(false); setFeaturedPlatformsOpen(true); };
+  const closePlatforms = () => {
+    setPlatformsClosing(true);
+    setTimeout(() => { setFeaturedPlatformsOpen(false); setPlatformsClosing(false); }, 280);
+  };
   const featuredIdsKey = (homeCfg.featuredReleaseIds || []).join('|');
 
   const [pagesContent, setPagesContent] = useState(null);
@@ -539,7 +564,6 @@ function App() {
     // reset UI when featured release changes or gets disabled
     setFeaturedPlatformsOpen(false);
   }, [homeCfg.featuredEnabled, featuredIdsKey]);
-
   useEffect(() => {
     // Se o usuário sair do "Início" e depois voltar, volta para o botão automaticamente
     const heroEl = document.querySelector('#inicio');
@@ -550,7 +574,7 @@ function App() {
         const e = entries?.[0];
         if (!e) return;
         // quando sair da viewport, reseta
-        if (!e.isIntersecting) setFeaturedPlatformsOpen(false);
+        if (!e.isIntersecting) closePlatforms();
       },
       { threshold: 0.15 }
     );
@@ -709,6 +733,24 @@ function App() {
 
   useScrollReveal([discography.length, visibleNewsItems.length]);
   useParallax();
+
+  // observer dedicado para a seção Sobre — dispara só quando bem centrada na viewport
+  useEffect(() => {
+    const section = document.querySelector('.about');
+    if (!section) return;
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          section.classList.add('revealed');
+        } else {
+          section.classList.remove('revealed');
+        }
+      },
+      { threshold: 0.45 }
+    );
+    obs.observe(section);
+    return () => obs.disconnect();
+  }, []);
 
   return (
     <div className="app-container">
@@ -888,14 +930,14 @@ function App() {
                               if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                               return;
                             }
-                            setFeaturedPlatformsOpen(true);
+                            openPlatforms();
                           }}
                           title={platformList.length === 0 ? (isPt ? 'Sem links configurados — rolando para a Discografia' : 'No links configured — scrolling to Discography') : (isPt ? 'Mostrar plataformas' : 'Show platforms')}
                         >
                           {(homeCfg.featuredButtonLabel || (isPt ? 'OUVIR AGORA' : 'LISTEN NOW')).toUpperCase()}
                         </button>
                       ) : (
-                        <div className="home-featured-platform-icons-wrap" aria-label="Plataformas">
+                        <div className={`home-featured-platform-icons-wrap${platformsClosing ? ' is-closing' : ''}`} aria-label="Plataformas">
                           <div className="home-featured-platform-icons" aria-label="Plataformas disponíveis">
                             {platformList.map((p) => (
                               <a
@@ -915,7 +957,7 @@ function App() {
                           <button
                             type="button"
                             className="home-featured-platform-back"
-                            onClick={() => setFeaturedPlatformsOpen(false)}
+                            onClick={() => closePlatforms()}
                             aria-label="Fechar"
                             title="Fechar"
                           >
@@ -1103,7 +1145,7 @@ function App() {
                 <div
                   className="news-track"
                   style={{
-                    transform: `translateX(-${newsIndex * (100 / newsVisibleCount)}%)`,
+                    transform: `translateX(calc(-${newsIndex} * (100% / ${newsVisibleCount} + ${22 / newsVisibleCount}px)))`,
                   }}
                 >
                   {newsError ? (
