@@ -589,6 +589,37 @@ a{color:inherit;text-decoration:none}
   .shop-slide{flex:0 0 100%}
 }
 
+/* ── Background dinâmico por seção (via CSS vars do Firestore) ─────────── */
+section[style*="--section-bg"] {
+  position: relative;
+}
+
+/* camada de imagem + overlay de opacidade (::before) e gradiente (::after) */
+section[style*="--section-bg"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(var(--section-bg-overlay, transparent), var(--section-bg-overlay, transparent)),
+    var(--section-bg-image, none) center / cover no-repeat;
+  pointer-events: none;
+}
+
+section[style*="--section-bg"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--section-bg-gradient, none);
+  pointer-events: none;
+}
+
+section[style*="--section-bg"] > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* NEWS */
 .news{
   min-height:100vh;
@@ -877,8 +908,38 @@ a.news-media:focus-visible .news-play::after{
 
 .news-headline {
   margin: 0px 0 0 0;
-  font-size: 1.18rem;
+  font-size: 1.38rem;
   line-height: 1.25;
+}
+
+.news-card--text .news-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.news-card--text .news-headline {
+  order: 1;
+  font-size: 1.52rem;
+}
+
+.news-card--text .news-tags {
+  order: 2;
+}
+
+.news-card--text .news-date {
+  order: 3;
+}
+
+.news-card--text .news-excerpt {
+  order: 4;
+}
+
+.news-card--text .news-readmore {
+  order: 5;
+}
+
+.news-card--text .news-cta {
+  order: 6;
 }
 
 /* Excerpt: truncamento + fade quando overflow */

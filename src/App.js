@@ -176,6 +176,15 @@ function FlagUK(props) {
   );
 }
 
+const NAV_SECTIONS = [
+  { key: 'home',        href: '#inicio',      label: 'INÍCIO' },
+  { key: 'sobre',       href: '#sobre',       label: 'SOBRE' },
+  { key: 'loja',        href: '#loja',        label: 'LOJA' },
+  { key: 'noticias',    href: '#noticias',    label: 'NOTÍCIAS' },
+  { key: 'discografia', href: '#discografia', label: 'DISCOGRAFIA' },
+  { key: 'contato',     href: '#contato',     label: 'CONTATO' },
+];
+
 function App() {
   const [langOpen, setLangOpen] = useState(false);
   const [lang, setLang] = useState('pt-BR');
@@ -374,6 +383,39 @@ function App() {
 
   const langKey = useMemo(() => (String(lang || '').toLowerCase().startsWith('pt') ? 'pt' : 'en'), [lang]);
   const aboutFromDb = useMemo(() => normalizeAboutFromPagesDoc(pagesContent || {}), [pagesContent]);
+
+  const sectionBgStyle = useMemo(() => {
+    const bgs = pagesContent?.backgroundsBySection ?? {};
+    const order = Array.isArray(pagesContent?.sectionOrder) ? pagesContent.sectionOrder : [];
+    const toStyle = (bg, key) => {
+      const orderIdx = order.indexOf(key);
+      const base = orderIdx >= 0 ? { order: orderIdx } : {};
+      if (!bg) return base;
+      const c01 = (n) => Math.max(0, Math.min(1, parseFloat(n) || 0));
+      const aHex = (c, op) => /^#[0-9a-fA-F]{6}$/.test(c) ? `${c}${Math.round(c01(op)*255).toString(16).padStart(2,'0')}` : (c || '#000000');
+      const gradOn = bg.gradientEnabled !== false;
+      const imgOn = bg.imageEnabled !== false && bg.imageUrl;
+      const angle = Math.max(0, Math.min(360, parseFloat(bg.gradientAngle) || 180));
+      const from = gradOn ? aHex(bg.gradientFrom || '#000000', bg.gradientOpacity ?? 1) : 'transparent';
+      const to = gradOn ? aHex(bg.gradientTo || '#000000', bg.gradientOpacity ?? 1) : 'transparent';
+      const imgOpacity = c01(bg.imageOpacity ?? 0.35);
+      const overlayAlpha = Math.round((1 - imgOpacity) * 255).toString(16).padStart(2, '0');
+      return {
+        ...base,
+        '--section-bg-gradient': gradOn ? `linear-gradient(${angle}deg, ${from}, ${to})` : 'none',
+        '--section-bg-image': imgOn ? `url('${bg.imageUrl}')` : 'none',
+        '--section-bg-overlay': imgOn ? `#000000${overlayAlpha}` : 'transparent',
+      };
+    };
+    return {
+      home: toStyle(bgs.home, 'home'),
+      sobre: toStyle(bgs.sobre, 'sobre'),
+      loja: toStyle(bgs.loja, 'loja'),
+      noticias: toStyle(bgs.noticias, 'noticias'),
+      discografia: toStyle(bgs.discografia, 'discografia'),
+      contato: toStyle(bgs.contato, 'contato'),
+    };
+  }, [pagesContent]);
   const shopItems = useMemo(() => shopCfg?.items || [], [shopCfg]);
   const shopStoreUrl = String(shopCfg?.storeUrl || '').trim();
 
@@ -565,12 +607,19 @@ function App() {
         </a>
 
         <div className="nav-links" role="navigation" aria-label="Seções">
-          <a href="#inicio">INÍCIO</a>
-          <a href="#sobre">SOBRE</a>
-          <a href="#loja">LOJA</a>
-          <a href="#noticias">NOTÍCIAS</a>
-          <a href="#discografia">DISCOGRAFIA</a>
-          <a href="#contato">CONTATO</a>
+          {(() => {
+            const order = Array.isArray(pagesContent?.sectionOrder) ? pagesContent.sectionOrder : [];
+            const navMap = new Map(NAV_SECTIONS.map((s) => [s.key, s]));
+            // seções ordenadas (excluindo 'main' que não tem link no nav)
+            const ordered = order
+              .filter((k) => k !== 'main' && navMap.has(k))
+              .map((k) => navMap.get(k));
+            // garante que seções sem ordem apareçam no final
+            const missing = NAV_SECTIONS.filter((s) => !order.includes(s.key));
+            return [...ordered, ...missing].map((s) => (
+              <a key={s.key} href={s.href}>{s.label}</a>
+            ));
+          })()}
         </div>
 
         <div className="lang-dropdown" ref={langRef}>
@@ -622,8 +671,8 @@ function App() {
         </div>
       </nav>
 
-      <main>
-        <section id="inicio" className="hero" aria-label="Início">
+      <main style={{ display: 'flex', flexDirection: 'column' }}>
+        <section id="inicio" className="hero" aria-label="Inicio" style={sectionBgStyle.home}>
           <div className="hero-inner">
             {!(homeCfg.featuredEnabled && featuredPrimary) ? (
               <h1 className="hero-title">
@@ -708,7 +757,7 @@ function App() {
           </div>
         </section>
 
-        <section id="sobre" className="about" aria-label="Sobre">
+        <section id="sobre" className="about" aria-label="Sobre" style={sectionBgStyle.sobre}>
           <div className="about-inner">
             {/* Título principal fixo (não editável via Firestore) */}
             <h2 className="about-title">{langKey === 'pt' ? 'SOBRE' : 'ABOUT'}</h2>
@@ -749,7 +798,7 @@ function App() {
           </div>
         </section>
 
-        <section id="loja" className="shop" aria-label="Loja">
+        <section id="loja" className="shop" aria-label="Loja" style={sectionBgStyle.loja}>
           <div className="shop-inner">
             <h2 className="shop-title">LOJA</h2>
 
@@ -833,7 +882,7 @@ function App() {
           </div>
         </section>
 
-        <section id="noticias" className="news" aria-label="Notícias">
+        <section id="noticias" className="news" aria-label="Notícias" style={sectionBgStyle.noticias}>
           <div className="news-inner">
             <h2 className="news-title">NOTÍCIAS</h2>
 
@@ -995,7 +1044,7 @@ function App() {
           </div>
         </section>
 
-        <section id="discografia" className="discography" aria-label="Discografia">
+        <section id="discografia" className="discography" aria-label="Discografia" style={sectionBgStyle.discografia}>
           <div className="discography-inner">
             <h2 className="discography-title">DISCOGRAFIA</h2>
 
@@ -1189,7 +1238,7 @@ function App() {
           </div>
         ) : null}
 
-        <section id="contato" className="contact" aria-label="Contato">
+        <section id="contato" className="contact" aria-label="Contato" style={sectionBgStyle.contato}>
           <div className="contact-inner">
             <h2 className="contact-title">CONTATO</h2>
 

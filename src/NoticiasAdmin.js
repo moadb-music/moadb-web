@@ -154,7 +154,7 @@ function insertTextAtSelection(text) {
   return true;
 }
 
-export default function NoticiasAdmin() {
+export default function NoticiasAdmin({ onDirtyChange }) {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
@@ -166,6 +166,9 @@ export default function NoticiasAdmin() {
   const [isDirty, setIsDirty] = useState(false);
   const [saveState, setSaveState] = useState(''); // '', 'saving', 'saved', 'error'
 
+  // notícia nova ainda não salva (não aparece na lista)
+  const [pendingNew, setPendingNew] = useState(null);
+
   // Gallery modal
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
 
@@ -174,6 +177,12 @@ export default function NoticiasAdmin() {
 
   // UI: preview x edição
   const [mode, setMode] = useState('preview'); // 'preview' | 'edit'
+
+  // clamp do excerpt no preview
+  const previewExcerptRef = useRef(null);
+  const [previewClamped, setPreviewClamped] = useState(false);
+  const [previewExpanded, setPreviewExpanded] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
 
   const selected = useMemo(() => items.find((i) => i.id === selectedId) || null, [items, selectedId]);
 
@@ -208,6 +217,16 @@ export default function NoticiasAdmin() {
     };
   }, []);
 
+  const [pendingSelectId, setPendingSelectId] = useState(undefined);
+
+  function trySelectId(id) {
+    if (isDirty && mode === 'edit') {
+      setPendingSelectId(id);
+    } else {
+      setSelectedId(id);
+    }
+  }
+
   // quando seleciona outro item, carrega o draft do item (sem abrir modal)
   useEffect(() => {
     if (!selected) {
@@ -227,14 +246,16 @@ export default function NoticiasAdmin() {
     setMode('preview');
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // quando troca a notícia selecionada, sincroniza o HTML do editor sem usar dangerouslySetInnerHTML
+  // quando troca a notícia selecionada OU entra no modo edit, sincroniza o HTML do editor
   useEffect(() => {
-    if (!selected) return;
+    if (mode !== 'edit') return;
     if (!excerptRef.current) return;
-    const nextHtml = String(selected.excerptHtml || '');
-    excerptRef.current.innerHTML = nextHtml;
-    lastExcerptHtmlRef.current = nextHtml;
-  }, [selectedId, selected]);
+    const nextHtml = String(draft?.excerptHtml || '');
+    if (excerptRef.current.innerHTML !== nextHtml) {
+      excerptRef.current.innerHTML = nextHtml;
+      lastExcerptHtmlRef.current = nextHtml;
+    }
+  }, [selectedId, mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function persist(nextItems) {
     const payload = serializeNewsToDb(nextItems);
@@ -242,29 +263,33 @@ export default function NoticiasAdmin() {
     await setDoc(ref, { ...payload, updatedAt: serverTimestamp() }, { merge: true });
   }
 
-  async function addItem() {
+  function addItem() {
+    if (isDirty && mode === 'edit') {
+      setPendingSelectId('__new__');
+      return;
+    }
+    _createNewItem();
+  }
+
+  function _createNewItem() {
     const id = uid();
     const today = new Date().toISOString().slice(0, 10);
-    const next = [
-      {
-        id,
-        tags: ['NEWS'],
-        date: today,
-        title: 'NOVA NOTÍCIA',
-        excerptHtml: '',
-        ctaText: '',
-        ctaUrl: '',
-        imageUrl: '',
-        mediaUrl: '',
-        mediaKind: 'image',
-      },
-      ...items,
-    ];
-
-    // IMPORTANTE: não persiste aqui para não subir no site sem salvar
-    setItems(next);
-    setSelectedId(id);
-    setDraft({ ...next[0], tagsText: 'NEWS', mediaKind: 'image' });
+    const newItem = {
+      id,
+      tags: ['NEWS'],
+      date: today,
+      title: 'NOVA NOTÍCIA',
+      excerptHtml: '',
+      ctaText: '',
+      ctaUrl: '',
+      imageUrl: '',
+      mediaUrl: '',
+      mediaKind: 'image',
+    };
+    // guarda como pendente — só entra na lista ao salvar
+    setPendingNew(newItem);
+    setSelectedId(null);
+    setDraft({ ...newItem, tagsText: 'NEWS' });
     setIsDirty(true);
     setSaveState('');
     setMode('edit');
@@ -367,7 +392,7 @@ export default function NoticiasAdmin() {
       normalizedDraft.mediaUrl = '';
     }
 
-    const next = items.map((it) => (it.id === normalizedDraft.id ? {
+    const savedItem = {
       id: normalizedDraft.id,
       tags: normalizedDraft.tags,
       date: normalizedDraft.date,
@@ -378,9 +403,19 @@ export default function NoticiasAdmin() {
       imageUrl: normalizedDraft.imageUrl,
       mediaUrl: normalizedDraft.mediaUrl,
       mediaKind: normalizedDraft.mediaKind,
-    } : it));
+    };
+
+    // se era nova (pendente), insere no topo da lista
+    const isNew = pendingNew && pendingNew.id === normalizedDraft.id;
+    const next = isNew
+      ? [savedItem, ...items]
+      : items.map((it) => (it.id === savedItem.id ? savedItem : it));
 
     setItems(next);
+    if (isNew) {
+      setPendingNew(null);
+      setSelectedId(savedItem.id);
+    }
     setIsDirty(false);
 
     try {
@@ -395,18 +430,40 @@ export default function NoticiasAdmin() {
   }
 
   function discardDraft() {
+    // se era nova pendente, descarta sem adicionar à lista
+    if (pendingNew) {
+      setPendingNew(null);
+      setDraft(null);
+      setIsDirty(false);
+      setSaveState('');
+      setMode('preview');
+      return;
+    }
     if (!selected) return;
     setDraft({ ...selected, tagsText: (selected.tags || []).join(', ') });
     setIsDirty(false);
     setSaveState('');
     setMode('preview');
 
-    // garante reset visual do editor quando cancelar
     if (excerptRef.current) {
       excerptRef.current.innerHTML = String(selected.excerptHtml || '');
       lastExcerptHtmlRef.current = String(selected.excerptHtml || '');
     }
   }
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty && mode === 'edit');
+  }, [isDirty, mode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    setPreviewExpanded(false);
+    const raf = requestAnimationFrame(() => {
+      const el = previewExcerptRef.current;
+      if (!el) return;
+      setPreviewClamped(el.scrollHeight - el.clientHeight > 1);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [draft?.excerptHtml, mode]);
 
   function safeText(html) {
     return String(html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -440,9 +497,6 @@ export default function NoticiasAdmin() {
           <button type="button" className="admin-btn" onClick={addItem}>
             + NOVA NOTÍCIA
           </button>
-          <button type="button" className="admin-btn admin-btn-danger" onClick={() => selected && deleteItemNow(selected.id)} disabled={!selected}>
-            EXCLUIR
-          </button>
         </div>
       </div>
 
@@ -453,20 +507,36 @@ export default function NoticiasAdmin() {
             {items.length === 0 ? (
               <div style={{ opacity: 0.7, letterSpacing: 1.5, padding: 18 }}>Nenhuma notícia cadastrada.</div>
             ) : (
-              items.map((it) => (
-                <button
-                  key={it.id}
-                  type="button"
-                  className={`admin-list-item ${selectedId === it.id ? 'is-active' : ''}`}
-                  onClick={() => setSelectedId(it.id)}
-                >
-                  <div className="admin-list-item-title">{(it.title || 'SEM TÍTULO').toUpperCase()}</div>
-                  <div className="admin-list-item-meta">
-                    {(it.tags || []).slice(0, 2).map((t) => String(t).toUpperCase()).join(' / ') || 'NEWS'}
-                    {it.date ? ` • ${it.date}` : ''}
-                  </div>
-                </button>
-              ))
+              items.map((it) => {
+                const isVideo = it.mediaKind === 'video' || it.mediaKind === 'video_vertical';
+                const thumb = it.imageUrl || (isVideo ? getVideoThumbnail(it.mediaUrl) : '');
+                return (
+                  <button
+                    key={it.id}
+                    type="button"
+                    className={`admin-list-item ${selectedId === it.id ? 'is-active' : ''}`}
+                    onClick={() => trySelectId(it.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10 }}
+                  >
+                    {thumb ? (
+                      <img
+                        src={thumb}
+                        alt=""
+                        style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
+                      />
+                    ) : (
+                      <div style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.06)', borderRadius: 6, flexShrink: 0 }} />
+                    )}
+                    <div style={{ minWidth: 0 }}>
+                      <div className="admin-list-item-title">{(it.title || 'SEM TÍTULO').toUpperCase()}</div>
+                      <div className="admin-list-item-meta">
+                        {(it.tags || []).slice(0, 2).map((t) => String(t).toUpperCase()).join(' / ') || 'NEWS'}
+                        {it.date ? ` • ${it.date}` : ''}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })
             )}
           </div>
         </div>
@@ -484,86 +554,127 @@ export default function NoticiasAdmin() {
                 <div style={{ opacity: 0.75, fontSize: 12 }}>
                   {saveState === 'saved' ? 'Salvo.' : saveState === 'error' ? 'Erro ao salvar.' : isDirty ? 'Alterações pendentes.' : 'Sem alterações.'}
                 </div>
-                <button type="button" className="admin-btn admin-btn-primary" onClick={() => setMode('edit')}>
-                  EDITAR
-                </button>
-              </div>
-
-              <div style={{ display: 'grid', gap: 10 }}>
-                <div style={{ display: 'grid', gap: 6 }}>
-                  <div className="admin-label">TAGS</div>
-                  <div style={{ opacity: 0.9 }}>{(draft.tags || []).join(' / ') || safeText(draft.tagsText) || '—'}</div>
-                </div>
-
-                <div style={{ display: 'grid', gap: 6 }}>
-                  <div className="admin-label">DATA</div>
-                  <div style={{ opacity: 0.9 }}>{draft.date || '—'}</div>
-                </div>
-
-                <div style={{ display: 'grid', gap: 6 }}>
-                  <div className="admin-label">TÍTULO</div>
-                  <div style={{ opacity: 0.95, fontWeight: 900 }}>{draft.title || '—'}</div>
-                </div>
-
-                <div style={{ display: 'grid', gap: 6 }}>
-                  <div className="admin-label">RESUMO</div>
-                  {draft.excerptHtml ? (
-                    <div className="admin-input" style={{ padding: 12, borderRadius: 12 }} dangerouslySetInnerHTML={{ __html: draft.excerptHtml }} />
-                  ) : (
-                    <div style={{ opacity: 0.8 }}>—</div>
-                  )}
-                </div>
-
-                <div style={{ display: 'grid', gap: 10 }}>
-                  <div className="admin-label">MÍDIA</div>
-                  {(() => {
-                    const kind = String(draft.mediaKind || (draft.mediaUrl ? 'video' : 'image'));
-                    const href = safeHref(draft.mediaUrl || draft.ctaUrl || '');
-
-                    if (kind === 'image') {
-                      return draft.imageUrl ? (
-                        <a
-                          href={safeHref(draft.imageUrl)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="admin-dropzone-preview"
-                          style={{ padding: 0, display: 'block', textDecoration: 'none' }}
-                          title="Abrir imagem"
-                        >
-                          <img src={draft.imageUrl} alt="" />
-                        </a>
-                      ) : null;
-                    }
-
-                    const thumb = getVideoThumbnail(draft.mediaUrl);
-                    if (thumb) {
-                      return (
-                        <a
-                          href={href || safeHref(draft.mediaUrl)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="admin-video-preview"
-                          title={kind === 'video_vertical' ? 'Abrir vídeo vertical' : 'Abrir vídeo'}
-                        >
-                          <img src={thumb} alt="" className="admin-video-preview-img" />
-                          <div className="admin-video-preview-play" aria-hidden="true" />
-                          {kind === 'video_vertical' ? <div className="admin-video-preview-badge">VERTICAL</div> : null}
-                        </a>
-                      );
-                    }
-
-                    return null;
-                  })()}
-
-                  {draft.mediaUrl ? (
-                    <a href={safeHref(draft.mediaUrl)} target="_blank" rel="noreferrer" style={{ opacity: 0.85, textDecoration: 'underline' }}>
-                      {draft.mediaUrl}
-                    </a>
-                  ) : !draft.imageUrl ? (
-                    <div style={{ opacity: 0.8 }}>—</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" className="admin-btn admin-btn-primary" onClick={() => setMode('edit')}>
+                    EDITAR
+                  </button>
+                  {selected && !pendingNew ? (
+                    <button type="button" className="admin-btn admin-btn-danger" onClick={() => deleteItemNow(selected.id)}>
+                      EXCLUIR
+                    </button>
                   ) : null}
                 </div>
               </div>
+
+              {/* Card (300px) + painel completo */}
+              {(() => {
+                const isVideo = draft.mediaKind === 'video' || draft.mediaKind === 'video_vertical';
+                const thumbSrc = draft.imageUrl || (isVideo ? getVideoThumbnail(draft.mediaUrl) : '') || '';
+                const hasMedia = Boolean(thumbSrc || (isVideo && draft.mediaUrl));
+                const hasCtaLink = Boolean(draft.ctaUrl);
+                const tags = draft.tags && draft.tags.length ? draft.tags : splitTags(draft.tagsText || '');
+
+                return (
+                  <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+
+                    {/* Card */}
+                    <article
+                      className={`news-card ${hasMedia ? '' : 'news-card--text'}`.trim()}
+                      style={{ flex: 'none', width: 300 }}
+                    >
+                      {hasMedia ? (
+                        <div
+                          className={`news-media ${thumbSrc ? 'has-thumb-bg' : ''}`.trim()}
+                          style={thumbSrc ? { '--news-thumb-url': `url(${thumbSrc})`, cursor: 'pointer' } : { cursor: 'pointer' }}
+                          onClick={() => setPreviewModalOpen(true)}
+                        >
+                          {thumbSrc ? <img src={thumbSrc} alt="" /> : null}
+                          {isVideo ? <div className="news-play" aria-hidden="true" /> : null}
+                        </div>
+                      ) : null}
+                      <div className="news-body">
+                        {tags.length ? (
+                          <div className="news-tags">
+                            {tags.map((t) => <span key={t} className="news-tag">{String(t).toUpperCase()}</span>)}
+                          </div>
+                        ) : null}
+                        <h3 className="news-headline">{draft.title || '—'}</h3>
+                        {draft.date ? <div className="news-date">{draft.date}</div> : null}
+                        {draft.excerptHtml ? (
+                          <div
+                            ref={previewExcerptRef}
+                            className={`news-excerpt${previewExpanded ? ' news-excerpt--expanded' : ''}${previewClamped && !previewExpanded ? ' is-overflow' : ''}`}
+                            dangerouslySetInnerHTML={{ __html: draft.excerptHtml }}
+                          />
+                        ) : null}
+                        {previewClamped ? (
+                          <button type="button" className="news-readmore" onClick={() => setPreviewModalOpen(true)}>Ler mais…</button>
+                        ) : null}
+                        {hasCtaLink ? (
+                          <span className="news-cta" style={{ cursor: 'pointer' }} onClick={() => setPreviewModalOpen(true)}>{draft.ctaText || 'LER MAIS'}</span>
+                        ) : null}
+                      </div>
+                    </article>
+
+                    {/* Informações completas */}
+                    <div style={{ flex: '1 1 260px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      <div className="admin-label" style={{ marginBottom: 2 }}>INFORMAÇÕES</div>
+
+                      <div>
+                        <div className="admin-muted">TÍTULO</div>
+                        <div style={{ fontWeight: 700, marginTop: 2 }}>{draft.title || '—'}</div>
+                      </div>
+
+                      <div>
+                        <div className="admin-muted">DATA</div>
+                        <div style={{ marginTop: 2 }}>{draft.date || '—'}</div>
+                      </div>
+
+                      <div>
+                        <div className="admin-muted">TAGS</div>
+                        <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {tags.length ? tags.map(t => <span key={t} className="news-tag">{t.toUpperCase()}</span>) : <span style={{ opacity: 0.5 }}>—</span>}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="admin-muted">TIPO DE MÍDIA</div>
+                        <div style={{ marginTop: 2 }}>{draft.mediaKind === 'video' ? 'Vídeo' : draft.mediaKind === 'video_vertical' ? 'Vídeo vertical' : 'Imagem'}</div>
+                      </div>
+
+
+
+                      {draft.ctaUrl ? (
+                        <div>
+                          <div className="admin-muted">BOTÃO CTA</div>
+                          <div style={{ marginTop: 2 }}>{draft.ctaText || 'LER MAIS'}</div>
+                          <div style={{ marginTop: 2, wordBreak: 'break-all', fontSize: 12, opacity: 0.8 }}>{draft.ctaUrl}</div>
+                        </div>
+                      ) : null}
+
+                      {draft.excerptHtml ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
+                          <div className="admin-muted">TEXTO</div>
+                          <div
+                            className="news-modal-text"
+                            style={{
+                              marginTop: 6,
+                              overflowY: 'auto',
+                              overflowX: 'hidden',
+                              maxHeight: 220,
+                              paddingRight: 6,
+                              scrollbarWidth: 'thin',
+                              scrollbarColor: 'rgba(139,0,0,0.4) transparent',
+                            }}
+                            dangerouslySetInnerHTML={{ __html: draft.excerptHtml }}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             <div className="admin-form">
@@ -804,10 +915,136 @@ export default function NoticiasAdmin() {
                   </div>
                 </div>
               </div>
+
+              {/* Preview do card durante edição */}
+              {(() => {
+                const isVideo = draft.mediaKind === 'video' || draft.mediaKind === 'video_vertical';
+                const thumbSrc = draft.imageUrl || (isVideo ? getVideoThumbnail(draft.mediaUrl) : '') || '';
+                const hasMedia = Boolean(thumbSrc || (isVideo && draft.mediaUrl));
+                const hasCtaLink = Boolean(draft.ctaUrl);
+                const tags = draft.tags && draft.tags.length ? draft.tags : splitTags(draft.tagsText || '');
+                return (
+                  <div style={{ marginTop: 18 }}>
+                    <div className="admin-label" style={{ marginBottom: 10 }}>PREVIEW DO CARD</div>
+                    <article
+                      className={`news-card ${hasMedia ? '' : 'news-card--text'}`.trim()}
+                      style={{ flex: 'none', width: 300, pointerEvents: 'none' }}
+                    >
+                      {hasMedia ? (
+                        <div
+                          className={`news-media ${thumbSrc ? 'has-thumb-bg' : ''}`.trim()}
+                          style={thumbSrc ? { '--news-thumb-url': `url(${thumbSrc})` } : undefined}
+                        >
+                          {thumbSrc ? <img src={thumbSrc} alt="" /> : null}
+                          {isVideo ? <div className="news-play" aria-hidden="true" /> : null}
+                        </div>
+                      ) : null}
+                      <div className="news-body">
+                        {tags.length ? (
+                          <div className="news-tags">
+                            {tags.map((t) => <span key={t} className="news-tag">{String(t).toUpperCase()}</span>)}
+                          </div>
+                        ) : null}
+                        <h3 className="news-headline">{draft.title || '—'}</h3>
+                        {draft.date ? <div className="news-date">{draft.date}</div> : null}
+                        {draft.excerptHtml ? (
+                          <div className="news-excerpt is-overflow" dangerouslySetInnerHTML={{ __html: draft.excerptHtml }} />
+                        ) : null}
+                        {hasCtaLink ? (
+                          <span className="news-cta">{draft.ctaText || 'LER MAIS'}</span>
+                        ) : null}
+                      </div>
+                    </article>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
       </div>
+
+      {pendingSelectId !== undefined ? (
+        <div className="news-modal-backdrop" onMouseDown={() => setPendingSelectId(undefined)}>
+          <div
+            className="news-modal"
+            style={{ maxWidth: 420, height: 'auto', minHeight: 'unset' }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <button className="news-modal-close" onClick={() => setPendingSelectId(undefined)} aria-label="Fechar">×</button>
+            <div style={{ padding: '36px 28px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <h2 style={{ margin: 0, fontFamily: 'Oswald, sans-serif', fontSize: '1.1rem', letterSpacing: 2, textTransform: 'uppercase', color: '#fff' }}>SAIR SEM SALVAR?</h2>
+              <p style={{ margin: 0, opacity: 0.7, lineHeight: 1.6, fontSize: '0.9rem' }}>Você tem alterações não salvas. Deseja sair mesmo assim?</p>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+                <button type="button" className="admin-btn" onClick={() => setPendingSelectId(undefined)}>CANCELAR</button>
+                <button type="button" className="admin-btn admin-btn-danger" onClick={() => {
+                  const id = pendingSelectId;
+                  setPendingSelectId(undefined);
+                  if (id === '__new__') {
+                    discardDraft();
+                    setTimeout(_createNewItem, 0);
+                  } else {
+                    discardDraft();
+                    setSelectedId(id ?? null);
+                  }
+                }}>SAIR SEM SALVAR</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {previewModalOpen && draft ? (
+        <div className="news-modal-backdrop" onMouseDown={() => setPreviewModalOpen(false)}>
+          <div className="news-modal" onMouseDown={(e) => e.stopPropagation()}>
+            <button className="news-modal-close" onClick={() => setPreviewModalOpen(false)} aria-label="Fechar">×</button>
+            <div className="news-modal-inner">
+              {(() => {
+                const isVideo = draft.mediaKind === 'video' || draft.mediaKind === 'video_vertical';
+                const thumbSrc = draft.imageUrl || (isVideo ? getVideoThumbnail(draft.mediaUrl) : '') || '';
+                const tags = draft.tags && draft.tags.length ? draft.tags : splitTags(draft.tagsText || '');
+                return (
+                  <>
+                    {isVideo && draft.mediaUrl ? (
+                      draft.mediaUrl.includes('instagram.com') ? (
+                        <a className="news-modal-external" href={draft.mediaUrl} target="_blank" rel="noreferrer">
+                          <span>&#9654;</span> Assistir no Instagram
+                        </a>
+                      ) : (
+                        <div className="news-modal-video">
+                          <iframe
+                            src={(() => { try { const u = new URL(draft.mediaUrl); const id = u.searchParams.get('v') || (u.hostname === 'youtu.be' ? u.pathname.slice(1) : u.pathname.split('/shorts/')[1]?.split('?')[0] || u.pathname.split('/embed/')[1]?.split('/')[0] || u.pathname.slice(1)); return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1` : draft.mediaUrl; } catch { return draft.mediaUrl; } })()}
+                            title={draft.title}
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        </div>
+                      )
+                    ) : thumbSrc ? (
+                      <img className="news-modal-img" src={thumbSrc} alt="" />
+                    ) : null}
+                    <div className="news-modal-body">
+                      {tags.length ? (
+                        <div className="news-tags">{tags.map(t => <span key={t} className="news-tag">{t.toUpperCase()}</span>)}</div>
+                      ) : null}
+                      <h2 className="news-modal-title">{draft.title}</h2>
+                      {draft.date ? <div className="news-date">{draft.date}</div> : null}
+                      {draft.excerptHtml ? (
+                        <div className="news-modal-text" dangerouslySetInnerHTML={{ __html: draft.excerptHtml }} />
+                      ) : null}
+                      {draft.ctaUrl ? (
+                        <a className="news-cta" href={draft.ctaUrl} target="_blank" rel="noreferrer">
+                          {draft.ctaText || 'LER MAIS'}
+                        </a>
+                      ) : null}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {isGalleryOpen ? (
         <ImageGalleryModal

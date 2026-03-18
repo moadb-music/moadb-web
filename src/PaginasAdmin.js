@@ -16,6 +16,8 @@ const SECTIONS = [
   { key: 'contato', label: 'CONTATO' },
 ];
 
+const DEFAULT_ORDER = SECTIONS.map((s) => s.key);
+
 function makeDefaultBackground() {
   return {
     gradientEnabled: true,
@@ -61,6 +63,7 @@ const DEFAULT_CONFIG = {
     return acc;
   }, {}),
   about: makeDefaultAbout(),
+  sectionOrder: DEFAULT_ORDER,
 };
 
 function clamp01(n) {
@@ -163,7 +166,8 @@ function normalizeDoc(data) {
       if (isMainAboutTitle(sec?.title?.en)) sec.title.en = '';
     });
 
-    return { backgroundsBySection: acc, about: { sections } };
+    const sectionOrder = Array.isArray(raw.sectionOrder) ? raw.sectionOrder : DEFAULT_ORDER;
+  return { backgroundsBySection: acc, about: { sections }, sectionOrder };
   }
 
   // Legacy: about.title/text/imageUrl (mantém como Subtítulo 1 / Texto 1; o heading "SOBRE" continua fixo)
@@ -187,7 +191,8 @@ function normalizeDoc(data) {
     ],
   };
 
-  return { backgroundsBySection: acc, about };
+  const sectionOrder = Array.isArray(raw.sectionOrder) ? raw.sectionOrder : DEFAULT_ORDER;
+  return { backgroundsBySection: acc, about, sectionOrder };
 }
 
 function backgroundToPreviewStyle(bg) {
@@ -219,6 +224,24 @@ export default function PaginasAdmin() {
   const [selectedSection, setSelectedSection] = useState(SECTIONS[0].key);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+
+  const sectionOrder = Array.isArray(config.sectionOrder) ? config.sectionOrder : DEFAULT_ORDER;
+  const orderedSections = sectionOrder
+    .map((key) => SECTIONS.find((s) => s.key === key))
+    .filter(Boolean);
+
+  function moveSection(key, dir) {
+    if (key === 'main') return;
+    const order = [...sectionOrder];
+    const idx = order.indexOf(key);
+    if (idx < 0) return;
+    const next = idx + dir;
+    if (next < 0 || next >= order.length) return;
+    // não pode trocar com 'main'
+    if (order[next] === 'main') return;
+    [order[idx], order[next]] = [order[next], order[idx]];
+    setConfig((prev) => ({ ...prev, sectionOrder: order }));
+  }
 
   const [aboutLang, setAboutLang] = useState('pt');
   const [langOpen, setLangOpen] = useState(false);
@@ -364,19 +387,47 @@ export default function PaginasAdmin() {
         <aside className="admin-panel">
           <div className="admin-panel-title">SEÇÕES</div>
           <div className="admin-list">
-            {SECTIONS.map((s) => (
-              <button
-                key={s.key}
-                type="button"
-                className={`admin-list-item ${selectedSection === s.key ? 'is-active' : ''}`}
-                onClick={() => setSelectedSection(s.key)}
-              >
-                <div className="admin-list-item-title">{s.label}</div>
-                <div className="admin-list-item-meta">
-                  <span>{config.backgroundsBySection?.[s.key]?.imageUrl ? 'com imagem' : 'sem imagem'}</span>
+            {orderedSections.map((s, idx) => {
+              const imgUrl = config.backgroundsBySection?.[s.key]?.imageUrl || '';
+              return (
+                <div
+                  key={s.key}
+                  className={`admin-list-item admin-pages-list-item ${selectedSection === s.key ? 'is-active' : ''}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', cursor: 'pointer' }}
+                  onClick={() => setSelectedSection(s.key)}
+                >
+                  <div className="admin-list-item-thumb" style={{ flexShrink: 0 }}>
+                    {imgUrl
+                      ? <img src={imgUrl} alt="" />
+                      : <div className="admin-list-item-thumb-empty" />}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="admin-list-item-title">{s.label}</div>
+                    <div className="admin-list-item-meta">
+                      <span style={{ opacity: 0.6, fontSize: '0.75rem' }}>#{idx + 1}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      className="admin-track-btn"
+                      style={{ padding: '3px 7px', fontSize: '0.7rem', lineHeight: 1 }}
+                      onClick={() => moveSection(s.key, -1)}
+                      disabled={s.key === 'main' || idx === 0 || orderedSections[idx - 1]?.key === 'main'}
+                      title="Mover para cima"
+                    >▲</button>
+                    <button
+                      type="button"
+                      className="admin-track-btn"
+                      style={{ padding: '3px 7px', fontSize: '0.7rem', lineHeight: 1 }}
+                      onClick={() => moveSection(s.key, 1)}
+                      disabled={s.key === 'main' || idx === orderedSections.length - 1}
+                      title="Mover para baixo"
+                    >▼</button>
+                  </div>
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         </aside>
 
