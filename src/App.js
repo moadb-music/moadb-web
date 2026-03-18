@@ -155,28 +155,28 @@ function getVideoThumbnail(url) {
 
 function FlagBR(props) {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" {...props}>
-      <rect width="24" height="24" fill="#009b3a" />
-      <polygon points="12,3 21,12 12,21 3,12" fill="#ffdf00" />
-      <circle cx="12" cy="12" r="5" fill="#002776" />
-      <path d="M7.2 11.2c2.3-1 7.1-1 9.6.1" fill="none" stroke="#fff" strokeWidth="1.1" strokeLinecap="round" />
+    <svg viewBox="0 0 28 18" aria-hidden="true" {...props}>
+      <rect width="28" height="18" fill="#009b3a" />
+      <polygon points="14,2 26,9 14,16 2,9" fill="#ffdf00" />
+      <circle cx="14" cy="9" r="4" fill="#002776" />
+      <path d="M10 8.5c1.8-.8 5.4-.8 8 .1" fill="none" stroke="#fff" strokeWidth="1" strokeLinecap="round" />
     </svg>
   );
 }
 
 function FlagUK(props) {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" {...props}>
-      <rect width="24" height="24" fill="#012169" />
-      <path d="M0 0L24 24M24 0L0 24" stroke="#fff" strokeWidth="6" />
-      <path d="M0 0L24 24M24 0L0 24" stroke="#C8102E" strokeWidth="3" />
-      <path d="M12 0v24M0 12h24" stroke="#fff" strokeWidth="8" />
-      <path d="M12 0v24M0 12h24" stroke="#C8102E" strokeWidth="4" />
+    <svg viewBox="0 0 28 18" aria-hidden="true" {...props}>
+      <rect width="28" height="18" fill="#012169" />
+      <path d="M0 0L28 18M28 0L0 18" stroke="#fff" strokeWidth="5" />
+      <path d="M0 0L28 18M28 0L0 18" stroke="#C8102E" strokeWidth="2.5" />
+      <path d="M14 0v18M0 9h28" stroke="#fff" strokeWidth="6" />
+      <path d="M14 0v18M0 9h28" stroke="#C8102E" strokeWidth="3" />
     </svg>
   );
 }
 
-const NAV_SECTIONS = [
+const NAV_SECTIONS_PT = [
   { key: 'home',        href: '#inicio',      label: 'INÍCIO' },
   { key: 'sobre',       href: '#sobre',       label: 'SOBRE' },
   { key: 'loja',        href: '#loja',        label: 'LOJA' },
@@ -184,10 +184,21 @@ const NAV_SECTIONS = [
   { key: 'discografia', href: '#discografia', label: 'DISCOGRAFIA' },
   { key: 'contato',     href: '#contato',     label: 'CONTATO' },
 ];
+const NAV_SECTIONS_EN = [
+  { key: 'home',        href: '#inicio',      label: 'HOME' },
+  { key: 'sobre',       href: '#sobre',       label: 'ABOUT' },
+  { key: 'loja',        href: '#loja',        label: 'STORE' },
+  { key: 'noticias',    href: '#noticias',    label: 'NEWS' },
+  { key: 'discografia', href: '#discografia', label: 'DISCOGRAPHY' },
+  { key: 'contato',     href: '#contato',     label: 'CONTACT' },
+];
 
 function App() {
   const [langOpen, setLangOpen] = useState(false);
-  const [lang, setLang] = useState('pt-BR');
+  const [lang, setLang] = useState(() => {
+    const nav = navigator.languages?.[0] || navigator.language || 'pt-BR';
+    return nav.toLowerCase().startsWith('pt') ? 'pt-BR' : 'en';
+  });
   const langRef = useRef(null);
 
   // HOME featured (Novos Lançamentos)
@@ -244,9 +255,9 @@ function App() {
       setHomeCfg({
         featuredEnabled: typeof raw.featuredEnabled === 'boolean' ? raw.featuredEnabled : false,
         featuredReleaseIds: Array.isArray(raw.featuredReleaseIds) ? raw.featuredReleaseIds.map(String) : [],
-        featuredTitle: typeof raw.featuredTitle === 'string' && raw.featuredTitle.trim() ? raw.featuredTitle : 'OUÇA AGORA',
+        featuredTitle: typeof raw.featuredTitle === 'string' && raw.featuredTitle.trim() ? raw.featuredTitle : '',
         featuredButtonLabel:
-          typeof raw.featuredButtonLabel === 'string' && raw.featuredButtonLabel.trim() ? raw.featuredButtonLabel : 'OUVIR AGORA',
+          typeof raw.featuredButtonLabel === 'string' && raw.featuredButtonLabel.trim() ? raw.featuredButtonLabel : '',
       });
     });
 
@@ -609,12 +620,11 @@ function App() {
         <div className="nav-links" role="navigation" aria-label="Seções">
           {(() => {
             const order = Array.isArray(pagesContent?.sectionOrder) ? pagesContent.sectionOrder : [];
+            const NAV_SECTIONS = isPt ? NAV_SECTIONS_PT : NAV_SECTIONS_EN;
             const navMap = new Map(NAV_SECTIONS.map((s) => [s.key, s]));
-            // seções ordenadas (excluindo 'main' que não tem link no nav)
             const ordered = order
               .filter((k) => k !== 'main' && navMap.has(k))
               .map((k) => navMap.get(k));
-            // garante que seções sem ordem apareçam no final
             const missing = NAV_SECTIONS.filter((s) => !order.includes(s.key));
             return [...ordered, ...missing].map((s) => (
               <a key={s.key} href={s.href}>{s.label}</a>
@@ -684,7 +694,7 @@ function App() {
             {homeCfg.featuredEnabled && featuredPrimary ? (
               <div className="home-featured" aria-label="Novos Lançamentos">
                 <div className="home-featured-head">
-                  <div className="home-featured-page-title">{String(homeCfg.featuredTitle || 'OUÇA AGORA').toUpperCase()}</div>
+                  <div className="home-featured-page-title">{(homeCfg.featuredTitle || (isPt ? 'OUÇA AGORA' : 'LISTEN NOW')).toUpperCase()}</div>
                 </div>
 
                 <div className="home-featured-row">
@@ -713,9 +723,9 @@ function App() {
                             }
                             setFeaturedPlatformsOpen(true);
                           }}
-                          title={platformList.length === 0 ? 'Sem links configurados — rolando para a Discografia' : 'Mostrar plataformas'}
+                          title={platformList.length === 0 ? (isPt ? 'Sem links configurados — rolando para a Discografia' : 'No links configured — scrolling to Discography') : (isPt ? 'Mostrar plataformas' : 'Show platforms')}
                         >
-                          {String(homeCfg.featuredButtonLabel || 'OUVIR AGORA').toUpperCase()}
+                          {(homeCfg.featuredButtonLabel || (isPt ? 'OUVIR AGORA' : 'LISTEN NOW')).toUpperCase()}
                         </button>
                       ) : (
                         <div className="home-featured-platform-icons-wrap" aria-label="Plataformas">
@@ -800,7 +810,7 @@ function App() {
 
         <section id="loja" className="shop" aria-label="Loja" style={sectionBgStyle.loja}>
           <div className="shop-inner">
-            <h2 className="shop-title">LOJA</h2>
+            <h2 className="shop-title">{isPt ? 'LOJA' : 'STORE'}</h2>
 
             <div class="shop-carousel" aria-label="Carrossel de produtos">
               {shopIndex > 0 && (
@@ -884,7 +894,7 @@ function App() {
 
         <section id="noticias" className="news" aria-label="Notícias" style={sectionBgStyle.noticias}>
           <div className="news-inner">
-            <h2 className="news-title">NOTÍCIAS</h2>
+            <h2 className="news-title">{isPt ? 'NOTÍCIAS' : 'NEWS'}</h2>
 
             <div className="news-carousel" aria-label="Carrossel de notícias">
               {newsIndex > 0 ? (
@@ -949,7 +959,7 @@ function App() {
                                 href={mediaHref}
                                 target="_blank"
                                 rel="noreferrer"
-                                aria-label={isVideo ? 'Abrir vídeo' : 'Abrir notícia'}
+                                aria-label={isVideo ? (isPt ? 'Abrir vídeo' : 'Open video') : (isPt ? 'Abrir notícia' : 'Open post')}
                                 onClick={(e) => { e.preventDefault(); setOpenNewsPost(post); }}
                               >
                                 {thumbSrc ? <img src={thumbSrc} alt="" /> : null}
@@ -1046,7 +1056,7 @@ function App() {
 
         <section id="discografia" className="discography" aria-label="Discografia" style={sectionBgStyle.discografia}>
           <div className="discography-inner">
-            <h2 className="discography-title">DISCOGRAFIA</h2>
+            <h2 className="discography-title">{isPt ? 'DISCOGRAFIA' : 'DISCOGRAPHY'}</h2>
 
             <div className="discography-grid" aria-label="Lançamentos">
               {discography.length ? (
@@ -1240,21 +1250,21 @@ function App() {
 
         <section id="contato" className="contact" aria-label="Contato" style={sectionBgStyle.contato}>
           <div className="contact-inner">
-            <h2 className="contact-title">CONTATO</h2>
+            <h2 className="contact-title">{isPt ? 'CONTATO' : 'CONTACT'}</h2>
 
             <div className="contact-grid">
               <div className="contact-left">
                 <div className="contact-block">
-                  <div className="contact-kicker">BOOKING &amp; MANAGEMENT</div>
+                  <div className="contact-kicker">BOOKING & MANAGEMENT</div>
                   <a className="contact-email" href="mailto:ai.mindofadeadbody@gmail.com">
                     ai.mindofadeadbody@gmail.com
                   </a>
                 </div>
 
                 <div className="contact-block">
-                  <div className="contact-kicker">APOIE O PROJETO</div>
+                  <div className="contact-kicker">{isPt ? 'APOIE O PROJETO' : 'SUPPORT THE PROJECT'}</div>
                   <p className="contact-help">
-                    Sua contribuição ajuda a manter viva a chama do metal independente.
+                    {isPt ? 'Sua contribuição ajuda a manter viva a chama do metal independente.' : 'Your contribution helps keep the flame of independent metal alive.'}
                   </p>
                   <div className="contact-support-btns">
                     <button type="button" className="support-opt support-opt--pix" onClick={() => { setSupportPix(true); setSupportOpen(true); }}>
@@ -1271,8 +1281,8 @@ function App() {
 
               <form className="contact-form" onSubmit={(e) => e.preventDefault()}>
                 <label className="contact-field">
-                  <span className="sr-only">Nome</span>
-                  <input type="text" name="name" placeholder="NOME" autoComplete="name" />
+                  <span className="sr-only">{isPt ? 'Nome' : 'Name'}</span>
+                  <input type="text" name="name" placeholder={isPt ? 'NOME' : 'NAME'} autoComplete="name" />
                 </label>
 
                 <label className="contact-field">
@@ -1281,17 +1291,17 @@ function App() {
                 </label>
 
                 <label className="contact-field">
-                  <span className="sr-only">Assunto</span>
-                  <input type="text" name="subject" placeholder="ASSUNTO" />
+                  <span className="sr-only">{isPt ? 'Assunto' : 'Subject'}</span>
+                  <input type="text" name="subject" placeholder={isPt ? 'ASSUNTO' : 'SUBJECT'} />
                 </label>
 
                 <label className="contact-field contact-field-message">
-                  <span class="sr-only">Mensagem</span>
-                  <textarea name="message" placeholder="MENSAGEM" rows={6} />
+                  <span className="sr-only">{isPt ? 'Mensagem' : 'Message'}</span>
+                  <textarea name="message" placeholder={isPt ? 'MENSAGEM' : 'MESSAGE'} rows={6} />
                 </label>
 
                 <button className="contact-submit" type="submit">
-                  ENVIAR MENSAGEM
+                  {isPt ? 'ENVIAR MENSAGEM' : 'SEND MESSAGE'}
                 </button>
               </form>
             </div>
@@ -1342,7 +1352,7 @@ function App() {
             {(openNewsPost.mediaKind === 'video' || openNewsPost.mediaKind === 'video_vertical') && openNewsPost.mediaUrl ? (
               openNewsPost.mediaUrl.includes('instagram.com') ? (
                 <a className="news-modal-external" href={openNewsPost.mediaUrl} target="_blank" rel="noreferrer">
-                  <span>&#9654;</span> Assistir no Instagram
+                  <span>&#9654;</span> {isPt ? 'Assistir no Instagram' : 'Watch on Instagram'}
                 </a>
               ) : (
               <div className="news-modal-video">
@@ -1385,7 +1395,7 @@ function App() {
           <div className="support-panel">
             {!supportPix ? (
               <>
-                <div className="support-panel-title">APOIE O PROJETO</div>
+                <div className="support-panel-title">{isPt ? 'APOIE O PROJETO' : 'SUPPORT THE PROJECT'}</div>
                 <button className="support-opt support-opt--pix" onClick={() => setSupportPix(true)}>
                   <img className="contact-pix-icon" src={pixPng} alt="" aria-hidden="true" />
                   PIX
@@ -1401,7 +1411,7 @@ function App() {
               </>
             ) : (
               <>
-                <button className="support-back" onClick={() => setSupportPix(false)}>← VOLTAR</button>
+                <button className="support-back" onClick={() => setSupportPix(false)}>{isPt ? '← VOLTAR' : '← BACK'}</button>
                 <div className="support-panel-title">PIX</div>
                 <a
                   href="https://nubank.com.br/cobrar/31oy9/69b56c23-57b5-4a7e-b7cf-4622fdddce9b"
@@ -1435,7 +1445,7 @@ function App() {
         <button
           className="support-fab"
           onClick={() => { setSupportOpen(v => !v); setSupportPix(false); }}
-          aria-label="Apoiar o projeto"
+          aria-label={isPt ? 'Apoiar o projeto' : 'Support the project'}
         >
           <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24" aria-hidden="true">
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>

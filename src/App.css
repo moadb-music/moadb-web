@@ -177,21 +177,9 @@ a{color:inherit;text-decoration:none}
 .lang-dropdown-item:hover{background:#8b00001a;color:var(--red)}
 .lang-dropdown-item.active{background:#8b00000d;color:var(--red)}
 
-.lang-flag{
-  align-items:center;
-  display:flex;
-  justify-content:center;
-  width:24px;
-  height:24px;
-}
+.lang-flag{align-items:center;display:flex;justify-content:center;width:28px;height:18px;}
 
-.lang-flag svg{
-  display:block;
-  box-shadow:0 0 5px #00000080;
-  border-radius:2px;
-  width:24px;
-  height:24px;
-}
+.lang-flag svg{display:block;box-shadow:0 0 5px #00000080;border-radius:2px;width:28px!important;height:18px!important;}
 
 /* HERO (INÃCIO) */
 .hero{
@@ -2615,3 +2603,6 @@ a.news-media:focus-visible .news-play::after{
   transition: opacity 0.2s;
 }
 .news-modal-external:hover { opacity: 0.85; }
+
+
+

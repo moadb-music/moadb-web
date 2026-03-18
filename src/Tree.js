@@ -10,7 +10,7 @@ import instagramPng from './assets/instagram.png';
 import tiktokIcon from './assets/tiktok.png';
 import pixPng from './assets/pix.png';
 
-const LINKS = [
+const LINKS_PT = [
   {
     group: 'OUÇA',
     items: [
@@ -35,6 +35,31 @@ const LINKS = [
     ],
   },
 ];
+const LINKS_EN = [
+  {
+    group: 'LISTEN',
+    items: [
+      { label: 'Spotify', sub: 'Streaming', href: 'https://open.spotify.com/intl-pt/artist/7zLPRu5akdcZHeDbVMm3o8', icon: spotifyIcon },
+      { label: 'Apple Music', sub: 'Streaming', href: 'https://music.apple.com/br/artist/mind-of-a-dead-body/1880815220', icon: appleIcon },
+      { label: 'Deezer', sub: 'Streaming', href: 'https://www.deezer.com/br/artist/375893561', icon: deezerIcon },
+      { label: 'YouTube Music', sub: 'Streaming', href: 'https://music.youtube.com/channel/UCWuiRQ6qg-tMImAazjifIGg', icon: youtubeMusicIcon },
+    ],
+  },
+  {
+    group: 'FOLLOW',
+    items: [
+      { label: 'Instagram', sub: '@mindofadeadbody', href: 'https://www.instagram.com/mindofadeadbody', icon: instagramPng },
+      { label: 'TikTok', sub: '@mindofadeadbody', href: 'https://www.tiktok.com/@mindofadeadbody', icon: tiktokIcon },
+      { label: 'YouTube', sub: 'Videos & clips', href: 'https://www.youtube.com/@mindofadeadbody', icon: youtubeIcon },
+    ],
+  },
+  {
+    group: 'WEBSITE',
+    items: [
+      { label: 'Official Website', sub: 'mindofadeadbody.com', href: '/', icon: null },
+    ],
+  },
+];
 
 function openBmcWidget() {
   const btn = document.querySelector('#bmc-wbtn');
@@ -44,6 +69,11 @@ function openBmcWidget() {
 export default function Tree() {
   const [supportOpen, setSupportOpen] = useState(false);
   const [showPix, setShowPix] = useState(false);
+  const [lang, setLang] = useState(() => {
+    const nav = navigator.languages?.[0] || navigator.language || 'pt-BR';
+    return nav.toLowerCase().startsWith('pt') ? 'pt' : 'en';
+  });
+  const isPt = lang === 'pt';
 
   useEffect(() => {
     document.body.classList.add('tree-route');
@@ -59,7 +89,7 @@ export default function Tree() {
           <span>DEAD BODY</span>
         </h1>
 
-        {LINKS.map((group) => (
+        {(isPt ? LINKS_PT : LINKS_EN).map((group) => (
           <div key={group.group} className="tree-group">
             <div className="tree-group-label">{group.group}</div>
             {group.items.map((item) => (
@@ -90,7 +120,7 @@ export default function Tree() {
 
         {/* Botão de apoio */}
         <div className="tree-group">
-          <div className="tree-group-label">APOIE</div>
+          <div className="tree-group-label">{isPt ? 'APOIE' : 'SUPPORT'}</div>
           <button
             type="button"
             className="tree-link tree-link--support"
@@ -102,7 +132,7 @@ export default function Tree() {
               </svg>
             </span>
             <span className="tree-link-text">
-              Apoiar o Projeto
+              {isPt ? 'Apoiar o Projeto' : 'Support the Project'}
               <span className="tree-link-sub">PIX · Buy Me a Coffee</span>
             </span>
           </button>
@@ -135,7 +165,7 @@ export default function Tree() {
                 </>
               ) : (
                 <div className="tree-pix-panel">
-                  <button className="tree-pix-back" onClick={() => setShowPix(false)}>← VOLTAR</button>
+                  <button className="tree-pix-back" onClick={() => setShowPix(false)}>{isPt ? '← VOLTAR' : '← BACK'}</button>
                   <a
                     href="https://nubank.com.br/cobrar/31oy9/69b56c23-57b5-4a7e-b7cf-4622fdddce9b"
                     target="_blank"
