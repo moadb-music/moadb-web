@@ -5,6 +5,7 @@ import App from './App';
 import Admin from './Admin';
 import AdminLogin from './AdminLogin';
 import RequireAuth from './RequireAuth';
+import Tree from './Tree';
 import { AuthProvider } from './authContext';
 import reportWebVitals from './reportWebVitals';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
@@ -16,6 +17,7 @@ root.render(
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<App />} />
+          <Route path="/tree" element={<Tree />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route
             path="/admin"

@@ -223,6 +223,7 @@ export default function PaginasAdmin() {
 
   const [selectedSection, setSelectedSection] = useState(SECTIONS[0].key);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editorMode, setEditorMode] = useState('visual'); // 'visual' | 'content'
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
 
   const sectionOrder = Array.isArray(config.sectionOrder) ? config.sectionOrder : DEFAULT_ORDER;
@@ -277,6 +278,7 @@ export default function PaginasAdmin() {
   useEffect(() => {
     setDraft(selectedBg);
     setIsEditorOpen(false);
+    setEditorMode('visual');
   }, [selectedSection, selectedBg]);
 
   const previewStyle = useMemo(() => {
@@ -343,8 +345,9 @@ export default function PaginasAdmin() {
     setIsEditorOpen(false);
   }
 
-  function openEditor() {
+  function openEditor(mode = 'visual') {
     setDraft(selectedBg);
+    setEditorMode(mode);
     setIsEditorOpen(true);
   }
 
@@ -432,7 +435,7 @@ export default function PaginasAdmin() {
         </aside>
 
         <div className="admin-panel">
-          <div className="admin-panel-title">{isEditorOpen ? `EDITAR — ${sectionLabel}` : `PREVIEW — ${sectionLabel}`}</div>
+          <div className="admin-panel-title">{isEditorOpen ? `${editorMode === 'content' ? 'CONTEÚDO' : 'VISUAL'} — ${sectionLabel}` : `PREVIEW — ${sectionLabel}`}</div>
 
           {!isEditorOpen ? (
             <div className="admin-form">
@@ -446,32 +449,32 @@ export default function PaginasAdmin() {
               </div>
 
               {selectedSection === 'sobre' ? (
-                <div className="admin-card" style={{ marginTop: 14 }}>
-                  <div className="admin-panel-title" style={{ fontSize: 14, letterSpacing: 2 }}>SOBRE — CONTEÚDO</div>
-                  <div className="admin-pages-divider" />
-
-                  <div className="admin-field-row" style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                    <div className="admin-muted">Edite título/texto (PT/EN) e imagem da seção Sobre.</div>
-                    <button type="button" className="admin-btn admin-btn-primary" onClick={openEditor}>
-                      EDITAR
-                    </button>
-                  </div>
+                <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <button type="button" className="admin-btn admin-btn-ghost" onClick={resetSelected} disabled={saving || loading}>
+                    RESETAR SEÇÃO
+                  </button>
+                  <button type="button" className="admin-btn" onClick={() => openEditor('visual')}>
+                    EDITAR VISUAL
+                  </button>
+                  <button type="button" className="admin-btn admin-btn-primary" onClick={() => openEditor('content')}>
+                    EDITAR CONTEÚDO
+                  </button>
                 </div>
-              ) : null}
-
-              <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <button type="button" className="admin-btn admin-btn-ghost" onClick={resetSelected} disabled={saving || loading}>
-                  RESETAR SEÇÃO
-                </button>
-                <button type="button" className="admin-btn admin-btn-primary" onClick={openEditor}>
-                  EDITAR
-                </button>
-              </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <button type="button" className="admin-btn admin-btn-ghost" onClick={resetSelected} disabled={saving || loading}>
+                    RESETAR SEÇÃO
+                  </button>
+                  <button type="button" className="admin-btn admin-btn-primary" onClick={() => openEditor('visual')}>
+                    EDITAR
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="admin-form">
               <div className="admin-pages-editor-stack">
-                <div className="admin-pages-editor-top">
+                <div className="admin-pages-editor-top" style={editorMode === 'content' ? { display: 'none' } : undefined}>
                   <div className="admin-card admin-pages-card">
                     <div className="admin-pages-degrade-head">
                       <div className="admin-pages-label">DEGRADÊ</div>
@@ -644,7 +647,7 @@ export default function PaginasAdmin() {
                   </div>
                 </div>
 
-                {selectedSection === 'sobre' ? (
+                {selectedSection === 'sobre' && editorMode === 'content' ? (
                   <div className="admin-card" style={{ marginTop: 14 }}>
                     <div className="admin-pages-degrade-head">
                       <div className="admin-pages-label">SOBRE — CONTEÚDO</div>
@@ -856,9 +859,11 @@ export default function PaginasAdmin() {
                 <button type="button" className="admin-btn" onClick={closeEditor}>
                   FECHAR
                 </button>
-                <button type="button" className="admin-btn admin-btn-primary" onClick={applyDraft}>
-                  APLICAR
-                </button>
+                {editorMode === 'visual' ? (
+                  <button type="button" className="admin-btn admin-btn-primary" onClick={applyDraft}>
+                    APLICAR
+                  </button>
+                ) : null}
               </div>
             </div>
           )}
