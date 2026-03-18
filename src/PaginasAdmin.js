@@ -22,12 +22,15 @@ function makeDefaultBackground() {
   return {
     gradientEnabled: true,
     gradientFrom: '#000000',
+    gradientFromOpacity: 1,
     gradientTo: '#120000',
+    gradientToOpacity: 1,
     gradientAngle: 180,
-    gradientOpacity: 1,
     imageEnabled: true,
     imageUrl: '',
     imageOpacity: 0.35,
+    visible: true,
+    divider: 'line',
   };
 }
 
@@ -96,7 +99,10 @@ function normalizeBackground(rawBg) {
   next.gradientFrom = typeof bg.gradientFrom === 'string' ? bg.gradientFrom : legacyColor || next.gradientFrom;
   next.gradientTo = typeof bg.gradientTo === 'string' ? bg.gradientTo : legacyColor || next.gradientTo;
   next.gradientAngle = clampAngle(bg.gradientAngle ?? next.gradientAngle);
-  next.gradientOpacity = clamp01(bg.gradientOpacity ?? bg.colorOpacity ?? next.gradientOpacity);
+  // support legacy single gradientOpacity
+  const legacyOp = bg.gradientOpacity ?? bg.colorOpacity;
+  next.gradientFromOpacity = clamp01(bg.gradientFromOpacity ?? legacyOp ?? next.gradientFromOpacity);
+  next.gradientToOpacity = clamp01(bg.gradientToOpacity ?? legacyOp ?? next.gradientToOpacity);
 
   if (typeof bg.gradientEnabled === 'boolean') {
     next.gradientEnabled = bg.gradientEnabled;
@@ -114,6 +120,8 @@ function normalizeBackground(rawBg) {
 
   next.imageUrl = typeof bg.imageUrl === 'string' ? bg.imageUrl : legacyImage;
   next.imageOpacity = clamp01(bg.imageOpacity ?? bg.overlayOpacity ?? next.imageOpacity);
+  next.visible = typeof bg.visible === 'boolean' ? bg.visible : true;
+  next.divider = ['none', 'line', 'fade'].includes(bg.divider) ? bg.divider : 'line';
   return next;
 }
 
@@ -199,8 +207,8 @@ function backgroundToPreviewStyle(bg) {
   const enabled = bg.gradientEnabled !== false;
   const imagesOn = bg.imageEnabled !== false;
 
-  const from = enabled ? alphaHex(bg.gradientFrom, bg.gradientOpacity) : 'transparent';
-  const to = enabled ? alphaHex(bg.gradientTo, bg.gradientOpacity) : 'transparent';
+  const from = enabled ? alphaHex(bg.gradientFrom, bg.gradientFromOpacity ?? 1) : 'transparent';
+  const to = enabled ? alphaHex(bg.gradientTo, bg.gradientToOpacity ?? 1) : 'transparent';
 
   const style = {
     backgroundImage: `linear-gradient(${clampAngle(bg.gradientAngle)}deg, ${from}, ${to})`,
@@ -225,6 +233,7 @@ export default function PaginasAdmin() {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editorMode, setEditorMode] = useState('visual'); // 'visual' | 'content'
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [galleryTarget, setGalleryTarget] = useState('bg'); // 'bg' | 'about'
 
   const sectionOrder = Array.isArray(config.sectionOrder) ? config.sectionOrder : DEFAULT_ORDER;
   const orderedSections = sectionOrder
@@ -427,6 +436,19 @@ export default function PaginasAdmin() {
                       disabled={s.key === 'main' || idx === orderedSections.length - 1}
                       title="Mover para baixo"
                     >▼</button>
+                    <button
+                      type="button"
+                      className="admin-track-btn"
+                      style={{ padding: '3px 7px', fontSize: '0.7rem', lineHeight: 1, opacity: config.backgroundsBySection?.[s.key]?.visible === false ? 0.4 : 1 }}
+                      onClick={() => setConfig((prev) => ({
+                        ...prev,
+                        backgroundsBySection: {
+                          ...(prev.backgroundsBySection || {}),
+                          [s.key]: { ...(prev.backgroundsBySection?.[s.key] ?? makeDefaultBackground()), visible: !(prev.backgroundsBySection?.[s.key]?.visible !== false) },
+                        },
+                      }))}
+                      title={config.backgroundsBySection?.[s.key]?.visible === false ? 'Mostrar seção' : 'Ocultar seção'}
+                    >{config.backgroundsBySection?.[s.key]?.visible === false ? '👁' : '🙈'}</button>
                   </div>
                 </div>
               );
@@ -566,8 +588,8 @@ export default function PaginasAdmin() {
 
                       <div className="admin-pages-slider">
                         <div className="admin-range-top">
-                          <span>OPACIDADE DO DEGRADÊ</span>
-                          <span>{Math.round(clamp01(draft.gradientOpacity) * 100)}%</span>
+                          <span>OPACIDADE COR INICIAL</span>
+                          <span>{Math.round(clamp01(draft.gradientFromOpacity ?? 1) * 100)}%</span>
                         </div>
                         <input
                           className="admin-slider"
@@ -575,14 +597,31 @@ export default function PaginasAdmin() {
                           min="0"
                           max="1"
                           step="0.01"
-                          value={draft.gradientOpacity}
-                          onChange={(e) => setDraft((v) => ({ ...v, gradientOpacity: clamp01(e.target.value) }))}
+                          value={draft.gradientFromOpacity ?? 1}
+                          onChange={(e) => setDraft((v) => ({ ...v, gradientFromOpacity: clamp01(e.target.value) }))}
+                          disabled={!draft.gradientEnabled}
+                        />
+                      </div>
+
+                      <div className="admin-pages-slider">
+                        <div className="admin-range-top">
+                          <span>OPACIDADE COR FINAL</span>
+                          <span>{Math.round(clamp01(draft.gradientToOpacity ?? 1) * 100)}%</span>
+                        </div>
+                        <input
+                          className="admin-slider"
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                          value={draft.gradientToOpacity ?? 1}
+                          onChange={(e) => setDraft((v) => ({ ...v, gradientToOpacity: clamp01(e.target.value) }))}
                           disabled={!draft.gradientEnabled}
                         />
                       </div>
                     </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                   </div>
-
                   <div className="admin-card admin-pages-card">
                     <div className="admin-pages-degrade-head">
                       <div className="admin-pages-label">IMAGEM</div>
@@ -612,9 +651,7 @@ export default function PaginasAdmin() {
                         <button
                           type="button"
                           className="admin-cover-drop admin-cover-drop-xl"
-                          onClick={() => {
-                            setIsGalleryOpen(true);
-                          }}
+                          onClick={() => { setGalleryTarget('bg'); setIsGalleryOpen(true); }}
                           aria-label="Selecionar imagem"
                           title="Selecionar imagem"
                           disabled={!draft.imageEnabled}
@@ -643,6 +680,26 @@ export default function PaginasAdmin() {
                         onChange={(e) => setDraft((v) => ({ ...v, imageOpacity: clamp01(e.target.value) }))}
                         disabled={!draft.imageEnabled}
                       />
+                    </div>
+                  </div>
+                  </div>
+                  <div className="admin-card admin-pages-card" style={{ marginTop: 14 }}>
+                    <div className="admin-pages-degrade-head">
+                      <div className="admin-pages-label">DIVISOR</div>
+                    </div>
+                    <div className="admin-pages-divider" />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                      {['none', 'line', 'fade'].map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          className={`admin-track-btn${draft.divider === opt ? ' is-active' : ''}`}
+                          style={{ flex: 1, padding: '6px 4px', fontSize: '0.7rem', letterSpacing: 1 }}
+                          onClick={() => setDraft((v) => ({ ...v, divider: opt }))}
+                        >
+                          {opt === 'none' ? 'NENHUM' : opt === 'line' ? 'LINHA' : 'FADE'}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -713,7 +770,7 @@ export default function PaginasAdmin() {
                           <button
                             type="button"
                             className="admin-cover-drop admin-cover-drop-xl"
-                            onClick={() => setIsGalleryOpen(true)}
+                            onClick={() => { setGalleryTarget('about'); setIsGalleryOpen(true); }}
                             aria-label="Selecionar imagem do Sobre"
                             title="Selecionar imagem"
                           >
@@ -881,7 +938,7 @@ export default function PaginasAdmin() {
           initialTabKey="all"
           onClose={() => setIsGalleryOpen(false)}
           onSelect={(url) => {
-            if (selectedSection === 'sobre') {
+            if (galleryTarget === 'about') {
               setConfig((prev) => {
                 const base = prev.about ?? makeDefaultAbout();
                 const sections = (Array.isArray(base.sections) ? base.sections : makeDefaultAbout().sections).slice(0, 2);
@@ -890,10 +947,7 @@ export default function PaginasAdmin() {
                 return { ...prev, about: { ...base, sections: nextSections } };
               });
             } else {
-              setDraft((v) => ({
-                ...v,
-                imageUrl: url,
-              }));
+              setDraft((v) => ({ ...v, imageUrl: url }));
             }
             setIsGalleryOpen(false);
           }}

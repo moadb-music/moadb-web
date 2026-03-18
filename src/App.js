@@ -4,7 +4,7 @@ import logoPng from './assets/logo.png';
 import aboutLogoMark from './assets/logo-mark.png';
 import instagramPng from './assets/instagram.png';
 import pixPng from './assets/pix.png';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import spotifyIcon from './assets/spotify.png';
 import appleIcon from './assets/apple.png';
@@ -193,8 +193,89 @@ const NAV_SECTIONS_EN = [
   { key: 'contato',     href: '#contato',     label: 'CONTACT' },
 ];
 
+function SectionBg({ bg }) {
+  if (!bg) return null;
+  const c01 = (n) => Math.max(0, Math.min(1, parseFloat(n) || 0));
+  const aHex = (c, op) => /^#[0-9a-fA-F]{6}$/.test(c) ? `${c}${Math.round(c01(op)*255).toString(16).padStart(2,'0')}` : (c || '#000000');
+  const gradOn = bg.gradientEnabled !== false;
+  const imgOn = bg.imageEnabled !== false && bg.imageUrl;
+  const angle = Math.max(0, Math.min(360, parseFloat(bg.gradientAngle) || 180));
+  const from = gradOn ? aHex(bg.gradientFrom || '#000000', bg.gradientFromOpacity ?? bg.gradientOpacity ?? 1) : 'transparent';
+  const to = gradOn ? aHex(bg.gradientTo || '#000000', bg.gradientToOpacity ?? bg.gradientOpacity ?? 1) : 'transparent';
+  const divider = bg.divider ?? 'line';
+  return (
+    <>
+      {gradOn && (
+        <div className="section-bg-gradient" aria-hidden="true" style={{ background: `linear-gradient(${angle}deg, ${from}, ${to})` }} />
+      )}
+      {imgOn && (
+        <div className="section-bg-image" aria-hidden="true" style={{ backgroundImage: `url('${bg.imageUrl}')`, opacity: c01(bg.imageOpacity ?? 0.35) }} />
+      )}
+      {divider === 'line' && <div className="section-divider section-divider--line" aria-hidden="true" />}
+      {divider === 'fade' && <div className="section-divider section-divider--fade" aria-hidden="true" />}
+    </>
+  );
+}
+
+function useScrollReveal(deps = []) {
+  useEffect(() => {
+    const els = document.querySelectorAll('.reveal');
+    if (!els.length) return;
+    const obs = new IntersectionObserver(
+      (entries) => entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.classList.add('revealed');
+        } else {
+          e.target.classList.remove('revealed');
+        }
+      }),
+      { threshold: 0.1 }
+    );
+    els.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+}
+
+function useParallax() {
+  useEffect(() => {
+    let ticking = false;
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const heroInner = document.querySelector('.hero-inner');
+        if (heroInner) {
+          const y = window.scrollY;
+          heroInner.style.transform = `translateY(${y * 0.15}px)`;
+          heroInner.style.opacity = Math.max(0, 1 - y / 800);
+        }
+        ticking = false;
+      });
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+}
+
+function useTouchSwipe(onSwipeLeft, onSwipeRight) {
+  const startX = useRef(null);
+  return {
+    onTouchStart: (e) => { startX.current = e.touches[0].clientX; },
+    onTouchEnd: (e) => {
+      if (startX.current === null) return;
+      const dx = e.changedTouches[0].clientX - startX.current;
+      if (Math.abs(dx) < 40) return;
+      if (dx < 0) onSwipeLeft();
+      else onSwipeRight();
+      startX.current = null;
+    },
+  };
+}
+
 function App() {
   const [langOpen, setLangOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [lang, setLang] = useState(() => {
     const nav = navigator.languages?.[0] || navigator.language || 'pt-BR';
     return nav.toLowerCase().startsWith('pt') ? 'pt-BR' : 'en';
@@ -373,67 +454,74 @@ function App() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    async function loadPages() {
-      try {
-        const ref = doc(db, ...PAGES_DOC_PATH);
-        const snap = await getDoc(ref);
-        if (!snap.exists()) return;
-        const data = snap.data();
-        const content = data?.content ?? data;
-        if (!cancelled) setPagesContent(content);
-      } catch {
-        // silencioso: mantém placeholders
-      }
-    }
-    loadPages();
-    return () => {
-      cancelled = true;
-    };
+    const ref = doc(db, ...PAGES_DOC_PATH);
+    const unsub = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const content = data?.content ?? data;
+      setPagesContent(content);
+    }, () => { /* silencioso */ });
+    return unsub;
   }, []);
 
   const langKey = useMemo(() => (String(lang || '').toLowerCase().startsWith('pt') ? 'pt' : 'en'), [lang]);
   const aboutFromDb = useMemo(() => normalizeAboutFromPagesDoc(pagesContent || {}), [pagesContent]);
 
   const sectionBgStyle = useMemo(() => {
-    const bgs = pagesContent?.backgroundsBySection ?? {};
     const order = Array.isArray(pagesContent?.sectionOrder) ? pagesContent.sectionOrder : [];
-    const toStyle = (bg, key) => {
+    const toStyle = (key) => {
       const orderIdx = order.indexOf(key);
-      const base = orderIdx >= 0 ? { order: orderIdx } : {};
-      if (!bg) return base;
-      const c01 = (n) => Math.max(0, Math.min(1, parseFloat(n) || 0));
-      const aHex = (c, op) => /^#[0-9a-fA-F]{6}$/.test(c) ? `${c}${Math.round(c01(op)*255).toString(16).padStart(2,'0')}` : (c || '#000000');
-      const gradOn = bg.gradientEnabled !== false;
-      const imgOn = bg.imageEnabled !== false && bg.imageUrl;
-      const angle = Math.max(0, Math.min(360, parseFloat(bg.gradientAngle) || 180));
-      const from = gradOn ? aHex(bg.gradientFrom || '#000000', bg.gradientOpacity ?? 1) : 'transparent';
-      const to = gradOn ? aHex(bg.gradientTo || '#000000', bg.gradientOpacity ?? 1) : 'transparent';
-      const imgOpacity = c01(bg.imageOpacity ?? 0.35);
-      const overlayAlpha = Math.round((1 - imgOpacity) * 255).toString(16).padStart(2, '0');
-      return {
-        ...base,
-        '--section-bg-gradient': gradOn ? `linear-gradient(${angle}deg, ${from}, ${to})` : 'none',
-        '--section-bg-image': imgOn ? `url('${bg.imageUrl}')` : 'none',
-        '--section-bg-overlay': imgOn ? `#000000${overlayAlpha}` : 'transparent',
-      };
+      return orderIdx >= 0 ? { order: orderIdx } : {};
     };
     return {
-      home: toStyle(bgs.home, 'home'),
-      sobre: toStyle(bgs.sobre, 'sobre'),
-      loja: toStyle(bgs.loja, 'loja'),
-      noticias: toStyle(bgs.noticias, 'noticias'),
-      discografia: toStyle(bgs.discografia, 'discografia'),
-      contato: toStyle(bgs.contato, 'contato'),
+      home: toStyle('home'),
+      sobre: toStyle('sobre'),
+      loja: toStyle('loja'),
+      noticias: toStyle('noticias'),
+      discografia: toStyle('discografia'),
+      contato: toStyle('contato'),
     };
   }, [pagesContent]);
+
+  const sectionBg = useMemo(() => {
+    const bgs = pagesContent?.backgroundsBySection ?? {};
+    return {
+      home: bgs.home ?? null,
+      sobre: bgs.sobre ?? null,
+      loja: bgs.loja ?? null,
+      noticias: bgs.noticias ?? null,
+      discografia: bgs.discografia ?? null,
+      contato: bgs.contato ?? null,
+    };
+  }, [pagesContent]);
+  const sectionVisible = useMemo(() => {
+    const bgs = pagesContent?.backgroundsBySection ?? {};
+    const isVisible = (key) => bgs[key]?.visible !== false;
+    return { home: isVisible('home'), sobre: isVisible('sobre'), loja: isVisible('loja'), noticias: isVisible('noticias'), discografia: isVisible('discografia'), contato: isVisible('contato') };
+  }, [pagesContent]);
+
   const shopItems = useMemo(() => shopCfg?.items || [], [shopCfg]);
   const shopStoreUrl = String(shopCfg?.storeUrl || '').trim();
 
   const [shopIndex, setShopIndex] = useState(0);
-  const slidesPerPage = 5;
-  const totalSlides = shopItems.length + 1; // +1 for the "ver mais" card
-  const maxShopIndex = Math.max(0, totalSlides - slidesPerPage);
+  const totalSlides = shopItems.length + 1;
+
+  function getShopSlidesVisible() {
+    const w = window.innerWidth;
+    if (w <= 600) return 1;
+    if (w <= 900) return 2;
+    if (w <= 1200) return 3;
+    return 5;
+  }
+  const [shopSlidesVisible, setShopSlidesVisible] = useState(() => getShopSlidesVisible());
+
+  useEffect(() => {
+    function onResize() { setShopSlidesVisible(getShopSlidesVisible()); }
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const maxShopIndex = Math.max(0, totalSlides - shopSlidesVisible);
 
   function clamp(n, min, max) {
     return Math.max(min, Math.min(max, n));
@@ -444,7 +532,6 @@ function App() {
   }
 
   useEffect(() => {
-    // se a lista diminuir, evita índice fora do range
     setShopIndex((idx) => clamp(idx, 0, maxShopIndex));
   }, [maxShopIndex]);
 
@@ -511,8 +598,20 @@ function App() {
 
   // ===== NEWS carousel state =====
   const [newsIndex, setNewsIndex] = useState(0);
-  const newsVisibleCount = 4;
   const newsViewportRef = useRef(null);
+
+  function getNewsVisibleCount() {
+    const w = window.innerWidth;
+    if (w <= 900) return 1;
+    return 4;
+  }
+  const [newsVisibleCount, setNewsVisibleCount] = useState(() => getNewsVisibleCount());
+
+  useEffect(() => {
+    function onResize() { setNewsVisibleCount(getNewsVisibleCount()); }
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // controla “Ler mais…” (expansão inline) e detecção de clamp por item
   const [expandedNewsIds, setExpandedNewsIds] = useState(() => new Set());
@@ -608,31 +707,51 @@ function App() {
   const [supportPix, setSupportPix] = useState(false);
   const [openNewsPost, setOpenNewsPost] = useState(null);
 
+  useScrollReveal([discography.length, visibleNewsItems.length]);
+  useParallax();
+
   return (
     <div className="app-container">
-      <div className="bg-layer" aria-hidden="true" />
+      <div className="bg-layer" aria-hidden="true" style={(() => {
+        const bg = pagesContent?.backgroundsBySection?.main;
+        if (!bg) return {};
+        const c01 = (n) => Math.max(0, Math.min(1, parseFloat(n) || 0));
+        const aHex = (c, op) => /^#[0-9a-fA-F]{6}$/.test(c) ? `${c}${Math.round(c01(op)*255).toString(16).padStart(2,'0')}` : (c || '#000000');
+        const gradOn = bg.gradientEnabled !== false;
+        const imgOn = bg.imageEnabled !== false && bg.imageUrl;
+        const angle = Math.max(0, Math.min(360, parseFloat(bg.gradientAngle) || 180));
+        const from = gradOn ? aHex(bg.gradientFrom || '#000000', bg.gradientFromOpacity ?? bg.gradientOpacity ?? 1) : 'transparent';
+        const to = gradOn ? aHex(bg.gradientTo || '#000000', bg.gradientToOpacity ?? bg.gradientOpacity ?? 1) : 'transparent';
+        return {
+          '--bg-gradient': gradOn ? `linear-gradient(${angle}deg, ${from}, ${to})` : 'none',
+          '--bg-image': imgOn ? `url('${bg.imageUrl}')` : 'none',
+          '--bg-image-opacity': imgOn ? c01(bg.imageOpacity ?? 0.35) : 0,
+        };
+      })()}  />
 
       <nav className="top-nav" aria-label="Navegação principal">
         <a className="nav-logo-wrap" href="#inicio" aria-label="Ir para Início">
           <img className="nav-logo" src={logoPng} alt="Mind of a Dead Body" />
         </a>
 
-        <div className="nav-links" role="navigation" aria-label="Seções">
+        {/* Desktop nav */}
+        <div className="nav-links nav-links--desktop" role="navigation" aria-label="Seções">
           {(() => {
             const order = Array.isArray(pagesContent?.sectionOrder) ? pagesContent.sectionOrder : [];
             const NAV_SECTIONS = isPt ? NAV_SECTIONS_PT : NAV_SECTIONS_EN;
             const navMap = new Map(NAV_SECTIONS.map((s) => [s.key, s]));
             const ordered = order
-              .filter((k) => k !== 'main' && navMap.has(k))
+              .filter((k) => k !== 'main' && navMap.has(k) && sectionVisible[k] !== false)
               .map((k) => navMap.get(k));
-            const missing = NAV_SECTIONS.filter((s) => !order.includes(s.key));
+            const missing = NAV_SECTIONS.filter((s) => !order.includes(s.key) && sectionVisible[s.key] !== false);
             return [...ordered, ...missing].map((s) => (
               <a key={s.key} href={s.href}>{s.label}</a>
             ));
           })()}
         </div>
 
-        <div className="lang-dropdown" ref={langRef}>
+        {/* Lang dropdown: só no desktop */}
+        <div className="lang-dropdown lang-dropdown--desktop" ref={langRef}>
           <button
             className="lang-dropdown-toggle"
             type="button"
@@ -679,13 +798,61 @@ function App() {
             </ul>
           )}
         </div>
+
+        {/* Hambúrguer (mobile) — canto direito, no lugar do lang-dropdown */}
+        <button
+          className={`nav-hamburger${menuOpen ? ' is-open' : ''}`}
+          type="button"
+          aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen(v => !v)}
+        >
+          <span /><span /><span />
+        </button>
       </nav>
+
+      {/* Mobile menu drawer */}
+      {menuOpen && (
+        <div className="nav-mobile-menu" role="navigation" aria-label="Menu">
+          {(() => {
+            const order = Array.isArray(pagesContent?.sectionOrder) ? pagesContent.sectionOrder : [];
+            const NAV_SECTIONS = isPt ? NAV_SECTIONS_PT : NAV_SECTIONS_EN;
+            const navMap = new Map(NAV_SECTIONS.map((s) => [s.key, s]));
+            const ordered = order
+              .filter((k) => k !== 'main' && navMap.has(k) && sectionVisible[k] !== false)
+              .map((k) => navMap.get(k));
+            const missing = NAV_SECTIONS.filter((s) => !order.includes(s.key) && sectionVisible[s.key] !== false);
+            return [...ordered, ...missing].map((s) => (
+              <a key={s.key} href={s.href} onClick={() => setMenuOpen(false)}>{s.label}</a>
+            ));
+          })()}
+          {/* Idioma dentro do drawer */}
+          <div className="nav-mobile-lang">
+            <button
+              type="button"
+              className={`nav-mobile-lang-btn${isPt ? ' active' : ''}`}
+              onClick={() => { setLang('pt-BR'); setMenuOpen(false); }}
+            >
+              <span className="lang-flag"><FlagBR /></span> PT
+            </button>
+            <button
+              type="button"
+              className={`nav-mobile-lang-btn${!isPt ? ' active' : ''}`}
+              onClick={() => { setLang('en'); setMenuOpen(false); }}
+            >
+              <span className="lang-flag"><FlagUK /></span> EN
+            </button>
+          </div>
+        </div>
+      )}
 
       <main style={{ display: 'flex', flexDirection: 'column' }}>
         <section id="inicio" className="hero" aria-label="Inicio" style={sectionBgStyle.home}>
+          <SectionBg bg={sectionBg.home} />
+          <div className="hero-grain" aria-hidden="true" />
           <div className="hero-inner">
             {!(homeCfg.featuredEnabled && featuredPrimary) ? (
-              <h1 className="hero-title">
+              <h1 className="hero-title" data-text="MIND OF A DEAD BODY">
                 <span>MIND OF A</span>
                 <span>DEAD BODY</span>
               </h1>
@@ -767,7 +934,8 @@ function App() {
           </div>
         </section>
 
-        <section id="sobre" className="about" aria-label="Sobre" style={sectionBgStyle.sobre}>
+        <section id="sobre" className={`about reveal${!sectionVisible.sobre ? ' section-hidden' : ''}`} aria-label="Sobre" style={sectionBgStyle.sobre}>
+          <SectionBg bg={sectionBg.sobre} />
           <div className="about-inner">
             {/* Título principal fixo (não editável via Firestore) */}
             <h2 className="about-title">{langKey === 'pt' ? 'SOBRE' : 'ABOUT'}</h2>
@@ -808,15 +976,23 @@ function App() {
           </div>
         </section>
 
-        <section id="loja" className="shop" aria-label="Loja" style={sectionBgStyle.loja}>
+        <section id="loja" className={`shop reveal${!sectionVisible.loja ? ' section-hidden' : ''}`} aria-label="Loja" style={sectionBgStyle.loja}>
+          <SectionBg bg={sectionBg.loja} />
           <div className="shop-inner">
             <h2 className="shop-title">{isPt ? 'LOJA' : 'STORE'}</h2>
 
-            <div class="shop-carousel" aria-label="Carrossel de produtos">
+            <div
+              className="shop-carousel"
+              aria-label="Carrossel de produtos"
+              {...useTouchSwipe(
+                () => goShopIndex(shopIndex + 1),
+                () => goShopIndex(shopIndex - 1)
+              )}
+            >
               {shopIndex > 0 && (
                 <button
                   type="button"
-                  class="shop-nav-btn prev"
+                  className="shop-nav-btn prev"
                   onClick={() => goShopIndex(shopIndex - 1)}
                   aria-label="Anterior"
                 >
@@ -824,15 +1000,15 @@ function App() {
                 </button>
               )}
 
-              <div class="shop-viewport">
+              <div className="shop-viewport">
                 <div
-                  class="shop-track"
-                  style={{ transform: `translateX(-${shopIndex * (100 / slidesPerPage)}%)` }}
+                  className="shop-track"
+                  style={{ transform: `translateX(-${shopIndex * (100 / shopSlidesVisible)}%)` }}
                 >
                   {shopItems.map(item => (
-                    <div key={item.id} class="shop-slide">
+                    <div key={item.id} className="shop-slide">
                       <a
-                        class="shop-card shop-card-link"
+                        className="shop-card shop-card-link"
                         href={item.href || shopStoreUrl || '#'}
                         target={item.href || shopStoreUrl ? '_blank' : undefined}
                         rel={item.href || shopStoreUrl ? 'noreferrer' : undefined}
@@ -841,27 +1017,27 @@ function App() {
                           if (!(item.href || shopStoreUrl)) e.preventDefault();
                         }}
                       >
-                        <div class="shop-image" style={item.bgColor ? { background: item.bgColor } : undefined}>
+                        <div className="shop-image" style={item.bgColor ? { background: item.bgColor } : undefined}>
                           <img src={item.image} alt="" />
                         </div>
-                        <div class="shop-desc">{item.title}</div>
-                        <span class="shop-buy" aria-hidden="true">
+                        <div className="shop-desc">{item.title}</div>
+                        <span className="shop-buy" aria-hidden="true">
                           {langKey === 'pt' ? 'COMPRAR' : 'BUY'}
                         </span>
                       </a>
                     </div>
                   ))}
 
-                  <div class="shop-slide">
+                  <div className="shop-slide">
                     <a
-                      class="shop-more"
+                      className="shop-more"
                       href={shopStoreUrl || '#'}
                       target={shopStoreUrl ? '_blank' : undefined}
                       rel={shopStoreUrl ? 'noreferrer' : undefined}
                       aria-label={langKey === 'pt' ? 'Ver mais produtos' : 'See more products'}
                     >
-                      <span class="shop-more-plus">+</span>
-                      <span class="shop-more-text">{langKey === 'pt' ? 'VER MAIS' : 'SEE MORE'}</span>
+                      <span className="shop-more-plus">+</span>
+                      <span className="shop-more-text">{langKey === 'pt' ? 'VER MAIS' : 'SEE MORE'}</span>
                     </a>
                   </div>
                 </div>
@@ -870,7 +1046,7 @@ function App() {
               {shopIndex < maxShopIndex && (
                 <button
                   type="button"
-                  class="shop-nav-btn next"
+                  className="shop-nav-btn next"
                   onClick={() => goShopIndex(shopIndex + 1)}
                   aria-label="Próximo"
                 >
@@ -879,9 +1055,9 @@ function App() {
               )}
             </div>
 
-            <div class="shop-footer">
+            <div className="shop-footer">
               <a
-                class="shop-full btn-outline"
+                className="shop-full btn-outline"
                 href={shopStoreUrl || '#'}
                 target={shopStoreUrl ? '_blank' : undefined}
                 rel={shopStoreUrl ? 'noreferrer' : undefined}
@@ -892,11 +1068,19 @@ function App() {
           </div>
         </section>
 
-        <section id="noticias" className="news" aria-label="Notícias" style={sectionBgStyle.noticias}>
+        <section id="noticias" className={`news reveal${!sectionVisible.noticias ? ' section-hidden' : ''}`} aria-label="Notícias" style={sectionBgStyle.noticias}>
+          <SectionBg bg={sectionBg.noticias} />
           <div className="news-inner">
             <h2 className="news-title">{isPt ? 'NOTÍCIAS' : 'NEWS'}</h2>
 
-            <div className="news-carousel" aria-label="Carrossel de notícias">
+            <div
+              className="news-carousel"
+              aria-label="Carrossel de notícias"
+              {...useTouchSwipe(
+                () => goNewsScrollIndex(newsIndex + 1),
+                () => goNewsScrollIndex(newsIndex - 1)
+              )}
+            >
               {newsIndex > 0 ? (
                 <button
                   type="button"
@@ -949,7 +1133,7 @@ function App() {
                       return (
                         <article
                           key={post.id}
-                          className={`news-card ${hasMedia ? '' : 'news-card--text'} ${isExpanded ? 'news-card--expanded' : ''}`.trim()}
+                          className={`news-card reveal-item ${hasMedia ? '' : 'news-card--text'} ${isExpanded ? 'news-card--expanded' : ''}`.trim()}
                         >
                           {hasMedia ? (
                             mediaHref ? (
@@ -1054,7 +1238,8 @@ function App() {
           </div>
         </section>
 
-        <section id="discografia" className="discography" aria-label="Discografia" style={sectionBgStyle.discografia}>
+        <section id="discografia" className={`discography reveal${!sectionVisible.discografia ? ' section-hidden' : ''}`} aria-label="Discografia" style={sectionBgStyle.discografia}>
+          <SectionBg bg={sectionBg.discografia} />
           <div className="discography-inner">
             <h2 className="discography-title">{isPt ? 'DISCOGRAFIA' : 'DISCOGRAPHY'}</h2>
 
@@ -1069,7 +1254,7 @@ function App() {
                   return (
                     <article
                       key={rel.id}
-                      className="discography-card"
+                      className="discography-card reveal-item"
                       style={cover ? { '--disco-cover-url': `url(${cover})` } : undefined}
                       aria-label={`${title || (langKey === 'pt' ? 'Lançamento' : 'Release')}${year ? ` (${year})` : ''}`}
                       role="button"
@@ -1248,7 +1433,8 @@ function App() {
           </div>
         ) : null}
 
-        <section id="contato" className="contact" aria-label="Contato" style={sectionBgStyle.contato}>
+        <section id="contato" className={`contact reveal${!sectionVisible.contato ? ' section-hidden' : ''}`} aria-label="Contato" style={sectionBgStyle.contato}>
+          <SectionBg bg={sectionBg.contato} />
           <div className="contact-inner">
             <h2 className="contact-title">{isPt ? 'CONTATO' : 'CONTACT'}</h2>
 
@@ -1300,7 +1486,7 @@ function App() {
                   <textarea name="message" placeholder={isPt ? 'MENSAGEM' : 'MESSAGE'} rows={6} />
                 </label>
 
-                <button className="contact-submit" type="submit">
+                <button className="contact-submit contact-submit--full" type="submit">
                   {isPt ? 'ENVIAR MENSAGEM' : 'SEND MESSAGE'}
                 </button>
               </form>
