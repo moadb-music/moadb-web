@@ -161,15 +161,42 @@ function escapeHtml(text) {
     .replace(/'/g, '&#039;');
 }
 
+// Converte HTML salvo → texto puro com quebras de linha limpas
+function htmlToPlainText(html) {
+  const str = String(html || '');
+  return str
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>\s*<p[^>]*>/gi, '\n')
+    .replace(/<p[^>]*>/gi, '')
+    .replace(/<\/p>/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\n{3,}/g, '\n\n') // máximo 2 quebras seguidas
+    .trim();
+}
+
 function plainTextToHtml(text) {
-  const safe = escapeHtml(text);
-  // mantém parágrafos simples
-  const lines = safe.split(/\r?\n/);
-  return lines
-    .map((l) => l.trim())
-    .filter((l, idx, arr) => l || (idx > 0 && arr[idx - 1]))
-    .map((l) => (l ? `<p>${l}</p>` : '<p><br/></p>'))
-    .join('');
+  // Normaliza quebras de linha vindas do browser (innerText)
+  const normalized = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\n{3,}/g, '\n\n') // máximo 2 quebras seguidas
+    .trim();
+
+  if (!normalized) return '';
+
+  const paragraphs = normalized.split(/\n\n+/);
+  return paragraphs.map((block) => {
+    const lines = block.split('\n');
+    const inner = lines.map(escapeHtml).join('<br/>');
+    return `<p>${inner}</p>`;
+  }).join('');
 }
 
 function insertTextAtSelection(text) {
@@ -334,10 +361,13 @@ export default function NoticiasAdmin({ onDirtyChange }) {
   useEffect(() => {
     if (mode !== 'edit') return;
     if (!excerptRef.current) return;
-    const nextHtml = String(draft?.excerptHtml?.[newsLang] || draft?.excerptHtml || '');
-    if (excerptRef.current.innerHTML !== nextHtml) {
-      excerptRef.current.innerHTML = nextHtml;
-      lastExcerptHtmlRef.current = nextHtml;
+    const savedHtml = String(draft?.excerptHtml?.[newsLang] || draft?.excerptHtml || '');
+    // Exibe como texto puro no editor para evitar inconsistências de renderização
+    const plainText = htmlToPlainText(savedHtml);
+    const displayHtml = plainTextToHtml(plainText);
+    if (excerptRef.current.innerHTML !== displayHtml) {
+      excerptRef.current.innerHTML = displayHtml;
+      lastExcerptHtmlRef.current = displayHtml;
     }
   }, [selectedId, mode, newsLang]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -547,9 +577,10 @@ export default function NoticiasAdmin({ onDirtyChange }) {
     setMode('preview');
 
     if (excerptRef.current) {
-      const html = String(selected.excerptHtml?.[newsLang] || selected.excerptHtml || '');
-      excerptRef.current.innerHTML = html;
-      lastExcerptHtmlRef.current = html;
+      const savedHtml = String(selected.excerptHtml?.[newsLang] || selected.excerptHtml || '');
+      const displayHtml = plainTextToHtml(htmlToPlainText(savedHtml));
+      excerptRef.current.innerHTML = displayHtml;
+      lastExcerptHtmlRef.current = displayHtml;
     }
   }
 
