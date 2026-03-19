@@ -8,6 +8,8 @@ import PaginasAdmin from './PaginasAdmin';
 import HomeAdmin from './HomeAdmin';
 import NoticiasAdmin from './NoticiasAdmin';
 import TreeAdmin from './TreeAdmin';
+import DonateAdmin from './DonateAdmin';
+import MensagensAdmin from './MensagensAdmin';
 import './Admin.css';
 
 export default function Admin() {
@@ -101,6 +103,20 @@ export default function Admin() {
             >
               DISCOGRAFIA
             </button>
+            <button
+              type="button"
+              className={`admin-tab ${activeTab === 'donate' ? 'is-active' : ''}`}
+              onClick={() => trySetTab('donate')}
+            >
+              DOAÇÕES
+            </button>
+            <button
+              type="button"
+              className={`admin-tab ${activeTab === 'mensagens' ? 'is-active' : ''}`}
+              onClick={() => trySetTab('mensagens')}
+            >
+              MENSAGENS
+            </button>
           </nav>
         </div>
 
@@ -116,6 +132,10 @@ export default function Admin() {
           <LojaAdmin />
         ) : activeTab === 'paginas' ? (
           <PaginasAdmin />
+        ) : activeTab === 'donate' ? (
+          <DonateAdmin />
+        ) : activeTab === 'mensagens' ? (
+          <MensagensAdmin />
         ) : (
           <div className="admin-empty" aria-label="Conteúdo do painel" />
         )}

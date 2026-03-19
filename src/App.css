@@ -1523,6 +1523,19 @@ a.news-media:focus-visible .news-play::after{
   margin-top:6px;
 }
 
+.contact-donate-link {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 0.78rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+  text-decoration: none;
+  font-family: Oswald, sans-serif;
+  transition: color 0.15s;
+}
+.contact-donate-link:hover { color: rgba(255,255,255,0.85); }
+
 .contact-support-btns .support-opt{
   padding:10px 16px;
   font-size:.78rem;
@@ -1673,6 +1686,17 @@ a.news-media:focus-visible .news-play::after{
   outline:none;
 }
 
+/* Fix browser autofill background */
+.contact-field input:-webkit-autofill,
+.contact-field input:-webkit-autofill:hover,
+.contact-field input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px rgba(20,0,0,0.95) inset;
+  -webkit-text-fill-color: rgba(255,255,255,.9);
+  caret-color: rgba(255,255,255,.9);
+  border: 1px solid rgba(255,255,255,.12);
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 .contact-field textarea{resize:vertical;min-height:150px}
 
 .contact-field input::placeholder,
@@ -1712,6 +1736,17 @@ a.news-media:focus-visible .news-play::after{
 .contact-submit--full{
   width:100%;
 }
+
+.contact-feedback {
+  font-size: 0.82rem;
+  font-family: Oswald, sans-serif;
+  letter-spacing: 1px;
+  margin: 4px 0;
+  padding: 8px 12px;
+  border-radius: 2px;
+}
+.contact-feedback--ok  { background: rgba(0,180,80,0.15); color: #4caf50; border: 1px solid rgba(0,180,80,0.3); }
+.contact-feedback--err { background: rgba(180,0,0,0.15);  color: #ef5350; border: 1px solid rgba(180,0,0,0.3); }
 
 .contact-submit:hover{
   background:var(--red);

@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // siteData — leitura pública, escrita só autenticado
+    match /siteData/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // contactMessages — qualquer um pode criar, só autenticado lê/edita/deleta
+    match /contactMessages/{msg} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+
+    // donations — leitura pública, escrita só autenticado
+    match /donations/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

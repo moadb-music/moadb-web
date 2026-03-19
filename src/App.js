@@ -4,7 +4,7 @@ import logoPng from './assets/logo.png';
 import aboutLogoMark from './assets/logo-mark.png';
 import instagramPng from './assets/instagram.png';
 import pixPng from './assets/pix.png';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import spotifyIcon from './assets/spotify.png';
 import appleIcon from './assets/apple.png';
@@ -734,6 +734,29 @@ function App() {
   const [supportOpen, setSupportOpen] = useState(false);
   const [supportView, setSupportView] = useState(null); // null | 'pix' | 'livepix'
   const [supportClosing, setSupportClosing] = useState(false);
+
+  const [contactForm, setContactForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [contactStatus, setContactStatus] = useState(null); // null | 'sending' | 'ok' | 'error'
+
+  const setField = (field) => (e) => setContactForm(f => ({ ...f, [field]: e.target.value }));
+
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+    const { name, email, subject, message } = contactForm;
+    if (!name || !email || !message) return;
+    setContactStatus('sending');
+    try {
+      await addDoc(collection(db, 'contactMessages'), {
+        name, email, subject: subject || '', message,
+        createdAt: serverTimestamp(),
+        read: false,
+      });
+      setContactStatus('ok');
+      setContactForm({ name: '', email: '', subject: '', message: '' });
+    } catch {
+      setContactStatus('error');
+    }
+  };
 
   const openSupport = () => { setSupportClosing(false); setSupportOpen(true); };
   const closeSupport = () => {
@@ -1547,32 +1570,52 @@ function App() {
                       BUY ME A COFFEE
                     </button>
                   </div>
+                  <a href="/donate" className="contact-donate-link">
+                    {isPt ? 'Ver detalhes →' : 'See details →'}
+                  </a>
                 </div>
               </div>
 
-              <form className="contact-form" onSubmit={(e) => e.preventDefault()}>
+              <form className="contact-form" onSubmit={handleContactSubmit}>
                 <label className="contact-field">
                   <span className="sr-only">{isPt ? 'Nome' : 'Name'}</span>
-                  <input type="text" name="name" placeholder={isPt ? 'NOME' : 'NAME'} autoComplete="name" />
+                  <input type="text" name="name" placeholder={isPt ? 'NOME' : 'NAME'} autoComplete="name"
+                    value={contactForm.name} onChange={setField('name')} onBlur={setField('name')} required />
                 </label>
 
                 <label className="contact-field">
                   <span className="sr-only">E-mail</span>
-                  <input type="email" name="email" placeholder="E-MAIL" autoComplete="email" />
+                  <input type="email" name="email" placeholder="E-MAIL" autoComplete="email"
+                    value={contactForm.email} onChange={setField('email')} onBlur={setField('email')} required />
                 </label>
 
                 <label className="contact-field">
                   <span className="sr-only">{isPt ? 'Assunto' : 'Subject'}</span>
-                  <input type="text" name="subject" placeholder={isPt ? 'ASSUNTO' : 'SUBJECT'} />
+                  <input type="text" name="subject" placeholder={isPt ? 'ASSUNTO' : 'SUBJECT'}
+                    value={contactForm.subject} onChange={setField('subject')} onBlur={setField('subject')} />
                 </label>
 
                 <label className="contact-field contact-field-message">
                   <span className="sr-only">{isPt ? 'Mensagem' : 'Message'}</span>
-                  <textarea name="message" placeholder={isPt ? 'MENSAGEM' : 'MESSAGE'} rows={6} />
+                  <textarea name="message" placeholder={isPt ? 'MENSAGEM' : 'MESSAGE'} rows={6}
+                    value={contactForm.message} onChange={setField('message')} required />
                 </label>
 
-                <button className="contact-submit contact-submit--full" type="submit">
-                  {isPt ? 'ENVIAR MENSAGEM' : 'SEND MESSAGE'}
+                {contactStatus === 'ok' && (
+                  <p className="contact-feedback contact-feedback--ok">
+                    {isPt ? '✓ Mensagem enviada!' : '✓ Message sent!'}
+                  </p>
+                )}
+                {contactStatus === 'error' && (
+                  <p className="contact-feedback contact-feedback--err">
+                    {isPt ? 'Erro ao enviar. Tente novamente.' : 'Failed to send. Please try again.'}
+                  </p>
+                )}
+
+                <button className="contact-submit contact-submit--full" type="submit" disabled={contactStatus === 'sending'}>
+                  {contactStatus === 'sending'
+                    ? (isPt ? 'ENVIANDO...' : 'SENDING...')
+                    : (isPt ? 'ENVIAR MENSAGEM' : 'SEND MESSAGE')}
                 </button>
               </form>
             </div>

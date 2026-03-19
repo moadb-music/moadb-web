@@ -2,6 +2,7 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const Stripe = require('stripe');
 const cors = require('cors')({ origin: true });
+const nodemailer = require('nodemailer');
 
 admin.initializeApp();
 
@@ -43,5 +44,56 @@ exports.createPaymentIntent = functions.https.onRequest((req, res) => {
       console.error('Stripe error:', err);
       return res.status(500).json({ error: err.message });
     }
+  });
+});
+
+// ===== CONTACT FORM =====
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_PASS = process.env.GMAIL_PASS;
+const CONTACT_TO = process.env.CONTACT_TO || GMAIL_USER;
+
+exports.sendContactMessage = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    const { name, email, subject, message } = req.body;
+    if (!name || !email || !message) {
+      return res.status(400).json({ error: 'name, email and message are required' });
+    }
+
+    const db = admin.firestore();
+    const timestamp = admin.firestore.FieldValue.serverTimestamp();
+
+    // 1. Save to Firestore
+    await db.collection('contactMessages').add({
+      name, email, subject: subject || '', message,
+      createdAt: timestamp,
+      read: false,
+    });
+
+    // 2. Send email if credentials are configured
+    if (GMAIL_USER && GMAIL_PASS) {
+      try {
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: { user: GMAIL_USER, pass: GMAIL_PASS },
+        });
+        await transporter.sendMail({
+          from: `"Mind of a Dead Body" <${GMAIL_USER}>`,
+          to: CONTACT_TO,
+          replyTo: email,
+          subject: `[Contato] ${subject || 'Nova mensagem'} — ${name}`,
+          text: `De: ${name} <${email}>\n\n${message}`,
+          html: `<p><strong>De:</strong> ${name} &lt;${email}&gt;</p><p><strong>Assunto:</strong> ${subject || '—'}</p><hr/><p>${message.replace(/\n/g, '<br/>')}</p>`,
+        });
+      } catch (emailErr) {
+        // Email failed but message was saved — don't fail the request
+        console.error('Email error:', emailErr);
+      }
+    }
+
+    return res.status(200).json({ ok: true });
   });
 });
