@@ -12,6 +12,7 @@ import deezerIcon from './assets/deezer.png';
 import youtubeMusicIcon from './assets/youtube-music.png';
 import tiktokIcon from './assets/tiktok.png';
 import youtubeIcon from './assets/youtube.png';
+import StripeWidget from './components/StripeWidget';
 
 const PAGES_DOC_PATH = ['siteData', 'moadb_pages'];
 
@@ -730,13 +731,13 @@ function App() {
   }, [previewTrackId, openRelease]);
 
   const [supportOpen, setSupportOpen] = useState(false);
-  const [supportPix, setSupportPix] = useState(false);
+  const [supportView, setSupportView] = useState(null); // null | 'pix' | 'livepix'
   const [supportClosing, setSupportClosing] = useState(false);
 
   const openSupport = () => { setSupportClosing(false); setSupportOpen(true); };
   const closeSupport = () => {
     setSupportClosing(true);
-    setTimeout(() => { setSupportOpen(false); setSupportClosing(false); setSupportPix(false); }, 250);
+    setTimeout(() => { setSupportOpen(false); setSupportClosing(false); setSupportView(null); }, 250);
   };
   const toggleSupport = () => { if (supportOpen && !supportClosing) closeSupport(); else openSupport(); };
 
@@ -1532,7 +1533,7 @@ function App() {
                     {isPt ? 'Sua contribuição ajuda a manter viva a chama do metal independente.' : 'Your contribution helps keep the flame of independent metal alive.'}
                   </p>
                   <div className="contact-support-btns">
-                    <button type="button" className="support-opt support-opt--pix" onClick={() => { setSupportPix(true); setSupportOpen(true); }}>
+                    <button type="button" className="support-opt support-opt--pix" onClick={() => { setSupportView('pix'); setSupportOpen(true); }}>
                       <img className="contact-pix-icon" src={pixPng} alt="" aria-hidden="true" />
                       PIX
                     </button>
@@ -1657,13 +1658,17 @@ function App() {
 
       <div className="support-float">
         {supportOpen && (
-          <div className={`support-panel${supportClosing ? ' support-panel--out' : ''}`}>
-            {!supportPix ? (
+          <div className={`support-panel${supportClosing ? ' support-panel--out' : ''}${supportView === 'stripe' ? ' support-panel--wide' : ''}`}>
+            {supportView === null && (
               <>
                 <div className="support-panel-title">{isPt ? 'APOIE O PROJETO' : 'SUPPORT THE PROJECT'}</div>
-                <button className="support-opt support-opt--pix" onClick={() => setSupportPix(true)}>
+                <button className="support-opt support-opt--pix" onClick={() => setSupportView('pix')}>
                   <img className="contact-pix-icon" src={pixPng} alt="" aria-hidden="true" />
                   PIX
+                </button>
+                <button className="support-opt support-opt--stripe" onClick={() => setSupportView('stripe')}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                  {isPt ? 'CONTRIBUIR' : 'CONTRIBUTE'}
                 </button>
                 <a
                   className="support-opt support-opt--bmc"
@@ -1674,9 +1679,11 @@ function App() {
                   BUY ME A COFFEE
                 </a>
               </>
-            ) : (
+            )}
+            {supportView === 'pix' && (
               <>
-                <button className="support-back support-close" onClick={closeSupport} aria-label="Fechar">✕</button>
+                <button className="support-back" onClick={() => setSupportView(null)} aria-label="Voltar">‹</button>
+                <button className="support-close" onClick={closeSupport} aria-label="Fechar">✕</button>
                 <div className="support-panel-title">PIX</div>
                 <a
                   href="https://nubank.com.br/cobrar/31oy9/69b56c23-57b5-4a7e-b7cf-4622fdddce9b"
@@ -1686,7 +1693,7 @@ function App() {
                 >
                   <img
                     className="contact-pix-qr"
-                    src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=d9c7d8b2-52f0-4709-a8d0-ca826b1b7def&bgcolor=0d0d0d&color=ffffff&margin=10"
+                    src={require('./assets/pix-qr.png')}
                     alt="QR Code PIX"
                   />
                 </a>
@@ -1703,6 +1710,14 @@ function App() {
                     </svg>
                   </button>
                 </div>
+              </>
+            )}
+            {supportView === 'stripe' && (
+              <>
+                <button className="support-back" onClick={() => setSupportView(null)} aria-label="Voltar">‹</button>
+                <button className="support-close" onClick={closeSupport} aria-label="Fechar">✕</button>
+                <div className="support-panel-title">{isPt ? 'CONTRIBUIR' : 'CONTRIBUTE'}</div>
+                <StripeWidget isPt={isPt} onBack={() => setSupportView(null)} />
               </>
             )}
           </div>
