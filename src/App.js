@@ -13,6 +13,7 @@ import youtubeMusicIcon from './assets/youtube-music.png';
 import tiktokIcon from './assets/tiktok.png';
 import youtubeIcon from './assets/youtube.png';
 import StripeWidget from './components/StripeWidget';
+import PixPanel from './components/PixPanel';
 
 const PAGES_DOC_PATH = ['siteData', 'moadb_pages'];
 
@@ -1537,6 +1538,10 @@ function App() {
                       <img className="contact-pix-icon" src={pixPng} alt="" aria-hidden="true" />
                       PIX
                     </button>
+                    <button type="button" className="support-opt support-opt--stripe" onClick={() => { setSupportView('stripe'); setSupportOpen(true); }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+                      {isPt ? 'CARTÃO & OUTROS' : 'CARD & MORE'}
+                    </button>
                     <button type="button" className="support-opt support-opt--bmc" onClick={() => { const btn = document.querySelector('#bmc-wbtn'); if(btn){ btn.style.pointerEvents='auto'; btn.click(); btn.style.pointerEvents='none'; } }}>
                       <img src="https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg" alt="" width="20" height="20" />
                       BUY ME A COFFEE
@@ -1667,8 +1672,8 @@ function App() {
                   PIX
                 </button>
                 <button className="support-opt support-opt--stripe" onClick={() => setSupportView('stripe')}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                  {isPt ? 'CONTRIBUIR' : 'CONTRIBUTE'}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+                  {isPt ? 'CARTÃO & OUTROS' : 'CARD & MORE'}
                 </button>
                 <a
                   className="support-opt support-opt--bmc"
@@ -1681,42 +1686,13 @@ function App() {
               </>
             )}
             {supportView === 'pix' && (
-              <>
-                <button className="support-back" onClick={() => setSupportView(null)} aria-label="Voltar">‹</button>
-                <button className="support-close" onClick={closeSupport} aria-label="Fechar">✕</button>
-                <div className="support-panel-title">PIX</div>
-                <a
-                  href="https://nubank.com.br/cobrar/31oy9/69b56c23-57b5-4a7e-b7cf-4622fdddce9b"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="contact-pix-qr-link"
-                >
-                  <img
-                    className="contact-pix-qr"
-                    src={require('./assets/pix-qr.png')}
-                    alt="QR Code PIX"
-                  />
-                </a>
-                <div className="contact-pix-key-wrap">
-                  <span className="contact-pix-key-label">CHAVE PIX</span>
-                  <button
-                    type="button"
-                    className="contact-pix-copy"
-                    onClick={() => navigator.clipboard.writeText('d9c7d8b2-52f0-4709-a8d0-ca826b1b7def')}
-                  >
-                    <span className="contact-pix-key-value">d9c7d8b2-52f0-4709-a8d0-ca826b1b7def</span>
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-                      <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                    </svg>
-                  </button>
-                </div>
-              </>
+              <PixPanel isPt={isPt} onBack={() => setSupportView(null)} onClose={closeSupport} />
             )}
             {supportView === 'stripe' && (
               <>
                 <button className="support-back" onClick={() => setSupportView(null)} aria-label="Voltar">‹</button>
                 <button className="support-close" onClick={closeSupport} aria-label="Fechar">✕</button>
-                <div className="support-panel-title">{isPt ? 'CONTRIBUIR' : 'CONTRIBUTE'}</div>
+                <div className="support-panel-title">{isPt ? 'CARTÃO & OUTROS' : 'CARD & MORE'}</div>
                 <StripeWidget isPt={isPt} onBack={() => setSupportView(null)} />
               </>
             )}

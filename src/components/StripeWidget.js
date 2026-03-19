@@ -32,9 +32,7 @@ function CheckoutForm({ isPt, onBack }) {
 
     const { error: confirmError } = await stripe.confirmPayment({
       elements,
-      confirmParams: {
-        return_url: window.location.href,
-      },
+      confirmParams: { return_url: window.location.href },
       redirect: 'if_required',
     });
 
@@ -60,16 +58,13 @@ function CheckoutForm({ isPt, onBack }) {
 
   return (
     <form onSubmit={handleSubmit} className="stripe-form">
-      <PaymentElement options={{ layout: 'tabs' }} />
+      <PaymentElement options={{
+        layout: { type: 'accordion', defaultCollapsed: false, radios: true, spacedAccordionItems: false },
+        defaultValues: { billingDetails: { address: { country: 'BR' } } }
+      }} />
       {error && <p className="stripe-error">{error}</p>}
-      <button
-        type="submit"
-        className="stripe-submit"
-        disabled={!stripe || loading}
-      >
-        {loading
-          ? (isPt ? 'Processando...' : 'Processing...')
-          : (isPt ? 'CONTRIBUIR' : 'CONTRIBUTE')}
+      <button type="submit" className="stripe-submit" disabled={!stripe || loading}>
+        {loading ? (isPt ? 'Processando...' : 'Processing...') : (isPt ? 'CONTRIBUIR' : 'CONTRIBUTE')}
       </button>
     </form>
   );
@@ -77,6 +72,8 @@ function CheckoutForm({ isPt, onBack }) {
 
 export default function StripeWidget({ isPt, onBack }) {
   const [amount, setAmount] = useState('');
+  const [name, setName] = useState('');
+  const [message, setMessage] = useState('');
   const [clientSecret, setClientSecret] = useState(null);
   const [loadingIntent, setLoadingIntent] = useState(false);
   const [intentError, setIntentError] = useState(null);
@@ -94,7 +91,7 @@ export default function StripeWidget({ isPt, onBack }) {
       const res = await fetch(FUNCTIONS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: cents }),
+        body: JSON.stringify({ amount: cents, name, message }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -114,7 +111,7 @@ export default function StripeWidget({ isPt, onBack }) {
           appearance: {
             theme: 'stripe',
             variables: {
-              colorPrimary: '#32BCAD',
+              colorPrimary: '#635BFF',
               borderRadius: '8px',
               fontFamily: "'Segoe UI', Arial, sans-serif",
             },
@@ -129,30 +126,47 @@ export default function StripeWidget({ isPt, onBack }) {
   return (
     <form className="stripe-amount-form" onSubmit={handleAmountSubmit}>
       <p className="stripe-label">{isPt ? 'Escolha um valor' : 'Choose an amount'}</p>
-      <div className="stripe-amounts">
-        {AMOUNTS.map((v) => (
-          <button
-            key={v}
-            type="button"
-            className={`stripe-amount-btn${amount === String(v) ? ' stripe-amount-btn--active' : ''}`}
-            onClick={() => setAmount(String(v))}
-          >
-            R${v}
-          </button>
-        ))}
+      <div className="stripe-amount-row">
+        <span className="stripe-amount-symbol">R$</span>
+        <input
+          className="stripe-amount-input"
+          type="number"
+          min="1"
+          step="0.01"
+          placeholder={isPt ? 'Digite o valor' : 'Enter amount'}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+        <div className="stripe-amounts">
+          {AMOUNTS.map((v) => (
+            <button
+              key={v}
+              type="button"
+              className={`stripe-amount-btn${amount === String(v) ? ' stripe-amount-btn--active' : ''}`}
+              onClick={() => setAmount(String(v))}
+            >
+              +{v}
+            </button>
+          ))}
+        </div>
       </div>
       <input
         className="stripe-input"
-        type="number"
-        min="1"
-        step="0.01"
-        placeholder={isPt ? 'Outro valor (R$)' : 'Other amount (R$)'}
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
+        type="text"
+        placeholder={isPt ? 'Nome ou @social (opcional)' : 'Name or @social (optional)'}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <textarea
+        className="stripe-input stripe-textarea"
+        placeholder={isPt ? 'Deixe uma mensagem...' : 'Say something nice...'}
+        rows={3}
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
       />
       {intentError && <p className="stripe-error">{intentError}</p>}
       <button type="submit" className="stripe-submit" disabled={loadingIntent || !amount}>
-        {loadingIntent ? '...' : (isPt ? 'CONTINUAR' : 'CONTINUE')}
+        {loadingIntent ? '...' : (isPt ? 'Apoiar ♥' : 'Support ♥')}
       </button>
     </form>
   );

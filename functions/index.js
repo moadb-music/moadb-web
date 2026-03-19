@@ -19,7 +19,7 @@ exports.createPaymentIntent = functions.https.onRequest((req, res) => {
     }
 
     try {
-      const { amount } = req.body; // amount in centavos (e.g. 1000 = R$10)
+      const { amount, name, message } = req.body;
 
       if (!amount || isNaN(amount) || amount < MIN_AMOUNT) {
         return res.status(400).json({ error: 'Invalid amount. Minimum is R$1.00.' });
@@ -28,7 +28,14 @@ exports.createPaymentIntent = functions.https.onRequest((req, res) => {
       const paymentIntent = await stripe.paymentIntents.create({
         amount: Math.round(amount),
         currency: 'brl',
-        automatic_payment_methods: { enabled: true },
+        payment_method_types: ['card', 'boleto'],
+        payment_method_options: {
+          boleto: { expires_after_days: 3 },
+        },
+        metadata: {
+          donor_name: name || 'Anônimo',
+          message: message || '',
+        },
       });
 
       return res.status(200).json({ clientSecret: paymentIntent.client_secret });
