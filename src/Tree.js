@@ -122,10 +122,7 @@ export default function Tree() {
   });
   const isPt = lang === 'pt';
 
-  useEffect(() => {
-    document.body.classList.add('tree-route');
-    return () => document.body.classList.remove('tree-route');
-  }, []);
+
 
   const links = treeCfg.links;
 
@@ -249,7 +246,7 @@ export default function Tree() {
             </span>
             <span className="tree-link-text">
               {isPt ? 'Apoiar o Projeto' : 'Support the Project'}
-              <span className="tree-link-sub">PIX · Buy Me a Coffee</span>
+              <span className="tree-link-sub">{isPt ? 'PIX · Cartão · Buy Me a Coffee' : 'PIX · Card · Buy Me a Coffee'}</span>
             </span>
           </button>
         </div>

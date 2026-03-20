@@ -308,44 +308,7 @@ export default function Donate() {
           </div>
         )}
       </main>
-
-      <div className="support-float">
-        {supportOpen && (
-          <div className={"support-panel" + (supportClosing ? " support-panel--out" : "") + (supportView === "stripe" ? " support-panel--wide" : "")}>
-            {supportView === null && (
-              <>
-                <div className="support-panel-title">{isPt ? "APOIE O PROJETO" : "SUPPORT THE PROJECT"}</div>
-                <button className="support-opt support-opt--pix" onClick={() => setSupportView("pix")}>
-                  <img className="contact-pix-icon" src={pixPng} alt="" aria-hidden="true" />
-                  PIX
-                </button>
-                <button className="support-opt support-opt--stripe" onClick={() => setSupportView("stripe")}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
-                  {isPt ? "CARTAO & OUTROS" : "CARD & MORE"}
-                </button>
-                <a className="support-opt support-opt--bmc" href="#" onClick={(e) => { e.preventDefault(); const btn = document.querySelector("#bmc-wbtn"); if (btn) { btn.style.pointerEvents = "auto"; btn.click(); btn.style.pointerEvents = "none"; } }}>
-                  <img src="https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg" alt="" width="20" height="20" />
-                  BUY ME A COFFEE
-                </a>
-              </>
-            )}
-            {supportView === "pix" && (
-              <PixPanel isPt={isPt} onBack={() => setSupportView(null)} onClose={closeSupport} />
-            )}
-            {supportView === "stripe" && (
-              <>
-                <button className="support-back" onClick={() => setSupportView(null)} aria-label={isPt ? "Voltar" : "Back"}>&#8249;</button>
-                <button className="support-close" onClick={closeSupport} aria-label={isPt ? "Fechar" : "Close"}>&#x2715;</button>
-                <div className="support-panel-title">{isPt ? "CARTAO & OUTROS" : "CARD & MORE"}</div>
-                <StripeWidget onBack={() => setSupportView(null)} />
-              </>
-            )}
-          </div>
-        )}
-        <button className="support-fab" onClick={toggleSupport} aria-label={isPt ? "Apoiar o projeto" : "Support the project"} aria-expanded={supportOpen && !supportClosing}>
-          <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-        </button>
-      </div>
+      <SupportWidget isPt={isPt} />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import NoticiasAdmin from './NoticiasAdmin';
 import TreeAdmin from './TreeAdmin';
 import DonateAdmin from './DonateAdmin';
 import MensagensAdmin from './MensagensAdmin';
+import MembersAdmin from './MembersAdmin';
 import './Admin.css';
 
 export default function Admin() {
@@ -117,6 +118,13 @@ export default function Admin() {
             >
               MENSAGENS
             </button>
+            <button
+              type="button"
+              className={`admin-tab ${activeTab === 'members' ? 'is-active' : ''}`}
+              onClick={() => trySetTab('members')}
+            >
+              MEMBROS
+            </button>
           </nav>
         </div>
 
@@ -136,6 +144,8 @@ export default function Admin() {
           <DonateAdmin />
         ) : activeTab === 'mensagens' ? (
           <MensagensAdmin />
+        ) : activeTab === 'members' ? (
+          <MembersAdmin />
         ) : (
           <div className="admin-empty" aria-label="Conteúdo do painel" />
         )}

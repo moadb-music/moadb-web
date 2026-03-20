@@ -26,9 +26,18 @@
     -->
     <title>Mind of a Dead Body</title>
     <style>
-      #bmc-wbtn{ visibility:hidden !important; position:fixed !important; pointer-events:none !important; }
-      .tree-page #bmc-wbtn,
-      body.tree-route #bmc-wbtn { visibility:visible !important; pointer-events:auto !important; }
+      #bmc-wbtn, #bmc-wbtn + div, .bmc-btn-container { 
+        display: none !important; 
+        visibility: hidden !important; 
+        pointer-events: none !important; 
+      }
+      body.show-bmc #bmc-wbtn,
+      body.show-bmc #bmc-wbtn + div,
+      body.show-bmc .bmc-btn-container { 
+        display: flex !important; 
+        visibility: visible !important; 
+        pointer-events: auto !important; 
+      }
     </style>
   </head>
   <body>

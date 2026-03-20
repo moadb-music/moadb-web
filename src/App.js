@@ -852,6 +852,7 @@ function App() {
               <a key={s.key} href={s.href}>{s.label}</a>
             ));
           })()}
+          <a href="/members" style={{ color: 'var(--red,#8b0000)' }}>{isPt ? 'MEMBROS' : 'MEMBERS'}</a>
         </div>
 
         {/* Lang dropdown: só no desktop */}
@@ -930,6 +931,7 @@ function App() {
               <a key={s.key} href={s.href} onClick={() => setMenuOpen(false)}>{s.label}</a>
             ));
           })()}
+          <a href="/members" style={{ color: 'var(--red,#8b0000)' }} onClick={() => setMenuOpen(false)}>{isPt ? 'MEMBROS' : 'MEMBERS'}</a>
           {/* Idioma dentro do drawer */}
           <div className="nav-mobile-lang">
             <button

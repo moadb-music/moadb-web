@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // siteData — leitura pública, escrita só autenticado
+    // siteData — leitura pública, escrita só autenticado (admin)
     match /siteData/{doc} {
       allow read: if true;
       allow write: if request.auth != null;
@@ -14,9 +14,16 @@ service cloud.firestore {
       allow read, update, delete: if request.auth != null;
     }
 
-    // donations — leitura pública, escrita só autenticado
-    match /donations/{doc} {
-      allow read: if true;
+    // members — o próprio usuário cria/lê o próprio doc; admin lê/escreve tudo
+    match /members/{uid} {
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow read:   if request.auth != null && (request.auth.uid == uid || request.auth.token.email != null);
+      allow update, delete: if request.auth != null;
+    }
+
+    // membersContent — só leitura para membros aprovados (verificado no client); escrita só admin
+    match /membersContent/{doc} {
+      allow read:  if request.auth != null;
       allow write: if request.auth != null;
     }
   }

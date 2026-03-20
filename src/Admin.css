@@ -2185,3 +2185,26 @@
   gap: 8px;
   margin-top: 4px;
 }
+
+/* ===== UPLOAD BUTTON ===== */
+.admin-upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px dashed rgba(255,255,255,0.2);
+  border-radius: 2px;
+  color: rgba(255,255,255,0.6);
+  font-family: Oswald, sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  word-break: break-all;
+}
+.admin-upload-btn:hover {
+  border-color: rgba(255,255,255,0.45);
+  color: #fff;
+}
