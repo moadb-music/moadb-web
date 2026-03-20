@@ -1,35 +1,13 @@
-﻿import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
-import logoPng from "./assets/logo.png";
 import pixPng from "./assets/pix.png";
 import PixPanel from "./components/PixPanel";
 import StripeWidget from "./components/StripeWidget";
+import SiteNav from "./components/SiteNav";
+import SupportWidget from "./components/SupportWidget";
 import "./App.css";
 import "./Donate.css";
-
-function FlagBR(props) {
-  return (
-    <svg viewBox="0 0 28 18" aria-hidden="true" {...props}>
-      <rect width="28" height="18" fill="#009b3a" />
-      <polygon points="14,2 26,9 14,16 2,9" fill="#ffdf00" />
-      <circle cx="14" cy="9" r="4" fill="#002776" />
-      <path d="M10 8.5c1.8-.8 5.4-.8 8 .1" fill="none" stroke="#fff" strokeWidth="1" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function FlagUK(props) {
-  return (
-    <svg viewBox="0 0 28 18" aria-hidden="true" {...props}>
-      <rect width="28" height="18" fill="#012169" />
-      <path d="M0 0L28 18M28 0L0 18" stroke="#fff" strokeWidth="5" />
-      <path d="M0 0L28 18M28 0L0 18" stroke="#C8102E" strokeWidth="2.5" />
-      <path d="M14 0v18M0 9h28" stroke="#fff" strokeWidth="6" />
-      <path d="M14 0v18M0 9h28" stroke="#C8102E" strokeWidth="3" />
-    </svg>
-  );
-}
 
 function formatCurrency(val) {
   const n = parseFloat(val) || 0;
@@ -69,22 +47,18 @@ function applyBg(bg) {
   const to     = gradOn ? aHex(bg.gradientTo   || "#000000", bg.gradientToOpacity   != null ? bg.gradientToOpacity   : bg.gradientOpacity != null ? bg.gradientOpacity : 1) : "transparent";
   return {
     "--bg-gradient":      gradOn ? "linear-gradient(" + angle + "deg, " + from + ", " + to + ")" : "none",
-    "--bg-image":         imgOn  ? "url('" + bg.imageUrl + "')" : "none",
+    "--bg-image":         imgOn  ? "url(" + bg.imageUrl + ")" : "none",
     "--bg-image-opacity": imgOn  ? c01(bg.imageOpacity != null ? bg.imageOpacity : 0.35) : 0,
   };
 }
-
 export default function Donate() {
   const [data,           setData]           = useState(null);
   const [pagesBg,        setPagesBg]        = useState(null);
   const [costsOpen,      setCostsOpen]      = useState(false);
-  const [menuOpen,       setMenuOpen]       = useState(false);
   const [lang,           setLang]           = useState("pt-BR");
-  const [langOpen,       setLangOpen]       = useState(false);
   const [supportOpen,    setSupportOpen]    = useState(false);
   const [supportClosing, setSupportClosing] = useState(false);
   const [supportView,    setSupportView]    = useState(null);
-  const langRef = useRef(null);
 
   const isPt = lang === "pt-BR";
 
@@ -94,15 +68,6 @@ export default function Donate() {
     setTimeout(() => { setSupportOpen(false); setSupportClosing(false); setSupportView(null); }, 250);
   };
   const toggleSupport = () => { if (supportOpen && !supportClosing) closeSupport(); else openSupport(); };
-
-  useEffect(() => {
-    if (!langOpen) return;
-    function onDocClick(e) {
-      if (langRef.current && !langRef.current.contains(e.target)) setLangOpen(false);
-    }
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, [langOpen]);
 
   useEffect(() => {
     if (!supportOpen || supportClosing) return;
@@ -150,7 +115,9 @@ export default function Donate() {
 
   const SupportBtn = () => (
     <button type="button" className="donate-support-btn" onClick={toggleSupport} aria-expanded={supportOpen && !supportClosing}>
-      <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+      <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" aria-hidden="true">
+        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+      </svg>
       {isPt ? "APOIAR O PROJETO" : "SUPPORT THE PROJECT"}
     </button>
   );
@@ -158,92 +125,13 @@ export default function Donate() {
   return (
     <div className="app-container donate-page">
       <div className="bg-layer" aria-hidden="true" style={applyBg(pagesBg)} />
-
-      <nav className="top-nav" aria-label={isPt ? "Navegacao" : "Navigation"}>
-        <a className="nav-logo-wrap" href="/" aria-label={isPt ? "Voltar ao inicio" : "Back to home"}>
-          <img className="nav-logo" src={logoPng} alt="Mind of a Dead Body" />
-        </a>
-
-        <div className="nav-links nav-links--desktop">
-          <a href="/">{isPt ? "INICIO" : "HOME"}</a>
-          <a href="/#sobre">{isPt ? "SOBRE" : "ABOUT"}</a>
-          <a href="/#loja">{isPt ? "LOJA" : "STORE"}</a>
-          <a href="/#noticias">{isPt ? "NOTICIAS" : "NEWS"}</a>
-          <a href="/#discografia">{isPt ? "DISCOGRAFIA" : "DISCOGRAPHY"}</a>
-          <a href="/#contato">{isPt ? "CONTATO" : "CONTACT"}</a>
-        </div>
-
-        <div className="lang-dropdown lang-dropdown--desktop" ref={langRef}>
-          <button
-            className="lang-dropdown-toggle"
-            type="button"
-            aria-haspopup="menu"
-            aria-expanded={langOpen}
-            onClick={() => setLangOpen((o) => !o)}
-          >
-            <span className="lang-flag" aria-hidden="true">
-              {isPt ? <FlagBR /> : <FlagUK />}
-            </span>
-            <span className="lang-arrow" aria-hidden="true">v</span>
-          </button>
-          {langOpen && (
-            <ul className="lang-dropdown-menu" role="menu" aria-label={isPt ? "Selecionar idioma" : "Select language"}>
-              <li>
-                <button type="button" className={"lang-dropdown-item" + (isPt ? " active" : "")} role="menuitem"
-                  onClick={() => { setLang("pt-BR"); setLangOpen(false); }}>
-                  <span className="lang-flag" aria-hidden="true"><FlagBR /></span>
-                  <span>Portugues</span>
-                </button>
-              </li>
-              <li>
-                <button type="button" className={"lang-dropdown-item" + (!isPt ? " active" : "")} role="menuitem"
-                  onClick={() => { setLang("en"); setLangOpen(false); }}>
-                  <span className="lang-flag" aria-hidden="true"><FlagUK /></span>
-                  <span>English</span>
-                </button>
-              </li>
-            </ul>
-          )}
-        </div>
-
-        <button
-          className={"nav-hamburger" + (menuOpen ? " is-open" : "")}
-          onClick={() => setMenuOpen((o) => !o)}
-          aria-label="Menu"
-          aria-expanded={menuOpen}
-        >
-          <span /><span /><span />
-        </button>
-
-        {menuOpen && (
-          <div className="nav-mobile-menu" style={{ display: "flex" }} onClick={() => setMenuOpen(false)}>
-            <a href="/">{isPt ? "INICIO" : "HOME"}</a>
-            <a href="/#sobre">{isPt ? "SOBRE" : "ABOUT"}</a>
-            <a href="/#loja">{isPt ? "LOJA" : "STORE"}</a>
-            <a href="/#noticias">{isPt ? "NOTICIAS" : "NEWS"}</a>
-            <a href="/#discografia">{isPt ? "DISCOGRAFIA" : "DISCOGRAPHY"}</a>
-            <a href="/#contato">{isPt ? "CONTATO" : "CONTACT"}</a>
-            <div className="nav-mobile-lang" onClick={(e) => e.stopPropagation()}>
-              <button type="button" className={"nav-mobile-lang-btn" + (isPt ? " active" : "")}
-                onClick={() => { setLang("pt-BR"); setMenuOpen(false); }}>
-                <span className="lang-flag"><FlagBR /></span> PT
-              </button>
-              <button type="button" className={"nav-mobile-lang-btn" + (!isPt ? " active" : "")}
-                onClick={() => { setLang("en"); setMenuOpen(false); }}>
-                <span className="lang-flag"><FlagUK /></span> EN
-              </button>
-            </div>
-          </div>
-        )}
-      </nav>
-
+      <SiteNav lang={lang} setLang={setLang} />
       <main className="donate-main">
         <div className="donate-hero">
           <h1 className="donate-hero-title">{title}</h1>
           {period && <p className="donate-hero-period">{period}</p>}
           <p className="donate-hero-desc">{desc}</p>
         </div>
-
         {goal > 0 ? (
           <div className="donate-goal-card">
             <div className="donate-goal-labels">
@@ -251,10 +139,10 @@ export default function Donate() {
               <span className="donate-goal-target">{isPt ? "meta mensal:" : "monthly goal:"} {formatCurrency(goal)}</span>
             </div>
             <div className="donate-progress-track">
-              <div className="donate-progress-fill" style={{ width: progress + "%" }} role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} />
+              <div className="donate-progress-fill" style={{ width: progress + "%" }}
+                role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100} />
             </div>
             <p className="donate-goal-pct">{Math.round(progress)}% {isPt ? "da meta atingida" : "of goal reached"}</p>
-
             {costs.length > 0 && (
               <div className="donate-costs">
                 {costsOpen && (
@@ -272,12 +160,14 @@ export default function Donate() {
                   </ul>
                 )}
                 <button type="button" className="donate-costs-toggle" onClick={() => setCostsOpen((o) => !o)} aria-expanded={costsOpen}>
-                  <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" style={{ transform: costsOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"
+                    style={{ transform: costsOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} aria-hidden="true">
+                    <path d="M7 10l5 5 5-5z"/>
+                  </svg>
                   <span>{costsOpen ? (isPt ? "Ocultar detalhes" : "Hide details") : (isPt ? "Ver detalhes dos custos" : "View cost details")}</span>
                 </button>
               </div>
             )}
-
             <div className="donate-goal-cta">
               <SupportBtn />
             </div>
@@ -287,7 +177,6 @@ export default function Donate() {
             <SupportBtn />
           </div>
         )}
-
         {donations.length > 0 && (
           <div className="donate-list-card">
             <h2 className="donate-list-title">{isPt ? "Contribuicoes recentes" : "Recent contributions"}</h2>
@@ -308,6 +197,36 @@ export default function Donate() {
           </div>
         )}
       </main>
+      {supportOpen && (
+        <div className={"support-panel support-panel--inline" + (supportClosing ? " support-panel--out" : "") + (supportView === "stripe" ? " support-panel--wide" : "")}>
+          {supportView === null && (
+            <>
+              <div className="support-panel-title">{isPt ? "APOIE O PROJETO" : "SUPPORT THE PROJECT"}</div>
+              <button className="support-opt support-opt--pix" onClick={() => setSupportView("pix")}>
+                <img className="contact-pix-icon" src={pixPng} alt="" aria-hidden="true" />
+                PIX
+              </button>
+              <button className="support-opt support-opt--stripe" onClick={() => setSupportView("stripe")}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+                </svg>
+                {isPt ? "CARTAO E OUTROS" : "CARD AND MORE"}
+              </button>
+            </>
+          )}
+          {supportView === "pix" && (
+            <PixPanel isPt={isPt} onBack={() => setSupportView(null)} onClose={closeSupport} />
+          )}
+          {supportView === "stripe" && (
+            <>
+              <button className="support-back" onClick={() => setSupportView(null)} aria-label={isPt ? "Voltar" : "Back"}>&#8249;</button>
+              <button className="support-close" onClick={closeSupport} aria-label={isPt ? "Fechar" : "Close"}>&#x2715;</button>
+              <div className="support-panel-title">{isPt ? "CARTAO E OUTROS" : "CARD AND MORE"}</div>
+              <StripeWidget isPt={isPt} onBack={() => setSupportView(null)} />
+            </>
+          )}
+        </div>
+      )}
       <SupportWidget isPt={isPt} />
     </div>
   );
