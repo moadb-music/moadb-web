@@ -17,13 +17,122 @@ import PixPanel from './components/PixPanel';
 
 const TREE_DOC_PATH = ['siteData', 'moadb_tree'];
 
+// Detecta webviews de apps (Instagram, TikTok, Facebook, etc.)
+function isInAppWebView() {
+  const ua = navigator.userAgent || '';
+  return /Instagram|FBAN|FBAV|FB_IAB|TikTok|BytedanceWebview|Twitter|Snapchat/i.test(ua);
+}
+
+function isAndroid() { return /Android/i.test(navigator.userAgent); }
+
+// Tenta abrir scheme nativo; se não abrir em 1.5s, abre a web
+function _trySchemeWithFallback(scheme, fallbackUrl) {
+  let gone = false;
+  const fallback = setTimeout(() => { if (!gone) window.location.href = fallbackUrl; }, 1500);
+  window.addEventListener('blur', () => { gone = true; clearTimeout(fallback); }, { once: true });
+  window.location.href = scheme;
+}
+
+// Abre link no browser nativo (escapa do webview)
+function openInBrowser(url) {
+  if (!url) return;
+  if (isAndroid()) {
+    const bare = url.replace(/^https?:\/\//, '');
+    window.location.href = `intent://${bare}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end`;
+  } else {
+    // iOS: não há forma garantida de sair do webview in-app
+    // Retorna false para indicar que não conseguiu sair
+    return false;
+  }
+  return true;
+}
+
+function openPlatformLink(webUrl) {
+  if (!webUrl) return;
+  if (!isInAppWebView()) { window.open(webUrl, '_blank', 'noreferrer'); return; }
+
+  try {
+    const u = new URL(webUrl);
+    const host = u.hostname.replace(/^www\./, '');
+
+    if (host === 'open.spotify.com') {
+      const parts = u.pathname.replace(/^\//, '').split('/').filter(Boolean);
+      const clean = parts.filter(p => !/^intl-/.test(p));
+      if (clean.length >= 2) {
+        if (isAndroid()) {
+          window.location.href = `intent://open.spotify.com${u.pathname}#Intent;scheme=https;package=com.spotify.music;end`;
+        } else {
+          _trySchemeWithFallback(`spotify:${clean[0]}:${clean[1]}`, webUrl);
+        }
+        return;
+      }
+    }
+
+    if (host === 'music.apple.com') {
+      if (isAndroid()) { openInBrowser(webUrl); } else { _trySchemeWithFallback(webUrl, webUrl); }
+      return;
+    }
+
+    if (host === 'deezer.com') {
+      const clean = u.pathname.replace(/^\/[a-z]{2}\//, '/');
+      if (isAndroid()) {
+        window.location.href = `intent://www.deezer.com${clean}#Intent;scheme=https;package=deezer.android.app;end`;
+      } else {
+        _trySchemeWithFallback(`deezer://www.deezer.com${clean}`, webUrl);
+      }
+      return;
+    }
+
+    if (host === 'music.youtube.com') {
+      if (isAndroid()) {
+        window.location.href = `intent://music.youtube.com${u.pathname}${u.search}#Intent;scheme=https;package=com.google.android.apps.youtube.music;end`;
+      } else {
+        _trySchemeWithFallback(webUrl, webUrl);
+      }
+      return;
+    }
+
+    if (host === 'youtube.com' || host === 'youtu.be' || host === 'm.youtube.com') {
+      let videoId = u.searchParams.get('v') || '';
+      if (!videoId && host === 'youtu.be') videoId = u.pathname.replace('/', '');
+      const channel = u.pathname.startsWith('/@') ? u.pathname : '';
+      if (isAndroid()) {
+        const path = videoId ? `/watch?v=${videoId}` : (channel || u.pathname + u.search);
+        window.location.href = `intent://youtube.com${path}#Intent;scheme=https;package=com.google.android.youtube;end`;
+      } else {
+        const scheme = videoId ? `vnd.youtube://${videoId}` : `vnd.youtube://www.youtube.com${channel || u.pathname}`;
+        _trySchemeWithFallback(scheme, webUrl);
+      }
+      return;
+    }
+
+    if (host === 'instagram.com' || host === 'www.instagram.com') {
+      const username = u.pathname.replace(/\//g, '');
+      if (isAndroid()) {
+        window.location.href = `intent://instagram.com/${username}#Intent;scheme=https;package=com.instagram.android;end`;
+      } else {
+        _trySchemeWithFallback(`instagram://user?username=${username}`, webUrl);
+      }
+      return;
+    }
+
+    if (host === 'tiktok.com' || host === 'www.tiktok.com') {
+      // Abre direto — webview do Instagram/TikTok bloqueia intents externos
+      window.open(webUrl, '_blank', 'noreferrer');
+      return;
+    }
+  } catch {}
+
+  window.open(webUrl, '_blank', 'noreferrer');
+}
+
 const DEFAULT_LINKS = {
   spotify:      'https://open.spotify.com/intl-pt/artist/7zLPRu5akdcZHeDbVMm3o8',
   apple:        'https://music.apple.com/br/artist/mind-of-a-dead-body/1880815220',
   deezer:       'https://www.deezer.com/br/artist/375893561',
   youtubeMusic: 'https://music.youtube.com/channel/UCWuiRQ6qg-tMImAazjifIGg',
   instagram:    'https://www.instagram.com/mindofadeadbody',
-  tiktok:       'https://www.tiktok.com/@mindofadeadbody',
+  tiktok:       'https://www.tiktok.com/@mind.of.a.dead.boesse',
   youtube:      'https://www.youtube.com/@mindofadeadbody',
   website:      '/',
 };
@@ -85,6 +194,7 @@ export default function Tree() {
   const [supportClosing, setSupportClosing] = useState(false);
   const [supportView, setSupportView] = useState(null); // null | 'pix' | 'livepix'
   const [treeCfg, setTreeCfg] = useState(normalizeTreeDoc({}));
+  const [browserToast, setBrowserToast] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, ...TREE_DOC_PATH), (snap) => {
@@ -139,7 +249,7 @@ export default function Tree() {
       { label: 'YouTube',   sub: 'Vídeos e clipes',   href: links.youtube,   icon: youtubeIcon },
     ]},
     { group: 'SITE', items: [
-      { label: 'Site Oficial', sub: 'mindofadeadbody.com', href: links.website, icon: null },
+      { label: 'Site Oficial', sub: 'mindofadeadbody.com', href: links.website, icon: null, isWebsite: true },
     ]},
   ] : [
     { group: 'LISTEN', items: [
@@ -154,7 +264,7 @@ export default function Tree() {
       { label: 'YouTube',   sub: 'Videos & clips',   href: links.youtube,   icon: youtubeIcon },
     ]},
     { group: 'WEBSITE', items: [
-      { label: 'Official Website', sub: 'mindofadeadbody.com', href: links.website, icon: null },
+      { label: 'Official Website', sub: 'mindofadeadbody.com', href: links.website, icon: null, isWebsite: true },
     ]},
   ];
 
@@ -212,6 +322,18 @@ export default function Tree() {
                 href={item.href}
                 target={item.href.startsWith('http') ? '_blank' : undefined}
                 rel={item.href.startsWith('http') ? 'noreferrer' : undefined}
+                onClick={(e) => {
+                  if (item.isWebsite) {
+                    e.preventDefault();
+                    const absUrl = item.href.startsWith('http')
+                      ? item.href
+                      : `${window.location.protocol}//${window.location.host}${item.href}`;
+                    window.open(absUrl, '_blank', 'noreferrer');
+                  } else if (item.href.startsWith('http')) {
+                    e.preventDefault();
+                    openPlatformLink(item.href);
+                  }
+                }}
               >
                 {item.icon ? (
                   <img className="tree-link-icon" src={item.icon} alt="" aria-hidden="true" />
@@ -262,6 +384,15 @@ export default function Tree() {
         <div className="tree-divider" />
         <div className="tree-footer">© {new Date().getFullYear()} MIND OF A DEAD BODY</div>
       </div>
+
+      {browserToast && (
+        <div className="tree-browser-toast" role="alert">
+          {browserToast === 'copy'
+            ? (isPt ? 'Link copiado! Cole no navegador do seu celular.' : 'Link copied! Paste it in your phone browser.')
+            : (isPt ? 'Abra no navegador do seu celular para acessar o site completo' : 'Open in your phone browser to access the full website')
+          }
+        </div>
+      )}
 
       {/* Widget de suporte flutuante — igual ao site principal */}
       <div className="support-float">

@@ -8,15 +8,22 @@ service firebase.storage {
       allow read:  if request.auth != null;
     }
 
-    // Conteúdo exclusivo — só admin faz upload (autenticado), membros leem
-    match /members-content/{file} {
-      allow write: if request.auth != null;
-      allow read:  if request.auth != null;
+    // Conteúdo exclusivo de membros — autenticados leem e listam, escrevem
+    match /members-content/{allPaths=**} {
+      allow read, list: if request.auth != null;
+      allow write:      if request.auth != null;
     }
 
-    match /members-content/thumbs/{file} {
-      allow write: if request.auth != null;
-      allow read:  if request.auth != null;
+    // Imagens gerais do site (galeria do admin)
+    match /images/{allPaths=**} {
+      allow read, list: if request.auth != null;
+      allow write:      if request.auth != null;
+    }
+
+    // Outras pastas do admin (covers, etc.)
+    match /{folder}/{allPaths=**} {
+      allow read, list: if request.auth != null;
+      allow write:      if request.auth != null;
     }
   }
 }

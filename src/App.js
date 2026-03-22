@@ -17,6 +17,149 @@ import PixPanel from './components/PixPanel';
 
 const PAGES_DOC_PATH = ['siteData', 'moadb_pages'];
 
+// Detecta webviews de apps (Instagram, TikTok, Facebook, etc.)
+function isInAppWebView() {
+  const ua = navigator.userAgent || '';
+  return /Instagram|FBAN|FBAV|FB_IAB|TikTok|BytedanceWebview|Twitter|Snapchat|Line\/|KAKAOTALK|MicroMessenger/i.test(ua);
+}
+
+function isAndroid() { return /Android/i.test(navigator.userAgent); }
+function isIOS() { return /iPhone|iPad|iPod/i.test(navigator.userAgent); }
+
+// Tenta abrir scheme nativo; se não abrir em 1.5s, abre a web
+function _trySchemeWithFallback(scheme, fallbackUrl) {
+  let gone = false;
+  const fallback = setTimeout(() => {
+    if (!gone) window.location.href = fallbackUrl;
+  }, 1500);
+  const onBlur = () => { gone = true; clearTimeout(fallback); };
+  window.addEventListener('blur', onBlur, { once: true });
+  window.location.href = scheme;
+}
+
+// Abre link no browser nativo (escapa do webview)
+function openInBrowser(url) {
+  if (!url) return;
+  if (isAndroid()) {
+    // intent com action VIEW força o chooser do sistema, saindo do webview
+    const bare = url.replace(/^https?:\/\//, '');
+    window.location.href = `intent://${bare}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end`;
+  } else {
+    // iOS: não há forma garantida de sair do webview in-app via JS puro
+    // window.open com _blank às vezes funciona no Safari View Controller
+    window.open(url, '_blank', 'noreferrer');
+  }
+}
+
+// Abre link de plataforma com deep link + fallback web
+function openPlatformLink(webUrl) {
+  if (!webUrl) return;
+
+  // Fora de webview: abre normalmente
+  if (!isInAppWebView()) {
+    window.open(webUrl, '_blank', 'noreferrer');
+    return;
+  }
+
+  try {
+    const u = new URL(webUrl);
+    const host = u.hostname.replace(/^www\./, '');
+
+    // --- Spotify ---
+    if (host === 'open.spotify.com') {
+      const parts = u.pathname.replace(/^\//, '').split('/').filter(Boolean);
+      const clean = parts.filter(p => !/^intl-/.test(p));
+      if (clean.length >= 2) {
+        const scheme = `spotify:${clean[0]}:${clean[1]}`;
+        if (isAndroid()) {
+          window.location.href = `intent://open.spotify.com${u.pathname}#Intent;scheme=https;package=com.spotify.music;end`;
+        } else {
+          _trySchemeWithFallback(scheme, webUrl);
+        }
+        return;
+      }
+    }
+
+    // --- Apple Music ---
+    // iOS: universal link abre o app se instalado; Android não tem app nativo
+    if (host === 'music.apple.com') {
+      if (isAndroid()) {
+        // Android: não há app Apple Music — abre no browser nativo
+        openInBrowser(webUrl);
+      } else {
+        // iOS: universal link via location.href (não window.open — webviews bloqueiam)
+        _trySchemeWithFallback(webUrl, webUrl);
+      }
+      return;
+    }
+
+    // --- Deezer ---
+    if (host === 'deezer.com' || host === 'deezer.com') {
+      const clean = u.pathname.replace(/^\/[a-z]{2}\//, '/');
+      if (isAndroid()) {
+        window.location.href = `intent://www.deezer.com${clean}#Intent;scheme=https;package=deezer.android.app;end`;
+      } else {
+        _trySchemeWithFallback(`deezer://www.deezer.com${clean}`, webUrl);
+      }
+      return;
+    }
+
+    // --- YouTube Music ---
+    if (host === 'music.youtube.com') {
+      if (isAndroid()) {
+        window.location.href = `intent://music.youtube.com${u.pathname}${u.search}#Intent;scheme=https;package=com.google.android.apps.youtube.music;end`;
+      } else {
+        // iOS: YouTube Music usa universal link
+        _trySchemeWithFallback(webUrl, webUrl);
+      }
+      return;
+    }
+
+    // --- YouTube ---
+    if (host === 'youtube.com' || host === 'youtu.be' || host === 'm.youtube.com') {
+      let videoId = u.searchParams.get('v') || '';
+      if (!videoId && host === 'youtu.be') videoId = u.pathname.replace('/', '');
+      if (!videoId && u.pathname.startsWith('/shorts/')) videoId = u.pathname.split('/shorts/')[1]?.split('/')[0] || '';
+      const channel = u.pathname.startsWith('/@') ? u.pathname : '';
+      if (isAndroid()) {
+        const path = videoId ? `/watch?v=${videoId}` : (channel || u.pathname + u.search);
+        window.location.href = `intent://youtube.com${path}#Intent;scheme=https;package=com.google.android.youtube;end`;
+      } else {
+        const scheme = videoId ? `vnd.youtube://${videoId}` : `vnd.youtube://www.youtube.com${channel || u.pathname}`;
+        _trySchemeWithFallback(scheme, webUrl);
+      }
+      return;
+    }
+
+    // --- Instagram ---
+    if (host === 'instagram.com' || host === 'www.instagram.com') {
+      const username = u.pathname.replace(/\//g, '');
+      if (isAndroid()) {
+        window.location.href = `intent://instagram.com/${username}#Intent;scheme=https;package=com.instagram.android;end`;
+      } else {
+        _trySchemeWithFallback(`instagram://user?username=${username}`, webUrl);
+      }
+      return;
+    }
+
+    // --- TikTok ---
+    if (host === 'tiktok.com' || host === 'www.tiktok.com') {
+      const username = u.pathname.replace(/\//g, '').replace('@', '');
+      if (isAndroid()) {
+        window.location.href = `intent://tiktok.com${u.pathname}#Intent;scheme=https;package=com.zhiliaoapp.musically;end`;
+      } else {
+        // iOS: dentro do webview do Instagram, tiktok:// é bloqueado
+        // Tenta x-safari- para forçar Safari, fallback para web
+        _trySchemeWithFallback(`x-safari-https://www.tiktok.com/@${username}`, webUrl);
+      }
+      return;
+    }
+  } catch {}
+
+  // fallback genérico
+  openInBrowser(webUrl);
+}
+
 function normalizeAboutFromPagesDoc(raw) {
   const aboutRaw = raw?.about ?? raw?.sobre ?? {};
 
@@ -833,8 +976,8 @@ function App() {
         };
       })()}  />
 
-      <nav className="top-nav" aria-label="Navegação principal">
-        <a className="nav-logo-wrap" href="#inicio" aria-label="Ir para Início">
+      <nav className="top-nav" aria-label={isPt ? 'Navegação principal' : 'Main navigation'}>
+        <a className="nav-logo-wrap" href="#inicio" aria-label={isPt ? 'Ir para Início' : 'Go to Home'}>
           <img className="nav-logo" src={logoPng} alt="Mind of a Dead Body" />
         </a>
 
@@ -908,7 +1051,7 @@ function App() {
         <button
           className={`nav-hamburger${menuOpen ? ' is-open' : ''}`}
           type="button"
-          aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+          aria-label={menuOpen ? (isPt ? 'Fechar menu' : 'Close menu') : (isPt ? 'Abrir menu' : 'Open menu')}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen(v => !v)}
         >
@@ -1428,22 +1571,26 @@ function App() {
 
                       <div className="disco-modal-links" aria-label={langKey === 'pt' ? 'Plataformas' : 'Platforms'}>
                         {openRelease?.links?.spotify ? (
-                          <a className="disco-modal-link-icon" href={openRelease.links.spotify} target="_blank" rel="noreferrer" title="Spotify">
+                          <a className="disco-modal-link-icon" href={openRelease.links.spotify} target="_blank" rel="noreferrer" title="Spotify"
+                            onClick={(e) => { e.preventDefault(); openPlatformLink(openRelease.links.spotify); }}>
                             <img src={require('./assets/spotify.png')} alt="Spotify" />
                           </a>
                         ) : null}
                         {openRelease?.links?.apple ? (
-                          <a className="disco-modal-link-icon" href={openRelease.links.apple} target="_blank" rel="noreferrer" title="Apple Music">
+                          <a className="disco-modal-link-icon" href={openRelease.links.apple} target="_blank" rel="noreferrer" title="Apple Music"
+                            onClick={(e) => { e.preventDefault(); openPlatformLink(openRelease.links.apple); }}>
                             <img src={require('./assets/apple.png')} alt="Apple Music" />
                           </a>
                         ) : null}
                         {openRelease?.links?.deezer ? (
-                          <a className="disco-modal-link-icon" href={openRelease.links.deezer} target="_blank" rel="noreferrer" title="Deezer">
+                          <a className="disco-modal-link-icon" href={openRelease.links.deezer} target="_blank" rel="noreferrer" title="Deezer"
+                            onClick={(e) => { e.preventDefault(); openPlatformLink(openRelease.links.deezer); }}>
                             <img src={require('./assets/deezer.png')} alt="Deezer" />
                           </a>
                         ) : null}
                         {openRelease?.links?.youtubeMusic ? (
-                          <a className="disco-modal-link-icon" href={openRelease.links.youtubeMusic} target="_blank" rel="noreferrer" title="YouTube Music">
+                          <a className="disco-modal-link-icon" href={openRelease.links.youtubeMusic} target="_blank" rel="noreferrer" title="YouTube Music"
+                            onClick={(e) => { e.preventDefault(); openPlatformLink(openRelease.links.youtubeMusic); }}>
                             <img src={require('./assets/youtube-music.png')} alt="YouTube Music" />
                           </a>
                         ) : null}
@@ -1493,17 +1640,29 @@ function App() {
                                     </button>
                                   ) : null}
                                   {t.youtubeUrl ? (
-                                    <button
-                                      type="button"
-                                      className={`disco-modal-track-link${previewTrackId === t.id ? ' is-playing' : ''}`}
-                                      aria-label={langKey === 'pt' ? 'Preview da faixa' : 'Track preview'}
-                                      onClick={() => setPreviewTrackId(previewTrackId === t.id ? null : t.id)}
-                                    >
-                                      <span className="disco-modal-preview-icon" aria-hidden="true" />
-                                      PREVIEW
-                                    </button>
+                                    isInAppWebView() ? (
+                                      <button
+                                        type="button"
+                                        className="disco-modal-track-link disco-modal-track-link--browser"
+                                        aria-label={langKey === 'pt' ? 'Abrir no navegador para ouvir preview' : 'Open in browser to hear preview'}
+                                        onClick={() => openInBrowser(t.youtubeUrl)}
+                                      >
+                                        <span className="disco-modal-preview-icon" aria-hidden="true" />
+                                        {langKey === 'pt' ? 'ABRIR NO NAVEGADOR' : 'OPEN IN BROWSER'}
+                                      </button>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        className={`disco-modal-track-link${previewTrackId === t.id ? ' is-playing' : ''}`}
+                                        aria-label={langKey === 'pt' ? 'Preview da faixa' : 'Track preview'}
+                                        onClick={() => setPreviewTrackId(previewTrackId === t.id ? null : t.id)}
+                                      >
+                                        <span className="disco-modal-preview-icon" aria-hidden="true" />
+                                        PREVIEW
+                                      </button>
+                                    )
                                   ) : null}
-                                  {previewTrackId === t.id && youtubeId ? (
+                                  {previewTrackId === t.id && youtubeId && !isInAppWebView() ? (
                                     <div className="disco-modal-preview-iframe-wrap" style={{ overflow: 'hidden', height: '1px', width: '1px', position: 'absolute', pointerEvents: 'none' }}>
                                       <iframe
                                         width="1"
@@ -1629,28 +1788,35 @@ function App() {
         <div className="site-footer-inner">
           <div className="footer-icons" aria-label="Links">
             <div className="footer-platforms">
-              <a className="footer-icon" href="https://open.spotify.com/intl-pt/artist/7zLPRu5akdcZHeDbVMm3o8" target="_blank" rel="noreferrer" aria-label="Spotify">
+              <a className="footer-icon" href="https://open.spotify.com/intl-pt/artist/7zLPRu5akdcZHeDbVMm3o8" target="_blank" rel="noreferrer" aria-label="Spotify"
+                onClick={(e) => { e.preventDefault(); openPlatformLink('https://open.spotify.com/intl-pt/artist/7zLPRu5akdcZHeDbVMm3o8'); }}>
                 <img src={spotifyIcon} alt="Spotify" />
               </a>
-              <a className="footer-icon" href="https://music.apple.com/br/artist/mind-of-a-dead-body/1880815220" target="_blank" rel="noreferrer" aria-label="Apple Music">
+              <a className="footer-icon" href="https://music.apple.com/br/artist/mind-of-a-dead-body/1880815220" target="_blank" rel="noreferrer" aria-label="Apple Music"
+                onClick={(e) => { e.preventDefault(); openPlatformLink('https://music.apple.com/br/artist/mind-of-a-dead-body/1880815220'); }}>
                 <img src={appleIcon} alt="Apple Music" />
               </a>
-              <a className="footer-icon" href="https://www.deezer.com/br/artist/375893561" target="_blank" rel="noreferrer" aria-label="Deezer">
+              <a className="footer-icon" href="https://www.deezer.com/br/artist/375893561" target="_blank" rel="noreferrer" aria-label="Deezer"
+                onClick={(e) => { e.preventDefault(); openPlatformLink('https://www.deezer.com/br/artist/375893561'); }}>
                 <img src={deezerIcon} alt="Deezer" />
               </a>
-              <a className="footer-icon" href="https://music.youtube.com/channel/UCWuiRQ6qg-tMImAazjifIGg" target="_blank" rel="noreferrer" aria-label="YouTube Music">
+              <a className="footer-icon" href="https://music.youtube.com/channel/UCWuiRQ6qg-tMImAazjifIGg" target="_blank" rel="noreferrer" aria-label="YouTube Music"
+                onClick={(e) => { e.preventDefault(); openPlatformLink('https://music.youtube.com/channel/UCWuiRQ6qg-tMImAazjifIGg'); }}>
                 <img src={youtubeMusicIcon} alt="YouTube Music" />
               </a>
             </div>
             <span className="footer-sep">|</span>
             <div className="footer-socials">
-              <a className="footer-icon" href="https://www.instagram.com/mindofadeadbody" target="_blank" rel="noreferrer" aria-label="Instagram">
+              <a className="footer-icon" href="https://www.instagram.com/mindofadeadbody" target="_blank" rel="noreferrer" aria-label="Instagram"
+                onClick={(e) => { e.preventDefault(); openPlatformLink('https://www.instagram.com/mindofadeadbody'); }}>
                 <img src={instagramPng} alt="Instagram" />
               </a>
-              <a className="footer-icon" href="https://www.tiktok.com/@mindofadeadbody" target="_blank" rel="noreferrer" aria-label="TikTok">
+              <a className="footer-icon" href="https://www.tiktok.com/@mind.of.a.dead.boesse" target="_blank" rel="noreferrer" aria-label="TikTok"
+                onClick={(e) => { e.preventDefault(); openPlatformLink('https://www.tiktok.com/@mind.of.a.dead.boesse'); }}>
                 <img src={tiktokIcon} alt="TikTok" />
               </a>
-              <a className="footer-icon" href="https://www.youtube.com/@mindofadeadbody" target="_blank" rel="noreferrer" aria-label="YouTube">
+              <a className="footer-icon" href="https://www.youtube.com/@mindofadeadbody" target="_blank" rel="noreferrer" aria-label="YouTube"
+                onClick={(e) => { e.preventDefault(); openPlatformLink('https://www.youtube.com/@mindofadeadbody'); }}>
                 <img src={youtubeIcon} alt="YouTube" />
               </a>
             </div>

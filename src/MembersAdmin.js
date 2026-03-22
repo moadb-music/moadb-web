@@ -5,8 +5,9 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from './firebase';
+import ImageGalleryModal from './components/ImageGalleryModal';
 
-const EMPTY_CONTENT = { type: 'video', title: '', description: '' };
+const EMPTY_CONTENT = { type: 'video', title: '', description: '', downloadable: false };
 const EXPIRY_DAYS = 30;
 
 // Calcula data de expiração a partir do approvedAt
@@ -51,10 +52,12 @@ export default function MembersAdmin() {
   const [content,  setContent]  = useState([]);
   const [newItem,  setNewItem]  = useState({ ...EMPTY_CONTENT });
   const [file,     setFile]     = useState(null);
-  const [thumb,    setThumb]    = useState(null);
-  const [progress, setProgress] = useState(null); // 0-100 or null
+  const [progress, setProgress] = useState(null);
   const [adding,   setAdding]   = useState(false);
   const [tab,      setTab]      = useState('users');
+  const [galleryOpen, setGalleryOpen] = useState(false); // 'new' | 'edit' | false
+  const [editItem, setEditItem] = useState(null); // item being edited
+  const [saving,   setSaving]   = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, 'members'), orderBy('createdAt', 'desc'));
@@ -115,29 +118,22 @@ export default function MembersAdmin() {
       const path = `members-content/${Date.now()}_${newItem.title.replace(/\s+/g, '_')}.${ext}`;
       const fileUrl = await uploadWithProgress(ref(storage, path), file, setProgress);
 
-      // Upload da thumbnail (opcional)
-      let thumbUrl = '';
-      if (thumb) {
-        const tExt = thumb.name.split('.').pop();
-        const tPath = `members-content/thumbs/${Date.now()}_thumb.${tExt}`;
-        thumbUrl = await uploadWithProgress(ref(storage, tPath), thumb, () => {});
-      }
-
       await addDoc(collection(db, 'membersContent'), {
         type: newItem.type,
         title: newItem.title.trim(),
         description: newItem.description.trim(),
+        lyrics: (newItem.lyrics || '').trim(),
         url: fileUrl,
         storagePath: path,
-        thumbUrl,
+        thumbUrl: newItem.thumbUrl || '',
         fileName: file.name,
         fileSize: file.size,
+        downloadable: newItem.downloadable === true,
         createdAt: serverTimestamp(),
       });
 
       setNewItem({ ...EMPTY_CONTENT });
       setFile(null);
-      setThumb(null);
       setProgress(null);
     } catch (err) {
       alert('Erro ao fazer upload: ' + err.message);
@@ -148,11 +144,29 @@ export default function MembersAdmin() {
 
   const removeContent = async (item) => {
     if (!window.confirm('Remover este conteúdo?')) return;
-    // Deleta arquivo do Storage se tiver storagePath
     if (item.storagePath) {
       try { await deleteObject(ref(storage, item.storagePath)); } catch (_) {}
     }
     await deleteDoc(doc(db, 'membersContent', item.id));
+  };
+
+  const saveEdit = async () => {
+    if (!editItem || !editItem.title.trim()) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'membersContent', editItem.id), {
+        title:        editItem.title.trim(),
+        description:  (editItem.description || '').trim(),
+        lyrics:       (editItem.lyrics || '').trim(),
+        thumbUrl:     editItem.thumbUrl || '',
+        downloadable: editItem.downloadable === true,
+      });
+      setEditItem(null);
+    } catch (err) {
+      alert('Erro ao salvar: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const pending  = members.filter((m) => !m.approved);
@@ -222,7 +236,7 @@ export default function MembersAdmin() {
                   <label className="admin-label">Tipo</label>
                   <select className="admin-input" value={newItem.type} onChange={(e) => {
                     setNewItem((p) => ({ ...p, type: e.target.value }));
-                    setFile(null); // reset file when type changes
+                    setFile(null);
                   }}>
                     <option value="video">Vídeo</option>
                     <option value="music">Música</option>
@@ -237,22 +251,12 @@ export default function MembersAdmin() {
 
               <div className="admin-field" style={{ margin: 0 }}>
                 <label className="admin-label">
-                  Arquivo — {newItem.type === 'music' ? 'MP3, WAV, FLAC, AAC' : newItem.type === 'video' ? 'MP4, MOV, MKV' : 'JPG, PNG, WEBP'}
+                  Arquivo — {newItem.type === 'music' ? 'MP3, WAV, FLAC' : newItem.type === 'video' ? 'MP4, MOV, MKV' : 'JPG, PNG, WEBP'}
                 </label>
                 <label style={{ display: 'block', cursor: 'pointer' }}>
-                  <input
-                    key={newItem.type} // força re-render ao trocar tipo, limpando seleção
-                    type="file"
-                    accept={
-                      newItem.type === 'music'
-                        ? 'audio/*,.mp3,.wav,.flac,.aac,.ogg,.m4a'
-                        : newItem.type === 'video'
-                        ? 'video/*,.mp4,.mov,.mkv,.avi'
-                        : 'image/*,.jpg,.jpeg,.png,.webp'
-                    }
-                    style={{ display: 'none' }}
-                    onChange={(e) => setFile(e.target.files[0] || null)}
-                  />
+                  <input key={newItem.type} type="file"
+                    accept={newItem.type === 'music' ? 'audio/*,.mp3,.wav,.flac,.aac,.ogg,.m4a' : newItem.type === 'video' ? 'video/*,.mp4,.mov,.mkv,.avi' : 'image/*'}
+                    style={{ display: 'none' }} onChange={(e) => setFile(e.target.files[0] || null)} />
                   <div className="admin-upload-btn">
                     {newItem.type === 'music' ? '🎵' : newItem.type === 'video' ? '🎬' : '🖼'}{' '}
                     {file ? `${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)` : 'SELECIONAR ARQUIVO'}
@@ -261,13 +265,18 @@ export default function MembersAdmin() {
               </div>
 
               <div className="admin-field" style={{ margin: 0 }}>
-                <label className="admin-label">Thumbnail (opcional — JPG, PNG)</label>
-                <label style={{ display: 'block', cursor: 'pointer' }}>
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => setThumb(e.target.files[0] || null)} />
-                  <div className="admin-upload-btn">
-                    🖼 {thumb ? thumb.name : 'SELECIONAR THUMBNAIL'}
-                  </div>
-                </label>
+                <label className="admin-label">Thumbnail (opcional)</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button type="button" className="admin-btn admin-btn-ghost" onClick={() => setGalleryOpen('new')}>
+                    🖼 {newItem.thumbUrl ? 'TROCAR THUMBNAIL' : 'SELECIONAR DA GALERIA'}
+                  </button>
+                  {newItem.thumbUrl && (
+                    <img src={newItem.thumbUrl} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 3, border: '1px solid rgba(255,255,255,0.15)' }} />
+                  )}
+                  {newItem.thumbUrl && (
+                    <button type="button" className="admin-btn admin-btn-danger" style={{ padding: '4px 8px' }} onClick={() => setNewItem(p => ({ ...p, thumbUrl: '' }))}>✕</button>
+                  )}
+                </div>
               </div>
 
               <div className="admin-field" style={{ margin: 0 }}>
@@ -275,15 +284,25 @@ export default function MembersAdmin() {
                 <input className="admin-input" value={newItem.description} onChange={(e) => setNewItem((p) => ({ ...p, description: e.target.value }))} placeholder="Breve descrição..." />
               </div>
 
+              <div className="admin-field" style={{ margin: 0 }}>
+                <label className="admin-label">Letra (opcional — só para músicas)</label>
+                <textarea className="admin-input" rows={5} value={newItem.lyrics || ''} onChange={(e) => setNewItem((p) => ({ ...p, lyrics: e.target.value }))} placeholder={'[Verso 1]\n...'} style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: '0.8rem', lineHeight: 1.6 }} />
+              </div>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.82rem', opacity: 0.85 }}>
+                <input type="checkbox" checked={!!newItem.downloadable} onChange={(e) => setNewItem(p => ({ ...p, downloadable: e.target.checked }))} />
+                Permitir download pelos membros
+              </label>
+
               {progress !== null && (
-                <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden', height: 6 }}>
-                  <div style={{ height: '100%', background: 'var(--red,#8b0000)', width: `${progress}%`, transition: 'width 0.2s' }} />
-                </div>
-              )}
-              {progress !== null && (
-                <p style={{ fontSize: '0.75rem', opacity: 0.5, margin: 0 }}>
-                  {progress < 100 ? `Enviando... ${Math.round(progress)}%` : 'Finalizando...'}
-                </p>
+                <>
+                  <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden', height: 6 }}>
+                    <div style={{ height: '100%', background: 'var(--red,#8b0000)', width: `${progress}%`, transition: 'width 0.2s' }} />
+                  </div>
+                  <p style={{ fontSize: '0.75rem', opacity: 0.5, margin: 0 }}>
+                    {progress < 100 ? `Enviando... ${Math.round(progress)}%` : 'Finalizando...'}
+                  </p>
+                </>
               )}
 
               <button type="button" className="admin-btn admin-btn-primary" onClick={addContent}
@@ -300,21 +319,87 @@ export default function MembersAdmin() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {content.map((item) => (
-                  <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 12, alignItems: 'center', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                    <div>
-                      <div style={{ fontSize: '0.65rem', letterSpacing: 2, color: 'var(--red,#8b0000)', textTransform: 'uppercase', fontFamily: 'Oswald,sans-serif' }}>{item.type}</div>
-                      <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{item.title}</div>
-                      {item.description && <div style={{ fontSize: '0.75rem', opacity: 0.5 }}>{item.description}</div>}
-                      {item.fileName && <div style={{ fontSize: '0.68rem', opacity: 0.35, marginTop: 2 }}>{item.fileName} · {item.fileSize ? (item.fileSize / 1024 / 1024).toFixed(1) + 'MB' : ''}</div>}
-                    </div>
-                    <a href={item.url} target="_blank" rel="noreferrer" className="admin-btn admin-btn-ghost" style={{ fontSize: '0.72rem', padding: '5px 10px' }}>↗</a>
-                    <button type="button" className="admin-btn admin-btn-danger" style={{ padding: '5px 10px', fontSize: '0.72rem' }} onClick={() => removeContent(item)}>✕</button>
+                  <div key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                    {editItem?.id === item.id ? (
+                      /* ---- EDIT MODE ---- */
+                      <div style={{ padding: '12px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div className="admin-field-row">
+                          <div className="admin-field" style={{ margin: 0, flex: 2 }}>
+                            <label className="admin-label">Título</label>
+                            <input className="admin-input" value={editItem.title} onChange={(e) => setEditItem(p => ({ ...p, title: e.target.value }))} />
+                          </div>
+                        </div>
+                        <div className="admin-field" style={{ margin: 0 }}>
+                          <label className="admin-label">Thumbnail</label>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <button type="button" className="admin-btn admin-btn-ghost" onClick={() => setGalleryOpen('edit')}>
+                              🖼 {editItem.thumbUrl ? 'TROCAR' : 'SELECIONAR DA GALERIA'}
+                            </button>
+                            {editItem.thumbUrl && (
+                              <img src={editItem.thumbUrl} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 3, border: '1px solid rgba(255,255,255,0.15)' }} />
+                            )}
+                            {editItem.thumbUrl && (
+                              <button type="button" className="admin-btn admin-btn-danger" style={{ padding: '4px 8px' }} onClick={() => setEditItem(p => ({ ...p, thumbUrl: '' }))}>✕</button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="admin-field" style={{ margin: 0 }}>
+                          <label className="admin-label">Descrição</label>
+                          <input className="admin-input" value={editItem.description || ''} onChange={(e) => setEditItem(p => ({ ...p, description: e.target.value }))} />
+                        </div>
+                        <div className="admin-field" style={{ margin: 0 }}>
+                          <label className="admin-label">Letra</label>
+                          <textarea className="admin-input" rows={5} value={editItem.lyrics || ''} onChange={(e) => setEditItem(p => ({ ...p, lyrics: e.target.value }))} style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: '0.8rem', lineHeight: 1.6 }} />
+                        </div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.82rem', opacity: 0.85 }}>
+                          <input type="checkbox" checked={!!editItem.downloadable} onChange={(e) => setEditItem(p => ({ ...p, downloadable: e.target.checked }))} />
+                          Permitir download pelos membros
+                        </label>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button type="button" className="admin-btn admin-btn-primary" onClick={saveEdit} disabled={saving}>{saving ? 'SALVANDO...' : 'SALVAR'}</button>
+                          <button type="button" className="admin-btn admin-btn-ghost" onClick={() => setEditItem(null)}>CANCELAR</button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* ---- VIEW MODE ---- */
+                      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto auto', gap: 10, alignItems: 'center', padding: '10px 0' }}>
+                        {item.thumbUrl
+                          ? <img src={item.thumbUrl} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }} />
+                          : <div style={{ width: 44, height: 44, background: 'rgba(255,255,255,0.05)', borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+                              {item.type === 'music' ? '🎵' : item.type === 'video' ? '🎬' : '📷'}
+                            </div>
+                        }
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: '0.65rem', letterSpacing: 2, color: 'var(--red,#8b0000)', textTransform: 'uppercase', fontFamily: 'Oswald,sans-serif' }}>{item.type}</div>
+                          <div style={{ fontWeight: 700, fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+                          {item.description && <div style={{ fontSize: '0.75rem', opacity: 0.5 }}>{item.description}</div>}
+                          {item.fileName && <div style={{ fontSize: '0.68rem', opacity: 0.3 }}>{item.fileName} · {item.fileSize ? (item.fileSize / 1024 / 1024).toFixed(1) + 'MB' : ''}</div>}
+                        </div>
+                        <a href={item.url} target="_blank" rel="noreferrer" className="admin-btn admin-btn-ghost" style={{ fontSize: '0.72rem', padding: '5px 10px' }}>↗</a>
+                        <button type="button" className="admin-btn admin-btn-ghost" style={{ padding: '5px 10px', fontSize: '0.72rem' }} onClick={() => setEditItem({ ...item })}>✏</button>
+                        <button type="button" className="admin-btn admin-btn-danger" style={{ padding: '5px 10px', fontSize: '0.72rem' }} onClick={() => removeContent(item)}>✕</button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
           </div>
         </>
+      )}
+
+      {/* Gallery modal para thumbnail */}
+      {galleryOpen && (
+        <ImageGalleryModal
+          title="SELECIONAR THUMBNAIL"
+          tabs={[{ key: 'members', label: 'MEMBROS', folder: 'members-content/thumbs' }, { key: 'images', label: 'IMAGENS', folder: 'images' }]}
+          onSelect={(url) => {
+            if (galleryOpen === 'new') setNewItem(p => ({ ...p, thumbUrl: url }));
+            else if (galleryOpen === 'edit') setEditItem(p => ({ ...p, thumbUrl: url }));
+            setGalleryOpen(false);
+          }}
+          onClose={() => setGalleryOpen(false)}
+        />
       )}
     </div>
   );

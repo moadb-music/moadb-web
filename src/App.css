@@ -2447,13 +2447,20 @@ a.news-media:focus-visible .news-play::after{
   display: none;
 }
 
-/* BotÃ£o de letra: menor e quadrado (sem arredondamento) */
+/* Botão de letra: menor e quadrado (sem arredondamento) */
 .disco-modal-track-link--lyrics{
   padding: 3px 7px;
   font-size: 0.72rem;
   letter-spacing: 0.8px;
   border-radius: 0;
   gap: 0;
+}
+
+/* Botão "Abrir no navegador" — webview fallback */
+.disco-modal-track-link--browser {
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+  opacity: 0.85;
 }
 
 /* Timeline: linha vermelha que preenche o border-bottom durante o preview */

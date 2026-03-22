@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { signOut } from 'firebase/auth';
 import { Navigate } from 'react-router-dom';
 import {
@@ -93,7 +94,7 @@ function ComprovanteForm({ user, onSent, mode = 'new', isPt = true }) {
             <span className="members-proof-step-num">1</span>
             <div>
               <strong>{isPt ? 'Faça sua contribuição' : 'Make your contribution'}</strong>
-              <p>{isPt ? 'Via PIX, Stripe ou Buy Me a Coffee.' : 'Via PIX, Stripe or Buy Me a Coffee.'}{' '}
+              <p>{isPt ? 'Via PIX, Stripe ou Buy Me a Coffee — mínimo R$ 15,00.' : 'Via PIX, Stripe or Buy Me a Coffee — minimum $5.00 USD.'}{' '}
                 <a href="/donate" className="members-proof-link">{isPt ? 'Ver opções →' : 'See options →'}</a>
               </p>
             </div>
@@ -406,19 +407,19 @@ export default function Members() {
             {music.length > 0 && (
               <section>
                 <p className="members-section-title">🎵 {isPt ? 'MÚSICAS EXCLUSIVAS' : 'EXCLUSIVE TRACKS'}</p>
-                <div className="members-grid">{music.map((item) => <ContentCard key={item.id} item={item} TYPE_LABEL={TYPE_LABEL} />)}</div>
+                <div className="members-grid">{music.map((item) => <ContentCard key={item.id} item={item} TYPE_LABEL={TYPE_LABEL} isPt={isPt} />)}</div>
               </section>
             )}
             {videos.length > 0 && (
               <section>
                 <p className="members-section-title">🎬 {isPt ? 'VÍDEOS & BASTIDORES' : 'VIDEOS & BEHIND THE SCENES'}</p>
-                <div className="members-grid">{videos.map((item) => <ContentCard key={item.id} item={item} TYPE_LABEL={TYPE_LABEL} />)}</div>
+                <div className="members-grid">{videos.map((item) => <ContentCard key={item.id} item={item} TYPE_LABEL={TYPE_LABEL} isPt={isPt} />)}</div>
               </section>
             )}
             {photos.length > 0 && (
               <section>
                 <p className="members-section-title">📷 {isPt ? 'FOTOS' : 'PHOTOS'}</p>
-                <div className="members-grid">{photos.map((item) => <ContentCard key={item.id} item={item} TYPE_LABEL={TYPE_LABEL} />)}</div>
+                <div className="members-grid">{photos.map((item) => <ContentCard key={item.id} item={item} TYPE_LABEL={TYPE_LABEL} isPt={isPt} />)}</div>
               </section>
             )}
           </>
@@ -460,9 +461,100 @@ function MemberExpiry({ expiresAt, isPt = true }) {
   );
 }
 
-function ContentCard({ item, TYPE_LABEL = TYPE_LABEL_PT }) {
+function ContentCard({ item, TYPE_LABEL = TYPE_LABEL_PT, isPt = true }) {
   const icon  = TYPE_ICON[item.type]  || '📁';
   const label = TYPE_LABEL[item.type] || (item.type ? item.type.toUpperCase() : '');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [playing,   setPlaying]   = useState(false);
+  const [paused,    setPaused]    = useState(false);
+  const [progress,  setProgress]  = useState(0);
+  const [duration,  setDuration]  = useState(0);
+  const [current,   setCurrent]   = useState(0);
+  const [volume,    setVolume]    = useState(1);
+  const [muted,     setMuted]     = useState(false);
+  const audioRef = useRef(null);
+
+  const handleVolumeChange = (e) => {
+    const v = parseFloat(e.target.value);
+    setVolume(v);
+    setMuted(v === 0);
+    if (audioRef.current) audioRef.current.volume = v;
+  };
+
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    if (audioRef.current) audioRef.current.volume = next ? 0 : volume || 1;
+  };
+
+  const isAudio = item.type === 'audio' || item.type === 'music';
+  const isVideo = item.type === 'video';
+  const isMedia = isAudio || isVideo;
+
+  // Thumb automática para vídeo
+  const [autoThumb, setAutoThumb] = useState('');
+  const thumbVideoRef = useRef(null);
+
+  useEffect(() => {
+    if (!isVideo || item.thumbUrl || !item.url) return;
+    const video = document.createElement('video');
+    video.src = item.url;
+    video.crossOrigin = 'anonymous';
+    video.muted = true;
+    video.playsInline = true;
+    video.currentTime = 1;
+    video.addEventListener('seeked', () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 320;
+        canvas.height = video.videoHeight || 180;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        setAutoThumb(canvas.toDataURL('image/jpeg', 0.7));
+      } catch {}
+    }, { once: true });
+    video.load();
+  }, [isVideo, item.thumbUrl, item.url]);
+
+  const isNew = (() => {
+    if (!item.createdAt) return false;
+    const ts = item.createdAt?.toDate ? item.createdAt.toDate() : new Date(item.createdAt);
+    return (Date.now() - ts.getTime()) < 7 * 24 * 60 * 60 * 1000;
+  })();
+
+  const fmt = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return m + ':' + String(sec).padStart(2, '0');
+  };
+
+  const handleCardClick = () => {
+    if (isAudio) { setModalOpen(true); setPlaying(true); setPaused(false); }
+  };
+
+  const handlePlayPause = () => {
+    if (!playing) { setPlaying(true); setPaused(false); return; }
+    if (audioRef.current) {
+      if (paused) { audioRef.current.play(); setPaused(false); }
+      else        { audioRef.current.pause(); setPaused(true); }
+    }
+  };
+
+  const handleStop = () => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
+    setPlaying(false); setPaused(false); setProgress(0); setCurrent(0);
+  };
+
+  const handleSeek = (e) => {
+    if (!audioRef.current || !duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    audioRef.current.currentTime = pct * duration;
+  };
+
+  const handleClose = () => {
+    handleStop();
+    setModalOpen(false);
+  };
 
   const handleDownload = async () => {
     try {
@@ -479,20 +571,157 @@ function ContentCard({ item, TYPE_LABEL = TYPE_LABEL_PT }) {
   };
 
   return (
-    <div className="members-card">
-      {item.thumbUrl
-        ? <img className="members-card-thumb" src={item.thumbUrl} alt={item.title} />
-        : <div className="members-card-thumb members-card-thumb--placeholder">{icon}</div>
-      }
-      <div className="members-card-body">
-        <p className="members-card-type">{label}</p>
-        <p className="members-card-title">{item.title}</p>
-        {item.description && <p className="members-card-desc">{item.description}</p>}
-        {item.fileSize && <p className="members-card-meta">{(item.fileSize / 1024 / 1024).toFixed(1)} MB · high quality</p>}
-        <div className="members-card-actions">
-          {item.url && <button className="members-card-download" onClick={handleDownload}>⬇ DOWNLOAD</button>}
+    <>
+      <div className="members-card" onClick={isAudio ? handleCardClick : undefined} style={isAudio ? { cursor: 'pointer' } : {}}>
+        <div className="members-card-thumb-wrap">
+          {isNew && <span className="members-card-new-badge">{isPt ? 'NOVO' : 'NEW'}</span>}
+
+          {item.thumbUrl
+            ? <img className="members-card-thumb" src={item.thumbUrl} alt={item.title} />
+            : (autoThumb
+                ? <img className="members-card-thumb" src={autoThumb} alt={item.title} />
+                : <div className="members-card-thumb members-card-thumb--placeholder">{icon}</div>
+              )
+          }
+
+          {/* botão play — só para áudio e vídeo */}
+          {isMedia && item.url && (
+            <button className="members-card-play" onClick={(e) => { e.stopPropagation(); isAudio ? handleCardClick() : setModalOpen(true); }} aria-label="Play">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="44" height="44">
+                <path d="M8 5v14l11-7z" fill="var(--red,#8b0000)"/>
+              </svg>
+            </button>
+          )}
+        </div>
+
+        <div className="members-card-body">
+          <p className="members-card-type">{label}</p>
+          <p className="members-card-title">{item.title}</p>
+          {item.description && <p className="members-card-desc">{item.description}</p>}
+          {item.fileSize && <p className="members-card-meta">{(item.fileSize / 1024 / 1024).toFixed(1)} MB · {isPt ? 'alta qualidade' : 'high quality'}</p>}
+          {!isAudio && item.url && (
+            <div className="members-card-actions">
+              {item.downloadable && (
+                <button className="members-card-download" onClick={handleDownload}>⬇ DOWNLOAD</button>
+              )}
+            </div>
+          )}
+          {isAudio && item.url && (
+            <div className="members-card-actions">
+              <button className="members-card-download members-card-play-btn" onClick={(e) => { e.stopPropagation(); handleCardClick(); }}>▶ {isPt ? 'OUVIR' : 'PLAY'}</button>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+
+      {/* Modal de áudio com letra */}
+      {isAudio && modalOpen && createPortal(
+        <div className="members-lyrics-overlay" onClick={handleClose}>
+          <div className="members-lyrics-modal--wide" onClick={(e) => e.stopPropagation()}>
+            <button className="members-lyrics-close--abs" onClick={handleClose} aria-label="Fechar">✕</button>
+
+            {/* coluna esquerda — capa + player */}
+            <div className="members-lyrics-cover-col">
+              {item.thumbUrl
+                ? <img src={item.thumbUrl} alt={item.title} className="members-lyrics-cover-img" />
+                : <div className="members-lyrics-cover-placeholder">{icon}</div>
+              }
+              <p className="members-lyrics-cover-type">{label}</p>
+              <p className="members-lyrics-cover-title">{item.title}</p>
+              {item.description && <p className="members-lyrics-cover-desc">{item.description}</p>}
+
+              {/* player de áudio */}
+              {item.url && (
+                <div className="members-modal-player">
+                  <audio ref={audioRef} src={item.url} autoPlay={playing && !paused}
+                    onTimeUpdate={() => {
+                      if (!audioRef.current) return;
+                      setCurrent(audioRef.current.currentTime);
+                      setProgress(audioRef.current.duration ? audioRef.current.currentTime / audioRef.current.duration : 0);
+                    }}
+                    onLoadedMetadata={() => audioRef.current && setDuration(audioRef.current.duration)}
+                    onEnded={handleStop}
+                  />
+                  <div className="members-modal-player-bar" onClick={handleSeek}>
+                    <div className="members-modal-player-fill" style={{ width: (progress * 100) + '%' }} />
+                  </div>
+                  <div className="members-modal-player-row">
+                    <span className="members-modal-player-time">{fmt(current)}</span>
+                    <div className="members-modal-player-btns">
+                      <button className="members-modal-player-btn" onClick={handlePlayPause} aria-label={paused ? 'Play' : 'Pause'}>
+                        {paused || !playing
+                          ? <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>
+                          : <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        }
+                      </button>
+                      <button className="members-modal-player-btn members-modal-player-btn--stop" onClick={handleStop} aria-label="Stop">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M6 6h12v12H6z"/></svg>
+                      </button>
+                    </div>
+                    <span className="members-modal-player-time">{fmt(duration)}</span>
+                  </div>
+                  <div className="members-modal-volume-row">
+                    <button className="members-modal-volume-btn" onClick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'}>
+                      {muted || volume === 0
+                        ? <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06A8.99 8.99 0 0 0 17.73 18l1.73 1.73L21 18.46 4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+                        : volume < 0.5
+                          ? <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M18.5 12A4.5 4.5 0 0 0 16 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
+                          : <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+                      }
+                    </button>
+                    <input
+                      className="members-modal-volume-slider"
+                      type="range"
+                      min="0" max="1" step="0.02"
+                      value={muted ? 0 : volume}
+                      onChange={handleVolumeChange}
+                      aria-label="Volume"
+                      style={{ '--vol-pct': `${Math.round((muted ? 0 : volume) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="members-lyrics-cover-actions">
+                <button className="members-card-download" onClick={handleDownload}>⬇ DOWNLOAD</button>
+              </div>
+            </div>
+
+            {/* coluna direita — letra */}
+            <div className="members-lyrics-text-col">
+              <p className="members-lyrics-text-label">{isPt ? 'LETRA' : 'LYRICS'}</p>
+              {item.lyrics
+                ? <pre className="members-lyrics-body">{item.lyrics}</pre>
+                : <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.82rem', fontStyle: 'italic' }}>{isPt ? 'Letra não disponível.' : 'Lyrics not available.'}</p>
+              }
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal de vídeo */}
+      {isVideo && modalOpen && createPortal(
+        <div className="members-lyrics-overlay" onClick={() => { setModalOpen(false); }}>
+          <div className="members-video-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="members-lyrics-close--abs" onClick={() => setModalOpen(false)} aria-label="Fechar">✕</button>
+            <video
+              src={item.url}
+              controls
+              autoPlay
+              playsInline
+              style={{ maxWidth: '100%', maxHeight: '80vh', width: 'auto', height: 'auto', borderRadius: 4, display: 'block', margin: '0 auto' }}
+            />
+            <p className="members-lyrics-cover-title" style={{ marginTop: 12, textAlign: 'center' }}>{item.title}</p>
+            {item.downloadable && (
+              <div style={{ textAlign: 'center', marginTop: 8 }}>
+                <button className="members-card-download" onClick={handleDownload}>⬇ DOWNLOAD</button>
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
 }
