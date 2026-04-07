@@ -26,5 +26,11 @@ service cloud.firestore {
       allow read:  if request.auth != null;
       allow write: if request.auth != null;
     }
+
+    // analytics_pageviews — qualquer um pode criar (tracking público); só admin lê
+    match /analytics_pageviews/{doc} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
   }
 }

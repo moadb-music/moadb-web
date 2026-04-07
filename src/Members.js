@@ -9,6 +9,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from './authContext';
 import { auth, db, storage } from './firebase';
+import { trackPageView } from './analytics';
 import SiteNav from './components/SiteNav';
 import SupportWidget from './components/SupportWidget';
 import './App.css';
@@ -172,6 +173,9 @@ export default function Members() {
     document.body.classList.remove('show-bmc');
     return () => document.body.classList.remove('show-bmc');
   }, []);
+
+  // Analytics
+  useEffect(() => { trackPageView('members'); }, []);
 
   useEffect(() => {
     if (!user) return;

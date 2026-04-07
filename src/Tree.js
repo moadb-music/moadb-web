@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { trackPageView } from './analytics';
 import './App.css';
 import './Tree.css';
 import defaultLogo from './assets/logo-mark.png';
@@ -195,6 +196,9 @@ export default function Tree() {
   const [supportView, setSupportView] = useState(null); // null | 'pix' | 'livepix'
   const [treeCfg, setTreeCfg] = useState(normalizeTreeDoc({}));
   const [browserToast, setBrowserToast] = useState(false);
+
+  // Analytics
+  useEffect(() => { trackPageView('tree'); }, []);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, ...TREE_DOC_PATH), (snap) => {

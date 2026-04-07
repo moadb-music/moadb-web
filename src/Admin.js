@@ -11,6 +11,7 @@ import TreeAdmin from './TreeAdmin';
 import DonateAdmin from './DonateAdmin';
 import MensagensAdmin from './MensagensAdmin';
 import MembersAdmin from './MembersAdmin';
+import TrafficAdmin from './TrafficAdmin';
 import './Admin.css';
 
 export default function Admin() {
@@ -125,6 +126,13 @@ export default function Admin() {
             >
               MEMBROS
             </button>
+            <button
+              type="button"
+              className={`admin-tab ${activeTab === 'traffic' ? 'is-active' : ''}`}
+              onClick={() => trySetTab('traffic')}
+            >
+              TRÁFEGO
+            </button>
           </nav>
         </div>
 
@@ -146,6 +154,8 @@ export default function Admin() {
           <MensagensAdmin />
         ) : activeTab === 'members' ? (
           <MembersAdmin />
+        ) : activeTab === 'traffic' ? (
+          <TrafficAdmin />
         ) : (
           <div className="admin-empty" aria-label="Conteúdo do painel" />
         )}

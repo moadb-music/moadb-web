@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { trackPageView } from './analytics';
 import './App.css';
 import logoPng from './assets/logo.png';
 import aboutLogoMark from './assets/logo-mark.png';
@@ -453,6 +454,9 @@ function App() {
       window.location.replace('/tree');
     }
   }, []);
+
+  // Analytics
+  useEffect(() => { trackPageView('home'); }, []);
 
   const [langOpen, setLangOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);

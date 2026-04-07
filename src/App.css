@@ -305,11 +305,11 @@ a{color:inherit;text-decoration:none}
 
 /* HERO (INÃCIO) */
 .hero{
-  min-height:100vh;
+  min-height:110vh;
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:120px 20px 60px;
+  padding:60px 20px 60px;
   text-align:center;
   overflow:hidden;
 }
@@ -332,7 +332,7 @@ a{color:inherit;text-decoration:none}
   display:flex;
   align-items:stretch;
   justify-content:center;
-  padding:120px 20px 80px;
+  padding:160px 20px 80px;
   overflow:hidden;
 }
 
@@ -425,7 +425,7 @@ a{color:inherit;text-decoration:none}
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:120px 20px 90px;
+  padding:160px 20px 90px;
   overflow:hidden;
 }
 
@@ -747,6 +747,7 @@ a{color:inherit;text-decoration:none}
 
 .hero, .about, .shop, .news, .discography, .contact {
   position: relative;
+  scroll-margin-top: 72px;
 }
 
 .section-bg-layers,
@@ -773,7 +774,7 @@ a{color:inherit;text-decoration:none}
   display:flex;
   align-items:flex-start;
   justify-content:center;
-  padding:120px 20px 90px;
+  padding:160px 20px 90px;
   overflow:hidden;
 }
 .news-empty{
@@ -1242,7 +1243,7 @@ a.news-media:focus-visible .news-play::after{
 .discography{
   min-height:100vh;
   display:block;
-  padding:180px 20px 90px;
+  padding:220px 20px 90px;
   overflow:hidden;
 }
 
@@ -1457,7 +1458,7 @@ a.news-media:focus-visible .news-play::after{
   display:flex;
   align-items:flex-start;
   justify-content:center;
-  padding:120px 20px 110px;
+  padding:160px 20px 110px;
   overflow:hidden;
 }
 
@@ -1873,7 +1874,7 @@ a.news-media:focus-visible .news-play::after{
 
 /* Linha 2 - CAPA (glow vermelho, sem outline) */
 .home-featured-cover{
-  width:min(480px, 92vw);
+  width:min(400px, 92vw);
   aspect-ratio:1/1;
   overflow:visible; /* evita clipping do zoom */
   border:0;
@@ -2116,15 +2117,15 @@ a.news-media:focus-visible .news-play::after{
   .shop-nav-btn.next{right:0}
   .news-viewport{padding:10px 20px 20px;}
   .news-viewport::before,.news-viewport::after{width:16px;}
-  .discography{padding:100px 12px 60px;}
+  .discography{padding:120px 12px 60px;}
   .discography-title{margin:0 0 40px;}
   .discography-cover{width:80px;height:80px;}
-  .contact{padding:100px 16px 60px;}
+  .contact{padding:120px 16px 60px;}
   .contact-title{margin:0 0 40px;}
-  .about{padding:100px 16px 60px;}
+  .about{padding:120px 16px 60px;}
   .about-title{margin:10px 0 24px;}
-  .shop{padding:100px 16px 60px;}
-  .news{padding:100px 16px 60px;}
+  .shop{padding:120px 16px 60px;}
+  .news{padding:120px 16px 60px;}
 }
 
 /* NEWS: garante quebra de linha no resumo (inclusive strings longas/URLs) */

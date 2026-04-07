@@ -45,7 +45,7 @@
 }
 
 .admin-shell{
-  width:min(60vw);
+  width:min(90vw, 1280px);
   margin:0 auto;
   padding-left:0;
 }
@@ -116,7 +116,8 @@
 .admin-tabs{
   display:flex;
   align-items:center;
-  gap:40px;
+  flex-wrap:wrap;
+  gap:6px 24px;
   padding:10px 0;
 }
 
@@ -126,16 +127,16 @@
   color:rgba(255,255,255,.55);
   cursor:pointer;
   font-family:Oswald,sans-serif;
-  font-size:1.15rem;
+  font-size:0.95rem;
   font-weight:800;
-  letter-spacing:4px;
+  letter-spacing:3px;
   text-shadow:2px 2px 4px #00000080;
   transition:.2s;
   display:inline-flex;
   align-items:center;
   justify-content:center;
   white-space:nowrap;
-  padding:10px 0;
+  padding:8px 0;
   position:relative;
 }
 

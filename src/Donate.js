@@ -1,6 +1,7 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
+import { trackPageView } from "./analytics";
 import pixPng from "./assets/pix.png";
 import PixPanel from "./components/PixPanel";
 import StripeWidget from "./components/StripeWidget";
@@ -47,10 +48,11 @@ function applyBg(bg) {
   const to     = gradOn ? aHex(bg.gradientTo   || "#000000", bg.gradientToOpacity   != null ? bg.gradientToOpacity   : bg.gradientOpacity != null ? bg.gradientOpacity : 1) : "transparent";
   return {
     "--bg-gradient":      gradOn ? "linear-gradient(" + angle + "deg, " + from + ", " + to + ")" : "none",
-    "--bg-image":         imgOn  ? "url(" + bg.imageUrl + ")" : "none",
+    "--bg-image":         imgOn  ? "url('" + bg.imageUrl + "')" : "none",
     "--bg-image-opacity": imgOn  ? c01(bg.imageOpacity != null ? bg.imageOpacity : 0.35) : 0,
   };
 }
+
 export default function Donate() {
   const [data,           setData]           = useState(null);
   const [pagesBg,        setPagesBg]        = useState(null);
@@ -61,6 +63,9 @@ export default function Donate() {
   const [supportView,    setSupportView]    = useState(null);
 
   const isPt = lang === "pt-BR";
+
+  // Analytics
+  useEffect(() => { trackPageView('donate'); }, []);
 
   const openSupport  = () => { setSupportClosing(false); setSupportOpen(true); };
   const closeSupport = () => {
@@ -132,6 +137,7 @@ export default function Donate() {
           {period && <p className="donate-hero-period">{period}</p>}
           <p className="donate-hero-desc">{desc}</p>
         </div>
+
         {goal > 0 ? (
           <div className="donate-goal-card">
             <div className="donate-goal-labels">
@@ -177,6 +183,7 @@ export default function Donate() {
             <SupportBtn />
           </div>
         )}
+
         {donations.length > 0 && (
           <div className="donate-list-card">
             <h2 className="donate-list-title">{isPt ? "Contribuicoes recentes" : "Recent contributions"}</h2>
@@ -197,6 +204,7 @@ export default function Donate() {
           </div>
         )}
       </main>
+
       {supportOpen && (
         <div className={"support-panel support-panel--inline" + (supportClosing ? " support-panel--out" : "") + (supportView === "stripe" ? " support-panel--wide" : "")}>
           {supportView === null && (
@@ -210,7 +218,7 @@ export default function Donate() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
                 </svg>
-                {isPt ? "CARTAO E OUTROS" : "CARD AND MORE"}
+                {isPt ? "CARTAO & OUTROS" : "CARD & MORE"}
               </button>
             </>
           )}
@@ -221,7 +229,7 @@ export default function Donate() {
             <>
               <button className="support-back" onClick={() => setSupportView(null)} aria-label={isPt ? "Voltar" : "Back"}>&#8249;</button>
               <button className="support-close" onClick={closeSupport} aria-label={isPt ? "Fechar" : "Close"}>&#x2715;</button>
-              <div className="support-panel-title">{isPt ? "CARTAO E OUTROS" : "CARD AND MORE"}</div>
+              <div className="support-panel-title">{isPt ? "CARTAO & OUTROS" : "CARD & MORE"}</div>
               <StripeWidget isPt={isPt} onBack={() => setSupportView(null)} />
             </>
           )}

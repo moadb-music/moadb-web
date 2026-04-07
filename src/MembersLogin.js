@@ -48,7 +48,7 @@ async function ensureMemberDoc(user) {
   }
 }
 
-function friendlyError(code, isPt = true) {
+function friendlyError(code, isPt) {
   const map = isPt ? {
     'auth/user-not-found':       'Usuario nao encontrado.',
     'auth/wrong-password':       'Senha incorreta.',
@@ -84,6 +84,7 @@ export default function MembersLogin() {
     return nav.toLowerCase().startsWith('pt') ? 'pt-BR' : 'en';
   });
   const isPt = lang === 'pt-BR';
+
 
   useEffect(() => {
     document.body.classList.remove('show-bmc');
@@ -203,7 +204,7 @@ export default function MembersLogin() {
               </div>
             </li>
             <li>
-              <span className="members-perks-icon">&#11015;&#65039;</span>
+              <span className="members-perks-icon">&#11015;</span>
               <div>
                 <strong>{isPt ? 'Downloads HD' : 'HD Downloads'}</strong>
                 <span>{isPt ? 'Musicas, fotos e videos em resolucao maxima.' : 'Music, photos and videos in maximum resolution.'}</span>
