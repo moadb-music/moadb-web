@@ -980,92 +980,100 @@ function App() {
         };
       })()}  />
 
-      <nav className="top-nav" aria-label={isPt ? 'Navegação principal' : 'Main navigation'}>
-        <a className="nav-logo-wrap" href="#inicio" aria-label={isPt ? 'Ir para Início' : 'Go to Home'}>
-          <img className="nav-logo" src={logoPng} alt="Mind of a Dead Body" />
-        </a>
+      <div className="site-header">
+        <nav className="top-nav" aria-label={isPt ? 'Navegação principal' : 'Main navigation'}>
 
-        {/* Desktop nav */}
-        <div className="nav-links nav-links--desktop" role="navigation" aria-label="Seções">
-          {(() => {
-            const order = Array.isArray(pagesContent?.sectionOrder) ? pagesContent.sectionOrder : [];
-            const NAV_SECTIONS = isPt ? NAV_SECTIONS_PT : NAV_SECTIONS_EN;
-            const navMap = new Map(NAV_SECTIONS.map((s) => [s.key, s]));
-            const ordered = order
-              .filter((k) => k !== 'main' && navMap.has(k) && sectionVisible[k] !== false)
-              .map((k) => navMap.get(k));
-            const missing = NAV_SECTIONS.filter((s) => !order.includes(s.key) && sectionVisible[s.key] !== false);
-            return [...ordered, ...missing].map((s) => (
-              <a key={s.key} href={s.href}>{s.label}</a>
-            ));
-          })()}
-          <a href="/members" style={{ color: 'var(--red,#8b0000)' }}>{isPt ? 'MEMBROS' : 'MEMBERS'}</a>
-        </div>
+          {/* Coluna esquerda: link guarda-chuva */}
+          <div className="nav-left">
+            <a
+              className="nav-parent-link"
+              href="https://mindplacemusic.com.br"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Mind Place Music"
+            >
+              <span className="nav-parent-chevron">‹</span>
+              MIND PLACE MUSIC
+            </a>
+          </div>
 
-        {/* Lang dropdown: só no desktop */}
-        <div className="lang-dropdown lang-dropdown--desktop" ref={langRef}>
-          <button
-            className="lang-dropdown-toggle"
-            type="button"
-            aria-haspopup="menu"
-            aria-expanded={langOpen}
-            onClick={() => setLangOpen(v => !v)}
-          >
-            <span className="lang-flag" aria-hidden="true">
-              {isPt ? <FlagBR /> : <FlagUK />}
-            </span>
-            <span className="lang-arrow" aria-hidden="true">▼</span>
-          </button>
+          {/* Coluna direita: links + lang + hamburger */}
+          <div className="nav-right">
+            <div className="nav-links nav-links--desktop" role="navigation" aria-label="Seções">
+              {(() => {
+                const order = Array.isArray(pagesContent?.sectionOrder) ? pagesContent.sectionOrder : [];
+                const NAV_SECTIONS = isPt ? NAV_SECTIONS_PT : NAV_SECTIONS_EN;
+                const navMap = new Map(NAV_SECTIONS.map((s) => [s.key, s]));
+                const ordered = order
+                  .filter((k) => k !== 'main' && navMap.has(k) && sectionVisible[k] !== false)
+                  .map((k) => navMap.get(k));
+                const missing = NAV_SECTIONS.filter((s) => !order.includes(s.key) && sectionVisible[s.key] !== false);
+                return [...ordered, ...missing].map((s) => (
+                  <a key={s.key} href={s.href}>{s.label}</a>
+                ));
+              })()}
+              <a href="/members" className="nav-link--members">{isPt ? 'MEMBROS' : 'MEMBERS'}</a>
+            </div>
 
-          {langOpen && (
-            <ul className="lang-dropdown-menu" role="menu" aria-label="Selecionar idioma">
-              <li>
-                <button
-                  type="button"
-                  className={`lang-dropdown-item ${isPt ? 'active' : ''}`}
-                  role="menuitem"
-                  onClick={() => {
-                    setLang('pt-BR');
-                    setLangOpen(false);
-                  }}
-                >
-                  <span className="lang-flag" aria-hidden="true"><FlagBR /></span>
-                  <span>Português</span>
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  className={`lang-dropdown-item ${!isPt ? 'active' : ''}`}
-                  role="menuitem"
-                  onClick={() => {
-                    setLang('en');
-                    setLangOpen(false);
-                  }}
-                >
-                  <span className="lang-flag" aria-hidden="true"><FlagUK /></span>
-                  <span>English</span>
-                </button>
-              </li>
-            </ul>
-          )}
-        </div>
+            {/* Lang dropdown: só no desktop */}
+            <div className="lang-dropdown lang-dropdown--desktop" ref={langRef}>
+              <button
+                className="lang-dropdown-toggle"
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={langOpen}
+                onClick={() => setLangOpen(v => !v)}
+              >
+                <span className="lang-flag" aria-hidden="true">
+                  {isPt ? <FlagBR /> : <FlagUK />}
+                </span>
+                <span className="lang-arrow" aria-hidden="true">▼</span>
+              </button>
+              {langOpen && (
+                <ul className="lang-dropdown-menu" role="menu" aria-label="Selecionar idioma">
+                  <li>
+                    <button type="button" className={`lang-dropdown-item ${isPt ? 'active' : ''}`} role="menuitem"
+                      onClick={() => { setLang('pt-BR'); setLangOpen(false); }}>
+                      <span className="lang-flag" aria-hidden="true"><FlagBR /></span>
+                      <span>Português</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" className={`lang-dropdown-item ${!isPt ? 'active' : ''}`} role="menuitem"
+                      onClick={() => { setLang('en'); setLangOpen(false); }}>
+                      <span className="lang-flag" aria-hidden="true"><FlagUK /></span>
+                      <span>English</span>
+                    </button>
+                  </li>
+                </ul>
+              )}
+            </div>
 
-        {/* Hambúrguer (mobile) — canto direito, no lugar do lang-dropdown */}
-        <button
-          className={`nav-hamburger${menuOpen ? ' is-open' : ''}`}
-          type="button"
-          aria-label={menuOpen ? (isPt ? 'Fechar menu' : 'Close menu') : (isPt ? 'Abrir menu' : 'Open menu')}
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen(v => !v)}
-        >
-          <span /><span /><span />
-        </button>
-      </nav>
+            {/* Hambúrguer (mobile) */}
+            <button
+              className={`nav-hamburger${menuOpen ? ' is-open' : ''}`}
+              type="button"
+              aria-label={menuOpen ? (isPt ? 'Fechar menu' : 'Close menu') : (isPt ? 'Abrir menu' : 'Open menu')}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(v => !v)}
+            >
+              <span /><span /><span />
+            </button>
+          </div>
+        </nav>
 
       {/* Mobile menu drawer */}
       {menuOpen && (
         <div className="nav-mobile-menu" role="navigation" aria-label="Menu">
+          <a
+            className="nav-mobile-parent"
+            href="https://mindplacemusic.com.br"
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => setMenuOpen(false)}
+          >
+            ‹ MIND PLACE MUSIC
+          </a>
           {(() => {
             const order = Array.isArray(pagesContent?.sectionOrder) ? pagesContent.sectionOrder : [];
             const NAV_SECTIONS = isPt ? NAV_SECTIONS_PT : NAV_SECTIONS_EN;
@@ -1078,7 +1086,7 @@ function App() {
               <a key={s.key} href={s.href} onClick={() => setMenuOpen(false)}>{s.label}</a>
             ));
           })()}
-          <a href="/members" style={{ color: 'var(--red,#8b0000)' }} onClick={() => setMenuOpen(false)}>{isPt ? 'MEMBROS' : 'MEMBERS'}</a>
+          <a href="/members" className="nav-link--members" onClick={() => setMenuOpen(false)}>{isPt ? 'MEMBROS' : 'MEMBERS'}</a>
           {/* Idioma dentro do drawer */}
           <div className="nav-mobile-lang">
             <button
@@ -1098,6 +1106,7 @@ function App() {
           </div>
         </div>
       )}
+      </div>
 
       <main style={{ display: 'flex', flexDirection: 'column' }}>
         <section id="inicio" className="hero" aria-label="Inicio" style={sectionBgStyle.home}>
@@ -1826,7 +1835,17 @@ function App() {
             </div>
           </div>
 
-          <div className="footer-copy">© {new Date().getFullYear()} MIND OF A DEAD BODY</div>
+          <div className="footer-copy">
+            © {new Date().getFullYear()} MIND OF A DEAD BODY —{' '}
+            <a
+              href="https://mindplacemusic.com.br"
+              target="_blank"
+              rel="noreferrer"
+              className="footer-copy-link"
+            >
+              MIND PLACE MUSIC
+            </a>
+          </div>
         </div>
       </footer>
 

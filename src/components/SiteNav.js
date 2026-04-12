@@ -27,24 +27,24 @@ function FlagUK(props) {
 }
 
 const NAV_SECTIONS_PT = [
-  { key: 'home',        href: '/#inicio',     label: 'INÍCIO' },
-  { key: 'sobre',       href: '/#sobre',      label: 'SOBRE' },
-  { key: 'loja',        href: '/#loja',       label: 'LOJA' },
-  { key: 'noticias',    href: '/#noticias',   label: 'NOTÍCIAS' },
-  { key: 'discografia', href: '/#discografia',label: 'DISCOGRAFIA' },
-  { key: 'contato',     href: '/#contato',    label: 'CONTATO' },
+  { key: 'home',        href: '/#inicio',      label: 'INÍCIO' },
+  { key: 'sobre',       href: '/#sobre',       label: 'SOBRE' },
+  { key: 'loja',        href: '/#loja',        label: 'LOJA' },
+  { key: 'noticias',    href: '/#noticias',    label: 'NOTÍCIAS' },
+  { key: 'discografia', href: '/#discografia', label: 'DISCOGRAFIA' },
+  { key: 'contato',     href: '/#contato',     label: 'CONTATO' },
 ];
 const NAV_SECTIONS_EN = [
-  { key: 'home',        href: '/#inicio',     label: 'HOME' },
-  { key: 'sobre',       href: '/#sobre',      label: 'ABOUT' },
-  { key: 'loja',        href: '/#loja',       label: 'STORE' },
-  { key: 'noticias',    href: '/#noticias',   label: 'NEWS' },
-  { key: 'discografia', href: '/#discografia',label: 'DISCOGRAPHY' },
-  { key: 'contato',     href: '/#contato',    label: 'CONTACT' },
+  { key: 'home',        href: '/#inicio',      label: 'HOME' },
+  { key: 'sobre',       href: '/#sobre',       label: 'ABOUT' },
+  { key: 'loja',        href: '/#loja',        label: 'STORE' },
+  { key: 'noticias',    href: '/#noticias',    label: 'NEWS' },
+  { key: 'discografia', href: '/#discografia', label: 'DISCOGRAPHY' },
+  { key: 'contato',     href: '/#contato',     label: 'CONTACT' },
 ];
 
 /**
- * SiteNav — nav idêntica ao site principal, reutilizável em qualquer página.
+ * SiteNav — nav reutilizável em qualquer página.
  *
  * Props:
  *   lang      {string}   'pt-BR' | 'en'
@@ -58,7 +58,6 @@ export default function SiteNav({ lang, setLang, extraEnd }) {
   const [pagesContent, setPagesContent] = useState(null);
   const langRef = useRef(null);
 
-  // Lê ordem e visibilidade das seções do Firestore (igual ao App.js)
   useEffect(() => {
     return onSnapshot(doc(db, 'siteData', 'moadb_pages'), (snap) => {
       if (snap.exists()) {
@@ -82,7 +81,6 @@ export default function SiteNav({ lang, setLang, extraEnd }) {
     };
   }, []);
 
-  // Monta links respeitando sectionOrder e visibilidade — igual ao App.js
   function buildLinks() {
     const order = Array.isArray(pagesContent?.sectionOrder) ? pagesContent.sectionOrder : [];
     const visible = pagesContent?.backgroundsBySection ?? {};
@@ -100,80 +98,112 @@ export default function SiteNav({ lang, setLang, extraEnd }) {
 
   return (
     <>
-      <nav className="top-nav" aria-label={isPt ? 'Navegação principal' : 'Main navigation'}>
-        <a className="nav-logo-wrap" href="/" aria-label={isPt ? 'Ir para Início' : 'Go to Home'}>
-          <img className="nav-logo" src={logoPng} alt="Mind of a Dead Body" />
-        </a>
+      <div className="site-header">
+        <nav className="top-nav" aria-label={isPt ? 'Navegação principal' : 'Main navigation'}>
 
-        {/* Desktop links */}
-        <div className="nav-links nav-links--desktop" role="navigation">
-          {links.map((l) => <a key={l.key} href={l.href}>{l.label}</a>)}
-          <a href="/donate">{isPt ? 'APOIAR' : 'SUPPORT'}</a>
-          <a href="/members" style={{ color: 'var(--red,#8b0000)' }}>{isPt ? 'MEMBROS' : 'MEMBERS'}</a>
-        </div>
+          {/* Coluna esquerda: link guarda-chuva */}
+          <div className="nav-left">
+            <a
+              className="nav-parent-link"
+              href="https://mindplacemusic.com.br"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Mind Place Music"
+            >
+              <span className="nav-parent-chevron">‹</span>
+              MIND PLACE MUSIC
+            </a>
+          </div>
 
-        {/* Lang dropdown — desktop */}
-        <div className="lang-dropdown lang-dropdown--desktop" ref={langRef}>
-          <button className="lang-dropdown-toggle" type="button" aria-haspopup="menu" aria-expanded={langOpen}
-            onClick={() => setLangOpen(v => !v)}>
-            <span className="lang-flag" aria-hidden="true">{isPt ? <FlagBR /> : <FlagUK />}</span>
-            <span className="lang-arrow" aria-hidden="true">▼</span>
-          </button>
-          {langOpen && (
-            <ul className="lang-dropdown-menu" role="menu" aria-label={isPt ? 'Selecionar idioma' : 'Select language'}>
-              <li>
-                <button type="button" className={`lang-dropdown-item${isPt ? ' active' : ''}`} role="menuitem"
-                  onClick={() => { setLang('pt-BR'); setLangOpen(false); }}>
-                  <span className="lang-flag" aria-hidden="true"><FlagBR /></span>
-                  <span>Português</span>
-                </button>
-              </li>
-              <li>
-                <button type="button" className={`lang-dropdown-item${!isPt ? ' active' : ''}`} role="menuitem"
-                  onClick={() => { setLang('en'); setLangOpen(false); }}>
-                  <span className="lang-flag" aria-hidden="true"><FlagUK /></span>
-                  <span>English</span>
-                </button>
-              </li>
-            </ul>
-          )}
-        </div>
+          {/* Coluna direita: links + lang + hamburger */}
+          <div className="nav-right">
+            <div className="nav-links nav-links--desktop" role="navigation">
+              {links.map((l) => <a key={l.key} href={l.href}>{l.label}</a>)}
+              <a href="/donate">{isPt ? 'APOIAR' : 'SUPPORT'}</a>
+              <a href="/members" className="nav-link--members">{isPt ? 'MEMBROS' : 'MEMBERS'}</a>
+            </div>
 
-        {/* Slot extra (ex: botão SAIR) — desktop */}
-        {extraEnd && <div className="site-nav-extra">{extraEnd}</div>}
+            {/* Lang dropdown — desktop */}
+            <div className="lang-dropdown lang-dropdown--desktop" ref={langRef}>
+              <button
+                className="lang-dropdown-toggle"
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={langOpen}
+                onClick={() => setLangOpen(v => !v)}
+              >
+                <span className="lang-flag" aria-hidden="true">{isPt ? <FlagBR /> : <FlagUK />}</span>
+                <span className="lang-arrow" aria-hidden="true">▼</span>
+              </button>
+              {langOpen && (
+                <ul className="lang-dropdown-menu" role="menu" aria-label={isPt ? 'Selecionar idioma' : 'Select language'}>
+                  <li>
+                    <button type="button" className={`lang-dropdown-item${isPt ? ' active' : ''}`} role="menuitem"
+                      onClick={() => { setLang('pt-BR'); setLangOpen(false); }}>
+                      <span className="lang-flag" aria-hidden="true"><FlagBR /></span>
+                      <span>Português</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" className={`lang-dropdown-item${!isPt ? ' active' : ''}`} role="menuitem"
+                      onClick={() => { setLang('en'); setLangOpen(false); }}>
+                      <span className="lang-flag" aria-hidden="true"><FlagUK /></span>
+                      <span>English</span>
+                    </button>
+                  </li>
+                </ul>
+              )}
+            </div>
 
-        {/* Hamburger — mobile */}
-        <button className={`nav-hamburger${menuOpen ? ' is-open' : ''}`} type="button"
-          aria-label={menuOpen ? (isPt ? 'Fechar menu' : 'Close menu') : (isPt ? 'Abrir menu' : 'Open menu')}
-          aria-expanded={menuOpen} onClick={() => setMenuOpen(v => !v)}>
-          <span /><span /><span />
-        </button>
-      </nav>
+            {/* Slot extra (ex: botão SAIR) — desktop */}
+            {extraEnd && <div className="site-nav-extra">{extraEnd}</div>}
 
-      {/* Mobile drawer */}
-      {menuOpen && (
-        <div className="nav-mobile-menu" role="navigation" aria-label="Menu">
-          {links.map((l) => (
-            <a key={l.key} href={l.href} onClick={() => setMenuOpen(false)}>{l.label}</a>
-          ))}
-          <a href="/donate" onClick={() => setMenuOpen(false)}>{isPt ? 'APOIAR' : 'SUPPORT'}</a>
-          <a href="/members" style={{ color: 'var(--red,#8b0000)' }} onClick={() => setMenuOpen(false)}>
-            {isPt ? 'MEMBROS' : 'MEMBERS'}
-          </a>
-          <div className="nav-mobile-lang">
-            <button type="button" className={`nav-mobile-lang-btn${isPt ? ' active' : ''}`}
-              onClick={() => { setLang('pt-BR'); setMenuOpen(false); }}>
-              <span className="lang-flag"><FlagBR /></span> PT
-            </button>
-            <button type="button" className={`nav-mobile-lang-btn${!isPt ? ' active' : ''}`}
-              onClick={() => { setLang('en'); setMenuOpen(false); }}>
-              <span className="lang-flag"><FlagUK /></span> EN
+            {/* Hamburger — mobile */}
+            <button
+              className={`nav-hamburger${menuOpen ? ' is-open' : ''}`}
+              type="button"
+              aria-label={menuOpen ? (isPt ? 'Fechar menu' : 'Close menu') : (isPt ? 'Abrir menu' : 'Open menu')}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(v => !v)}
+            >
+              <span /><span /><span />
             </button>
           </div>
-          {/* Slot extra no drawer (ex: botão SAIR) */}
-          {extraEnd && <div style={{ padding: '4px 16px 16px' }}>{extraEnd}</div>}
-        </div>
-      )}
+        </nav>
+
+        {/* Mobile drawer */}
+        {menuOpen && (
+          <div className="nav-mobile-menu" role="navigation" aria-label="Menu">
+            <a
+              className="nav-mobile-parent"
+              href="https://mindplacemusic.com.br"
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setMenuOpen(false)}
+            >
+              ‹ MIND PLACE MUSIC
+            </a>
+            {links.map((l) => (
+              <a key={l.key} href={l.href} onClick={() => setMenuOpen(false)}>{l.label}</a>
+            ))}
+            <a href="/donate" onClick={() => setMenuOpen(false)}>{isPt ? 'APOIAR' : 'SUPPORT'}</a>
+            <a href="/members" className="nav-link--members" onClick={() => setMenuOpen(false)}>
+              {isPt ? 'MEMBROS' : 'MEMBERS'}
+            </a>
+            <div className="nav-mobile-lang">
+              <button type="button" className={`nav-mobile-lang-btn${isPt ? ' active' : ''}`}
+                onClick={() => { setLang('pt-BR'); setMenuOpen(false); }}>
+                <span className="lang-flag"><FlagBR /></span> PT
+              </button>
+              <button type="button" className={`nav-mobile-lang-btn${!isPt ? ' active' : ''}`}
+                onClick={() => { setLang('en'); setMenuOpen(false); }}>
+                <span className="lang-flag"><FlagUK /></span> EN
+              </button>
+            </div>
+            {extraEnd && <div style={{ padding: '4px 28px 16px' }}>{extraEnd}</div>}
+          </div>
+        )}
+      </div>
     </>
   );
 }

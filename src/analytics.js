@@ -40,18 +40,19 @@ function getOrCreateSession() {
   return sid;
 }
 
-// Busca país via ip-api.com (gratuito, sem key, 45req/min)
+// Busca país via ipapi.co (HTTPS gratuito, sem key, 1000req/dia)
 // Cacheia no sessionStorage para não repetir por sessão
 async function getCountry() {
   try {
     const cached = sessionStorage.getItem(GEO_KEY);
     if (cached) return cached;
-    const res = await fetch('https://ip-api.com/json/?fields=countryCode', { cache: 'no-store' });
+    const res = await fetch('https://ipapi.co/country/', { cache: 'no-store' });
     if (!res.ok) return 'unknown';
-    const data = await res.json();
-    const code = data?.countryCode || 'unknown';
-    sessionStorage.setItem(GEO_KEY, code);
-    return code;
+    const code = (await res.text()).trim();
+    // resposta é só o código ex: "BR" — valida 2 letras
+    const valid = /^[A-Z]{2}$/.test(code) ? code : 'unknown';
+    sessionStorage.setItem(GEO_KEY, valid);
+    return valid;
   } catch {
     return 'unknown';
   }
