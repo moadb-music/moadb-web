@@ -433,6 +433,11 @@ function ClicksPanel({ rangeIdx, inline = false }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
+// Formata Date para valor do input date (YYYY-MM-DD)
+function toInputDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
 export default function TrafficAdmin() {
   const [rangeIdx, setRangeIdx] = useState(1);
   const [chartType, setChartType] = useState('line');
@@ -440,19 +445,45 @@ export default function TrafficAdmin() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Data selecionada para o modo 24h (null = hoje)
+  const [selectedDate, setSelectedDate] = useState(() => toInputDate(new Date()));
 
   const range = RANGES[rangeIdx];
 
   useEffect(() => {
     setLoading(true);
     setError('');
-    const since = sinceTs(range);
-    const q = query(
-      collection(db, 'analytics_pageviews'),
-      where('ts', '>=', since),
-      orderBy('ts', 'desc'),
-      limit(5000)
-    );
+
+    let since, until;
+    if (range.hours) {
+      // Modo 24h: busca o dia selecionado (00:00 → 23:59:59)
+      const d = new Date(selectedDate + 'T00:00:00');
+      since = Timestamp.fromDate(d);
+      const end = new Date(selectedDate + 'T23:59:59.999');
+      until = Timestamp.fromDate(end);
+    } else {
+      since = sinceTs(range);
+      until = null;
+    }
+
+    let q;
+    if (until) {
+      q = query(
+        collection(db, 'analytics_pageviews'),
+        where('ts', '>=', since),
+        where('ts', '<=', until),
+        orderBy('ts', 'desc'),
+        limit(5000)
+      );
+    } else {
+      q = query(
+        collection(db, 'analytics_pageviews'),
+        where('ts', '>=', since),
+        orderBy('ts', 'desc'),
+        limit(5000)
+      );
+    }
+
     getDocs(q)
       .then(snap => {
         setRows(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -462,7 +493,7 @@ export default function TrafficAdmin() {
         setError(e.message || 'Erro ao carregar dados');
         setLoading(false);
       });
-  }, [rangeIdx]); // eslint-disable-line
+  }, [rangeIdx, selectedDate]); // eslint-disable-line
 
   useEffect(() => {
     if (range.hours) setGranularity('hour');
@@ -521,7 +552,7 @@ export default function TrafficAdmin() {
   });
 
   const chartTitle = range.hours
-    ? 'PAGEVIEWS — HOJE (POR HORA)'
+    ? `PAGEVIEWS — ${selectedDate === toInputDate(new Date()) ? 'HOJE' : selectedDate} (POR HORA)`
     : 'PAGEVIEWS — POR DIA';
 
   return (
@@ -574,7 +605,27 @@ export default function TrafficAdmin() {
           <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '20px 20px 14px', marginBottom: 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={secTitle}>{chartTitle}</span>
-              <div style={{ display: 'flex', gap: 4 }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                {range.hours && (
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    max={toInputDate(new Date())}
+                    onChange={e => setSelectedDate(e.target.value)}
+                    style={{
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(229,201,126,0.4)',
+                      borderRadius: 5,
+                      color: '#e5c97e',
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: '0.7rem',
+                      padding: '3px 8px',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      colorScheme: 'dark',
+                    }}
+                  />
+                )}
                 <button type="button" style={tabBtn(chartType === 'line')} onClick={() => setChartType('line')}>Linha</button>
                 <button type="button" style={tabBtn(chartType === 'bar')}  onClick={() => setChartType('bar')}>Barras</button>
               </div>
