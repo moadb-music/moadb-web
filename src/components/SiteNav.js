@@ -105,7 +105,7 @@ export default function SiteNav({ lang, setLang, extraEnd }) {
           <div className="nav-left">
             <a
               className="nav-parent-link"
-              href="https://mindplacemusic.com.br"
+              href="https://mindplacemusic.com.br?utm_source=mindofadeadbody&utm_medium=nav&utm_campaign=referral"
               target="_blank"
               rel="noreferrer"
               aria-label="Mind Place Music"
@@ -176,7 +176,7 @@ export default function SiteNav({ lang, setLang, extraEnd }) {
           <div className="nav-mobile-menu" role="navigation" aria-label="Menu">
             <a
               className="nav-mobile-parent"
-              href="https://mindplacemusic.com.br"
+              href="https://mindplacemusic.com.br?utm_source=mindofadeadbody&utm_medium=nav&utm_campaign=referral"
               target="_blank"
               rel="noreferrer"
               onClick={() => setMenuOpen(false)}

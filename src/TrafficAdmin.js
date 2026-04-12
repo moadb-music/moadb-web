@@ -313,6 +313,125 @@ function MiniBar({ label, value, max, color = '#e5c97e', prefix = '' }) {
   );
 }
 
+// ── Clicks Panel ──────────────────────────────────────────────────────────────
+function ClicksPanel({ rangeIdx, inline = false }) {
+  const [clickRows, setClickRows] = useState([]);
+  const [loadingClicks, setLoadingClicks] = useState(true);
+  const [clickView, setClickView] = useState('exit'); // 'exit' | 'page'
+
+  const range = RANGES[rangeIdx];
+
+  useEffect(() => {
+    setLoadingClicks(true);
+    // Busca sem filtro de ts no servidor — ts pode ser string ISO (sendBeacon)
+    // ou Timestamp (addDoc). Filtramos no cliente.
+    const since = sinceTs(range).toDate();
+    const q = query(
+      collection(db, 'analytics_clicks'),
+      orderBy('ts', 'desc'),
+      limit(5000)
+    );
+    getDocs(q)
+      .then(snap => {
+        const rows = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(row => {
+            // suporta Timestamp do SDK e string ISO (sendBeacon REST)
+            const d = row.ts?.toDate
+              ? row.ts.toDate()
+              : row.ts
+                ? new Date(row.ts)
+                : null;
+            return d && d >= since;
+          });
+        setClickRows(rows);
+        setLoadingClicks(false);
+      })
+      .catch(() => setLoadingClicks(false));
+  }, [rangeIdx]); // eslint-disable-line
+
+  const byLabel = useMemo(() => countBy(clickRows, 'label'), [clickRows]);
+  const byPage  = useMemo(() => countBy(clickRows, 'page'),  [clickRows]);
+
+  const total   = clickRows.length;
+  const data    = clickView === 'exit' ? byLabel : byPage;
+  const maxVal  = data[0]?.[1] || 1;
+
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.04)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: 10,
+      padding: '20px 24px 24px',
+      ...(inline ? {} : { marginBottom: 18 }),
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <span style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '0.62rem',
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            opacity: 0.4,
+          }}>Cliques</span>
+          {!loadingClicks && (
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#2dd4bf' }}>
+              {total} total
+            </span>
+          )}
+        </div>
+        {/* Pill toggle */}
+        <div style={{
+          display: 'flex',
+          background: 'rgba(0,0,0,0.35)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 8,
+          padding: 3,
+          gap: 2,
+        }}>
+          {[['exit', 'Saída'], ['page', 'Por Página']].map(([val, label]) => {
+            const active = clickView === val;
+            return (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setClickView(val)}
+                style={{
+                  background: active ? 'rgba(20,80,70,0.85)' : 'transparent',
+                  border: active ? '1px solid rgba(45,212,191,0.4)' : '1px solid transparent',
+                  borderRadius: 6,
+                  color: active ? '#2dd4bf' : 'rgba(255,255,255,0.38)',
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '0.75rem',
+                  fontWeight: active ? 700 : 400,
+                  padding: '5px 16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.18s',
+                  letterSpacing: active ? '0.02em' : 0,
+                  textShadow: active ? '0 0 8px rgba(45,212,191,0.6)' : 'none',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Content */}
+      {loadingClicks && <p style={{ opacity: 0.4, fontSize: '0.8rem' }}>Carregando...</p>}
+      {!loadingClicks && data.length === 0 && (
+        <p style={{ opacity: 0.4, fontSize: '0.8rem' }}>Sem dados de cliques no período.</p>
+      )}
+      {!loadingClicks && data.length > 0 && data.map(([k, v]) => (
+        <MiniBar key={k} label={k} value={v} max={maxVal} color="#2dd4bf" />
+      ))}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function TrafficAdmin() {
   const [rangeIdx, setRangeIdx] = useState(1);
@@ -468,8 +587,8 @@ export default function TrafficAdmin() {
             </div>
           </div>
 
-          {/* Bars grid — 4 colunas fixas */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+          {/* Linha 2 — 4 colunas: Páginas | Dispositivo | Browser | SO */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 14 }}>
 
             <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '20px 20px' }}>
               <div style={secTitle}>Páginas</div>
@@ -491,7 +610,14 @@ export default function TrafficAdmin() {
               {byOS.map(([k, v]) => <MiniBar key={k} label={k} value={v} max={maxOS} color="#4ade80" />)}
             </div>
 
-            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '20px 20px', gridColumn: '1 / -1' }}>
+          </div>
+
+          {/* Linha 3 — 3 colunas: Cliques | Países | Origem do tráfego */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+
+            <ClicksPanel rangeIdx={rangeIdx} inline />
+
+            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '20px 20px' }}>
               <div style={secTitle}>Países</div>
               {byCountry.length > 0
                 ? byCountry.map(([k, v]) => (
@@ -501,7 +627,7 @@ export default function TrafficAdmin() {
               }
             </div>
 
-            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '20px 20px', gridColumn: '1 / -1' }}>
+            <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '20px 20px' }}>
               <div style={secTitle}>Origem do tráfego (referrer)</div>
               {byReferrer.length > 0
                 ? byReferrer.map(([k, v]) => <MiniBar key={k} label={k} value={v} max={maxRef} color="#fb923c" />)

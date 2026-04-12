@@ -40,8 +40,6 @@ function getOrCreateSession() {
   return sid;
 }
 
-// Busca país via ipapi.co (HTTPS gratuito, sem key, 1000req/dia)
-// Cacheia no sessionStorage para não repetir por sessão
 async function getCountry() {
   try {
     const cached = sessionStorage.getItem(GEO_KEY);
@@ -49,7 +47,6 @@ async function getCountry() {
     const res = await fetch('https://ipapi.co/country/', { cache: 'no-store' });
     if (!res.ok) return 'unknown';
     const code = (await res.text()).trim();
-    // resposta é só o código ex: "BR" — valida 2 letras
     const valid = /^[A-Z]{2}$/.test(code) ? code : 'unknown';
     sessionStorage.setItem(GEO_KEY, valid);
     return valid;
@@ -58,11 +55,92 @@ async function getCountry() {
   }
 }
 
+// Grava um clique de saída no Firestore usando o SDK (não REST).
+// Fire-and-forget: não bloqueia a navegação.
+export function trackOutboundClick(label, url, page = 'unknown') {
+  try {
+    const sessionId = getOrCreateSession();
+    // addDoc é não-bloqueante — o SDK do Firebase enfileira internamente
+    addDoc(collection(db, 'analytics_clicks'), {
+      label:     String(label || ''),
+      url:       String(url || ''),
+      page:      String(page || 'unknown'),
+      sessionId: String(sessionId || ''),
+      ts:        serverTimestamp(),
+    }).catch(() => {});
+  } catch {
+    // silencioso
+  }
+}
+
+// ── Listener global ───────────────────────────────────────────────────────────
+// Captura qualquer <a href="https://..."> clicado no site.
+// Roda no capture phase para pegar antes de qualquer preventDefault.
+function installGlobalClickTracker() {
+  if (typeof window === 'undefined') return;
+  if (window.__moadb_click_tracker_v2) return;
+  window.__moadb_click_tracker_v2 = true;
+
+  function handleLinkEvent(e) {
+    // auxclick: filtra só botão do meio (button===1)
+    if (e.type === 'auxclick' && e.button !== 1) return;
+
+    const anchor = e.composedPath
+      ? e.composedPath().find(el => el.tagName === 'A')
+      : e.target.closest('a');
+
+    if (!anchor) return;
+
+    const href = anchor.getAttribute ? anchor.getAttribute('href') : anchor.href;
+    if (!href || !/^https?:\/\//i.test(href)) return;
+
+    try {
+      const parsed = new URL(href);
+      if (parsed.hostname === window.location.hostname) return;
+    } catch { return; }
+
+    const label =
+      (anchor.getAttribute && anchor.getAttribute('aria-label')) ||
+      (anchor.getAttribute && anchor.getAttribute('title')) ||
+      (anchor.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60) ||
+      new URL(href).hostname;
+
+    const page = window.location.pathname.startsWith('/tree') ? 'tree' : 'home';
+
+    trackOutboundClick(label, href, page);
+  }
+
+  document.addEventListener('click',    handleLinkEvent, true);
+  document.addEventListener('auxclick', handleLinkEvent, true);
+}
+
+// Instala assim que o módulo é carregado (após hydration do React)
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', installGlobalClickTracker);
+  } else {
+    installGlobalClickTracker();
+  }
+}
+
 export async function trackPageView(page = 'home') {
   try {
     const sessionId = getOrCreateSession();
     const lang = navigator.language || 'unknown';
-    const referrer = document.referrer ? new URL(document.referrer).hostname : 'direct';
+
+    // Tenta capturar referrer: prioriza utm_source na URL, depois document.referrer
+    const params = new URLSearchParams(window.location.search);
+    const utmSource   = params.get('utm_source');
+    const utmMedium   = params.get('utm_medium');
+    const utmCampaign = params.get('utm_campaign');
+
+    let referrer = 'direct';
+    if (utmSource) {
+      referrer = utmSource;
+    } else if (document.referrer) {
+      try { referrer = new URL(document.referrer).hostname; } catch {}
+    }
+
     const country = await getCountry();
 
     await addDoc(collection(db, 'analytics_pageviews'), {
@@ -73,12 +151,15 @@ export async function trackPageView(page = 'home') {
       os: getOS(),
       lang: lang.slice(0, 5),
       referrer,
+      ...(utmSource   ? { utmSource }   : {}),
+      ...(utmMedium   ? { utmMedium }   : {}),
+      ...(utmCampaign ? { utmCampaign } : {}),
       country,
       screenW: window.screen.width,
       screenH: window.screen.height,
       ts: serverTimestamp(),
     });
-  } catch (e) {
+  } catch {
     // silencioso
   }
 }

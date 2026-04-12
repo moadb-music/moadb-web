@@ -455,6 +455,14 @@ function App() {
     }
   }, []);
 
+  // Guarda o hash inicial e remove da URL para evitar scroll nativo prematuro
+  const initialHashRef = useRef(window.location.hash);
+  useEffect(() => {
+    if (!initialHashRef.current) return;
+    // Remove o hash sem causar scroll nem adicionar entrada no histórico
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }, []);
+
   // Analytics
   useEffect(() => { trackPageView('home'); }, []);
 
@@ -638,6 +646,21 @@ function App() {
     }, () => { /* silencioso */ });
     return unsub;
   }, []);
+
+  // Scroll para hash após loading terminar (animação dura 0.7s, aguarda 1.1s)
+  useEffect(() => {
+    if (!appReady) return;
+    const hash = initialHashRef.current;
+    if (!hash) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector(hash);
+      if (!el) return;
+      document.documentElement.style.scrollBehavior = 'auto';
+      window.scrollTo({ top: Math.max(0, el.offsetTop - 80) });
+      setTimeout(() => { document.documentElement.style.scrollBehavior = ''; }, 50);
+    }, 1100);
+    return () => clearTimeout(t);
+  }, [appReady]); // eslint-disable-line
 
   const langKey = useMemo(() => (String(lang || '').toLowerCase().startsWith('pt') ? 'pt' : 'en'), [lang]);
   const aboutFromDb = useMemo(() => normalizeAboutFromPagesDoc(pagesContent || {}), [pagesContent]);
@@ -987,7 +1010,7 @@ function App() {
           <div className="nav-left">
             <a
               className="nav-parent-link"
-              href="https://mindplacemusic.com.br"
+              href="https://mindplacemusic.com.br?utm_source=mindofadeadbody&utm_medium=nav&utm_campaign=referral"
               target="_blank"
               rel="noreferrer"
               aria-label="Mind Place Music"
@@ -1067,7 +1090,7 @@ function App() {
         <div className="nav-mobile-menu" role="navigation" aria-label="Menu">
           <a
             className="nav-mobile-parent"
-            href="https://mindplacemusic.com.br"
+            href="https://mindplacemusic.com.br?utm_source=mindofadeadbody&utm_medium=nav&utm_campaign=referral"
             target="_blank"
             rel="noreferrer"
             onClick={() => setMenuOpen(false)}
@@ -1585,25 +1608,25 @@ function App() {
                       <div className="disco-modal-links" aria-label={langKey === 'pt' ? 'Plataformas' : 'Platforms'}>
                         {openRelease?.links?.spotify ? (
                           <a className="disco-modal-link-icon" href={openRelease.links.spotify} target="_blank" rel="noreferrer" title="Spotify"
-                            onClick={(e) => { e.preventDefault(); openPlatformLink(openRelease.links.spotify); }}>
+                            onClick={(e) => { e.preventDefault(); openPlatformLink(openRelease.links.spotify, 'Spotify'); }}>
                             <img src={require('./assets/spotify.png')} alt="Spotify" />
                           </a>
                         ) : null}
                         {openRelease?.links?.apple ? (
                           <a className="disco-modal-link-icon" href={openRelease.links.apple} target="_blank" rel="noreferrer" title="Apple Music"
-                            onClick={(e) => { e.preventDefault(); openPlatformLink(openRelease.links.apple); }}>
+                            onClick={(e) => { e.preventDefault(); openPlatformLink(openRelease.links.apple, 'Apple Music'); }}>
                             <img src={require('./assets/apple.png')} alt="Apple Music" />
                           </a>
                         ) : null}
                         {openRelease?.links?.deezer ? (
                           <a className="disco-modal-link-icon" href={openRelease.links.deezer} target="_blank" rel="noreferrer" title="Deezer"
-                            onClick={(e) => { e.preventDefault(); openPlatformLink(openRelease.links.deezer); }}>
+                            onClick={(e) => { e.preventDefault(); openPlatformLink(openRelease.links.deezer, 'Deezer'); }}>
                             <img src={require('./assets/deezer.png')} alt="Deezer" />
                           </a>
                         ) : null}
                         {openRelease?.links?.youtubeMusic ? (
                           <a className="disco-modal-link-icon" href={openRelease.links.youtubeMusic} target="_blank" rel="noreferrer" title="YouTube Music"
-                            onClick={(e) => { e.preventDefault(); openPlatformLink(openRelease.links.youtubeMusic); }}>
+                            onClick={(e) => { e.preventDefault(); openPlatformLink(openRelease.links.youtubeMusic, 'YouTube Music'); }}>
                             <img src={require('./assets/youtube-music.png')} alt="YouTube Music" />
                           </a>
                         ) : null}
@@ -1802,34 +1825,34 @@ function App() {
           <div className="footer-icons" aria-label="Links">
             <div className="footer-platforms">
               <a className="footer-icon" href="https://open.spotify.com/intl-pt/artist/7zLPRu5akdcZHeDbVMm3o8" target="_blank" rel="noreferrer" aria-label="Spotify"
-                onClick={(e) => { e.preventDefault(); openPlatformLink('https://open.spotify.com/intl-pt/artist/7zLPRu5akdcZHeDbVMm3o8'); }}>
+                onClick={(e) => { e.preventDefault(); openPlatformLink('https://open.spotify.com/intl-pt/artist/7zLPRu5akdcZHeDbVMm3o8', 'Spotify'); }}>
                 <img src={spotifyIcon} alt="Spotify" />
               </a>
               <a className="footer-icon" href="https://music.apple.com/br/artist/mind-of-a-dead-body/1880815220" target="_blank" rel="noreferrer" aria-label="Apple Music"
-                onClick={(e) => { e.preventDefault(); openPlatformLink('https://music.apple.com/br/artist/mind-of-a-dead-body/1880815220'); }}>
+                onClick={(e) => { e.preventDefault(); openPlatformLink('https://music.apple.com/br/artist/mind-of-a-dead-body/1880815220', 'Apple Music'); }}>
                 <img src={appleIcon} alt="Apple Music" />
               </a>
               <a className="footer-icon" href="https://www.deezer.com/br/artist/375893561" target="_blank" rel="noreferrer" aria-label="Deezer"
-                onClick={(e) => { e.preventDefault(); openPlatformLink('https://www.deezer.com/br/artist/375893561'); }}>
+                onClick={(e) => { e.preventDefault(); openPlatformLink('https://www.deezer.com/br/artist/375893561', 'Deezer'); }}>
                 <img src={deezerIcon} alt="Deezer" />
               </a>
               <a className="footer-icon" href="https://music.youtube.com/channel/UCWuiRQ6qg-tMImAazjifIGg" target="_blank" rel="noreferrer" aria-label="YouTube Music"
-                onClick={(e) => { e.preventDefault(); openPlatformLink('https://music.youtube.com/channel/UCWuiRQ6qg-tMImAazjifIGg'); }}>
+                onClick={(e) => { e.preventDefault(); openPlatformLink('https://music.youtube.com/channel/UCWuiRQ6qg-tMImAazjifIGg', 'YouTube Music'); }}>
                 <img src={youtubeMusicIcon} alt="YouTube Music" />
               </a>
             </div>
             <span className="footer-sep">|</span>
             <div className="footer-socials">
               <a className="footer-icon" href="https://www.instagram.com/mindofadeadbody" target="_blank" rel="noreferrer" aria-label="Instagram"
-                onClick={(e) => { e.preventDefault(); openPlatformLink('https://www.instagram.com/mindofadeadbody'); }}>
+                onClick={(e) => { e.preventDefault(); openPlatformLink('https://www.instagram.com/mindofadeadbody', 'Instagram'); }}>
                 <img src={instagramPng} alt="Instagram" />
               </a>
               <a className="footer-icon" href="https://www.tiktok.com/@mind.of.a.dead.boesse" target="_blank" rel="noreferrer" aria-label="TikTok"
-                onClick={(e) => { e.preventDefault(); openPlatformLink('https://www.tiktok.com/@mind.of.a.dead.boesse'); }}>
+                onClick={(e) => { e.preventDefault(); openPlatformLink('https://www.tiktok.com/@mind.of.a.dead.boesse', 'TikTok'); }}>
                 <img src={tiktokIcon} alt="TikTok" />
               </a>
               <a className="footer-icon" href="https://www.youtube.com/@mindofadeadbody" target="_blank" rel="noreferrer" aria-label="YouTube"
-                onClick={(e) => { e.preventDefault(); openPlatformLink('https://www.youtube.com/@mindofadeadbody'); }}>
+                onClick={(e) => { e.preventDefault(); openPlatformLink('https://www.youtube.com/@mindofadeadbody', 'YouTube'); }}>
                 <img src={youtubeIcon} alt="YouTube" />
               </a>
             </div>
@@ -1838,7 +1861,7 @@ function App() {
           <div className="footer-copy">
             © {new Date().getFullYear()} MIND OF A DEAD BODY —{' '}
             <a
-              href="https://mindplacemusic.com.br"
+              href="https://mindplacemusic.com.br?utm_source=mindofadeadbody&utm_medium=footer&utm_campaign=referral"
               target="_blank"
               rel="noreferrer"
               className="footer-copy-link"

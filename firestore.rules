@@ -32,5 +32,11 @@ service cloud.firestore {
       allow create: if true;
       allow read, update, delete: if request.auth != null;
     }
+
+    // analytics_clicks — qualquer um pode criar (tracking público); só admin lê
+    match /analytics_clicks/{doc} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
   }
 }
