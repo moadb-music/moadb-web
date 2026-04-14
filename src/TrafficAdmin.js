@@ -433,9 +433,31 @@ function ClicksPanel({ rangeIdx, inline = false }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-// Formata Date para valor do input date (YYYY-MM-DD)
-function toInputDate(d) {
-  return d.toISOString().slice(0, 10);
+// Retorna a data de hoje no fuso de São Paulo como string YYYY-MM-DD
+function todaySP() {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+}
+
+// Converte uma string YYYY-MM-DD para início/fim do dia no fuso de São Paulo
+function dayBoundsSP(dateStr) {
+  // Cria timestamps exatos de 00:00:00 e 23:59:59.999 em SP
+  const start = new Date(`${dateStr}T00:00:00-03:00`);
+  const end   = new Date(`${dateStr}T23:59:59.999-03:00`);
+  return { start, end };
+}
+
+// Retorna o timestamp de N dias/horas atrás a partir do fim do dia selecionado em SP
+function sinceFromEnd(range, endDateStr) {
+  const { end } = dayBoundsSP(endDateStr);
+  const d = new Date(end);
+  if (range.hours) {
+    // modo 24h: início = 00:00 do mesmo dia
+    const { start } = dayBoundsSP(endDateStr);
+    return start;
+  }
+  d.setDate(d.getDate() - (range.days - 1));
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
 export default function TrafficAdmin() {
@@ -445,8 +467,8 @@ export default function TrafficAdmin() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  // Data selecionada para o modo 24h (null = hoje)
-  const [selectedDate, setSelectedDate] = useState(() => toInputDate(new Date()));
+  // Data final selecionada (padrão = hoje em SP)
+  const [endDate, setEndDate] = useState(() => todaySP());
 
   const range = RANGES[rangeIdx];
 
@@ -454,35 +476,16 @@ export default function TrafficAdmin() {
     setLoading(true);
     setError('');
 
-    let since, until;
-    if (range.hours) {
-      // Modo 24h: busca o dia selecionado (00:00 → 23:59:59)
-      const d = new Date(selectedDate + 'T00:00:00');
-      since = Timestamp.fromDate(d);
-      const end = new Date(selectedDate + 'T23:59:59.999');
-      until = Timestamp.fromDate(end);
-    } else {
-      since = sinceTs(range);
-      until = null;
-    }
+    const since = sinceFromEnd(range, endDate);
+    const { end } = dayBoundsSP(endDate);
 
-    let q;
-    if (until) {
-      q = query(
-        collection(db, 'analytics_pageviews'),
-        where('ts', '>=', since),
-        where('ts', '<=', until),
-        orderBy('ts', 'desc'),
-        limit(5000)
-      );
-    } else {
-      q = query(
-        collection(db, 'analytics_pageviews'),
-        where('ts', '>=', since),
-        orderBy('ts', 'desc'),
-        limit(5000)
-      );
-    }
+    const q = query(
+      collection(db, 'analytics_pageviews'),
+      where('ts', '>=', Timestamp.fromDate(since)),
+      where('ts', '<=', Timestamp.fromDate(end)),
+      orderBy('ts', 'desc'),
+      limit(5000)
+    );
 
     getDocs(q)
       .then(snap => {
@@ -493,7 +496,7 @@ export default function TrafficAdmin() {
         setError(e.message || 'Erro ao carregar dados');
         setLoading(false);
       });
-  }, [rangeIdx, selectedDate]); // eslint-disable-line
+  }, [rangeIdx, endDate]); // eslint-disable-line
 
   useEffect(() => {
     if (range.hours) setGranularity('hour');
@@ -551,9 +554,10 @@ export default function TrafficAdmin() {
     whiteSpace: 'nowrap',
   });
 
+  const isToday = endDate === todaySP();
   const chartTitle = range.hours
-    ? `PAGEVIEWS — ${selectedDate === toInputDate(new Date()) ? 'HOJE' : selectedDate} (POR HORA)`
-    : 'PAGEVIEWS — POR DIA';
+    ? `PAGEVIEWS — ${isToday ? 'HOJE' : endDate} (POR HORA)`
+    : `PAGEVIEWS — ${range.label.toUpperCase()}${isToday ? '' : ` até ${endDate}`}`;
 
   return (
     <div style={{ color: '#fff' }}>
@@ -606,26 +610,24 @@ export default function TrafficAdmin() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={secTitle}>{chartTitle}</span>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                {range.hours && (
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    max={toInputDate(new Date())}
-                    onChange={e => setSelectedDate(e.target.value)}
-                    style={{
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(229,201,126,0.4)',
-                      borderRadius: 5,
-                      color: '#e5c97e',
-                      fontFamily: 'Inter, sans-serif',
-                      fontSize: '0.7rem',
-                      padding: '3px 8px',
-                      cursor: 'pointer',
-                      outline: 'none',
-                      colorScheme: 'dark',
-                    }}
-                  />
-                )}
+                <input
+                  type="date"
+                  value={endDate}
+                  max={todaySP()}
+                  onChange={e => setEndDate(e.target.value)}
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(229,201,126,0.4)',
+                    borderRadius: 5,
+                    color: '#e5c97e',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '0.7rem',
+                    padding: '3px 8px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    colorScheme: 'dark',
+                  }}
+                />
                 <button type="button" style={tabBtn(chartType === 'line')} onClick={() => setChartType('line')}>Linha</button>
                 <button type="button" style={tabBtn(chartType === 'bar')}  onClick={() => setChartType('bar')}>Barras</button>
               </div>

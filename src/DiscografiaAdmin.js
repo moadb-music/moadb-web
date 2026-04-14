@@ -20,13 +20,14 @@ const DEFAULT_FORM = {
   type: 'single',
   title: '',
   year: new Date().getFullYear().toString(),
+  releaseDate: '',
   coverFile: null,
   coverPreviewUrl: '',
   spotifyUrl: '',
   appleUrl: '',
   deezerUrl: '',
   youtubeMusicUrl: '',
-  tracks: [], // [{ id, name, youtubeUrl, lyrics, startSec, endSec }]
+  tracks: [],
 };
 
 function uid() {
@@ -55,6 +56,7 @@ function normalizeReleaseFromContent(entry) {
     type: mapTypeFromDb(e.type),
     title: e.title || '',
     year: String(e.year || ''),
+    releaseDate: e.releaseDate || '',
     coverUrl: e.coverUrl || e.coverURL || e.cover || '',
     spotifyUrl: e.links?.spotify || '',
     appleUrl: e.links?.apple || '',
@@ -77,6 +79,7 @@ function serializeReleaseToContent(r) {
     type: String(r.type || 'single').toUpperCase(),
     title: String(r.title || '').trim(),
     year: String(r.year || '').trim(),
+    releaseDate: String(r.releaseDate || '').trim(),
     coverUrl: r.coverUrl || '',
     links: {
       spotify: r.spotifyUrl || '',
@@ -788,6 +791,17 @@ export default function DiscografiaAdmin() {
                     inputMode="numeric"
                     pattern="[0-9]*"
                     placeholder="2026"
+                    className="admin-input"
+                  />
+                </label>
+
+                <label className="admin-field admin-release-year">
+                  <span className="admin-label">Data de lançamento</span>
+                  <input
+                    name="releaseDate"
+                    type="date"
+                    value={form.releaseDate}
+                    onChange={onChange}
                     className="admin-input"
                   />
                 </label>
