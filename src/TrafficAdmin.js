@@ -333,25 +333,24 @@ function ClicksPanel({ rangeIdx, inline = false }) {
     );
     getDocs(q)
       .then(snap => {
-        const rows = snap.docs
+        const allRows = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
           .filter(row => {
-            // suporta Timestamp do SDK e string ISO (sendBeacon REST)
             const d = row.ts?.toDate
               ? row.ts.toDate()
-              : row.ts
-                ? new Date(row.ts)
-                : null;
-            return d && d >= since;
+              : row.ts ? new Date(row.ts) : null;
+            if (!d || d < since) return false;
+            if (isLocalhostRow(row)) return false;
+            return true;
           });
-        setClickRows(rows);
+        setClickRows(allRows);
         setLoadingClicks(false);
       })
       .catch(() => setLoadingClicks(false));
   }, [rangeIdx]); // eslint-disable-line
 
-  const byLabel = useMemo(() => countBy(clickRows, 'label'), [clickRows]);
-  const byPage  = useMemo(() => countBy(clickRows, 'page'),  [clickRows]);
+  const byLabel = useMemo(() => countByClickLabel(clickRows), [clickRows]);
+  const byPage  = useMemo(() => countByNormalized(clickRows, 'page', normalizePage), [clickRows]);
 
   const total   = clickRows.length;
   const data    = clickView === 'exit' ? byLabel : byPage;
@@ -432,7 +431,63 @@ function ClicksPanel({ rangeIdx, inline = false }) {
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Filtro de registros internos ──────────────────────────────────────────────
+// Exclui acessos de localhost (campo hostname ou referrer) — cobre dados
+// gravados antes e depois da correção no analytics.js
+function isLocalhostRow(r) {
+  const LOCALHOST_PATTERNS = ['localhost', '127.0.0.1', '::1'];
+  const host = String(r.hostname || '').toLowerCase().trim();
+  const ref  = String(r.referrer  || '').toLowerCase().trim();
+  const isLocalHost = LOCALHOST_PATTERNS.some(p => host === p || host.endsWith('.' + p));
+  const isLocalRef  = LOCALHOST_PATTERNS.some(p => ref  === p || ref.startsWith(p));
+  return isLocalHost || isLocalRef;
+}
+
+
+// ── Normalização de página ────────────────────────────────────────────────────
+// Agrupa tudo que começa com "loja" como "loja"
+function normalizePage(page) {
+  const p = String(page || '').toLowerCase().trim();
+  if (p === 'loja' || p.startsWith('loja-') || p.startsWith('loja/')) return 'loja';
+  return p || 'unknown';
+}
+
+// ── Normalização de label de clique ──────────────────────────────────────────
+const HOTPRINTI_PATTERNS = [/hotprint/i, /hotmart/i];
+
+function normalizeClickLabel(label, url) {
+  const u = String(url || '');
+  // Link externo da Hotprinti
+  if (HOTPRINTI_PATTERNS.some(re => re.test(u))) return 'loja (hotprinti)';
+  // Link interno para a página /loja
+  try {
+    const parsed = new URL(u);
+    if (parsed.pathname.startsWith('/loja')) return 'loja (página)';
+  } catch {}
+  if (/^\/loja/i.test(u)) return 'loja (página)';
+  return String(label || 'unknown');
+}
+
+function countByClickLabel(arr) {
+  const map = {};
+  for (const item of arr) {
+    const v = normalizeClickLabel(item.label, item.url);
+    // ignora labels genéricos sem significado para o dashboard
+    if (/^abrir$/i.test(v)) continue;
+    map[v] = (map[v] || 0) + 1;
+  }
+  return Object.entries(map).sort((a, b) => b[1] - a[1]);
+}
+
+function countByNormalized(arr, key, normFn) {
+  const map = {};
+  for (const item of arr) {
+    const v = normFn ? normFn(item[key]) : (item[key] || 'unknown');
+    map[v] = (map[v] || 0) + 1;
+  }
+  return Object.entries(map).sort((a, b) => b[1] - a[1]);
+}
+
 // Retorna a data de hoje no fuso de São Paulo como string YYYY-MM-DD
 function todaySP() {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Sao_Paulo' }).format(new Date());
@@ -489,7 +544,10 @@ export default function TrafficAdmin() {
 
     getDocs(q)
       .then(snap => {
-        setRows(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const allRows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Filtra registros de localhost (dados antigos gravados antes da correção)
+        const filtered = allRows.filter(r => !isLocalhostRow(r));
+        setRows(filtered);
         setLoading(false);
       })
       .catch(e => {
@@ -505,7 +563,7 @@ export default function TrafficAdmin() {
 
   const totalViews     = rows.length;
   const uniqueSessions = useMemo(() => new Set(rows.map(r => r.sessionId)).size, [rows]);
-  const byPage         = useMemo(() => countBy(rows, 'page'), [rows]);
+  const byPage         = useMemo(() => countByNormalized(rows, 'page', normalizePage), [rows]);
   const byDevice       = useMemo(() => countBy(rows, 'device'), [rows]);
   const byBrowser      = useMemo(() => countBy(rows, 'browser'), [rows]);
   const byOS           = useMemo(() => countBy(rows, 'os'), [rows]);

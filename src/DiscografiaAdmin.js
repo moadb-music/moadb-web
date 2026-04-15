@@ -23,6 +23,7 @@ const DEFAULT_FORM = {
   releaseDate: '',
   coverFile: null,
   coverPreviewUrl: '',
+  bgUrl: '',
   spotifyUrl: '',
   appleUrl: '',
   deezerUrl: '',
@@ -58,6 +59,7 @@ function normalizeReleaseFromContent(entry) {
     year: String(e.year || ''),
     releaseDate: e.releaseDate || '',
     coverUrl: e.coverUrl || e.coverURL || e.cover || '',
+    bgUrl: e.bgUrl || '',
     spotifyUrl: e.links?.spotify || '',
     appleUrl: e.links?.apple || '',
     deezerUrl: e.links?.deezer || '',
@@ -81,6 +83,7 @@ function serializeReleaseToContent(r) {
     year: String(r.year || '').trim(),
     releaseDate: String(r.releaseDate || '').trim(),
     coverUrl: r.coverUrl || '',
+    bgUrl: r.bgUrl || '',
     links: {
       spotify: r.spotifyUrl || '',
       apple: r.appleUrl || '',
@@ -135,6 +138,7 @@ export default function DiscografiaAdmin() {
   const [coverPickerLoading, setCoverPickerLoading] = useState(false);
   const [coverPickerError, setCoverPickerError] = useState('');
   const [coverPickerImages, setCoverPickerImages] = useState([]); // [{ path, url }]
+  const [bgPickerImages, setBgPickerImages] = useState([]); // [{ path, url }]
   const [galleryTab, setGalleryTab] = useState('covers');
 
   // Hidden file input for the gallery upload tile
@@ -189,6 +193,31 @@ export default function DiscografiaAdmin() {
 
       urls.sort((a, b) => a.path.localeCompare(b.path));
       setCoverPickerImages(urls);
+    } catch {
+      setCoverPickerError('Não foi possível listar as imagens do Storage.');
+    } finally {
+      setCoverPickerLoading(false);
+    }
+  }
+
+  async function loadBgFromStorage({ force } = { force: false }) {
+    if (!force && bgPickerImages.length > 0) return;
+
+    setCoverPickerLoading(true);
+    setCoverPickerError('');
+    try {
+      const root = storageRef(storage, 'discography/bg');
+      const res = await listAll(root);
+
+      const urls = await Promise.all(
+        (res.items || []).map(async (item) => {
+          const url = await getDownloadURL(item);
+          return { path: item.fullPath, url };
+        })
+      );
+
+      urls.sort((a, b) => a.path.localeCompare(b.path));
+      setBgPickerImages(urls);
     } catch {
       setCoverPickerError('Não foi possível listar as imagens do Storage.');
     } finally {
@@ -251,7 +280,10 @@ export default function DiscografiaAdmin() {
   function onGalleryDrop(e) {
     e.preventDefault();
     const files = e.dataTransfer?.files;
-    if (files && files.length) uploadCoverFiles(files);
+    if (files && files.length) {
+      if (galleryTab === 'bg') uploadBgFiles(files);
+      else uploadCoverFiles(files);
+    }
   }
 
   function onGalleryDragOver(e) {
@@ -266,6 +298,58 @@ export default function DiscografiaAdmin() {
       coverUrl: url,
     }));
     setIsCoverPickerOpen(false);
+  }
+
+  async function uploadBgFiles(files) {
+    const list = Array.from(files || []).filter(Boolean);
+    if (list.length === 0) return;
+
+    setCoverPickerLoading(true);
+    setCoverPickerError('');
+    try {
+      const stamp = Date.now();
+      for (let i = 0; i < list.length; i += 1) {
+        const file = list[i];
+        const safeName = String(file.name || `bg-${i}`).replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `discography/bg/${stamp}-${safeName}`;
+        const r = storageRef(storage, path);
+        await uploadBytes(r, file);
+      }
+      await loadBgFromStorage({ force: true });
+    } catch {
+      setCoverPickerError('Falha ao enviar imagem para o Storage.');
+    } finally {
+      setCoverPickerLoading(false);
+      setGalleryUploadInputKey(k => k + 1);
+    }
+  }
+
+  async function deleteBgFromStorage(path) {
+    const ok = window.confirm('Excluir esta imagem do Storage?');
+    if (!ok) return;
+
+    setCoverPickerLoading(true);
+    setCoverPickerError('');
+    try {
+      const r = storageRef(storage, path);
+      await deleteObject(r);
+      await loadBgFromStorage({ force: true });
+    } catch {
+      setCoverPickerError('Falha ao excluir imagem do Storage.');
+    } finally {
+      setCoverPickerLoading(false);
+    }
+  }
+
+  function selectBgFromStorage(url) {
+    setForm(prev => ({ ...prev, bgUrl: url }));
+    setIsCoverPickerOpen(false);
+  }
+
+  async function openBgPicker() {
+    setIsCoverPickerOpen(true);
+    setGalleryTab('bg');
+    await loadBgFromStorage({ force: false });
   }
 
   function selectItem(id) {
@@ -286,6 +370,7 @@ export default function DiscografiaAdmin() {
       ...selected,
       coverFile: null,
       coverPreviewUrl: selected.coverUrl || '',
+      bgUrl: selected.bgUrl || '',
       tracks: (selected.tracks || []).map(t => ({
         id: t.id || uid(),
         name: t.name || '',
@@ -827,6 +912,33 @@ export default function DiscografiaAdmin() {
                       </div>
                     )}
                   </div>
+
+                  <div className="admin-label" style={{ marginBottom: 8, marginTop: 16 }}>Contracapa</div>
+                  <div
+                    className="admin-dropzone admin-dropzone-square"
+                    role="button"
+                    tabIndex={0}
+                    onClick={openBgPicker}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {form.bgUrl ? (
+                      <img className="admin-dropzone-square-img" src={form.bgUrl} alt="Prévia da contracapa" />
+                    ) : (
+                      <div className="admin-dropzone-placeholder">
+                        <div className="admin-dropzone-title">CLIQUE</div>
+                      </div>
+                    )}
+                  </div>
+                  {form.bgUrl ? (
+                    <button
+                      type="button"
+                      className="admin-btn"
+                      style={{ marginTop: 6, width: '100%' }}
+                      onClick={() => setForm(prev => ({ ...prev, bgUrl: '' }))}
+                    >
+                      REMOVER
+                    </button>
+                  ) : null}
                 </div>
 
                 <div className="admin-release-links">
@@ -891,9 +1003,16 @@ export default function DiscografiaAdmin() {
                         <button
                           type="button"
                           className={`admin-tab ${galleryTab === 'covers' ? 'is-active' : ''}`}
-                          onClick={() => setGalleryTab('covers')}
+                          onClick={async () => { setGalleryTab('covers'); await loadCoversFromStorage({ force: false }); }}
                         >
                           COVERS
+                        </button>
+                        <button
+                          type="button"
+                          className={`admin-tab ${galleryTab === 'bg' ? 'is-active' : ''}`}
+                          onClick={async () => { setGalleryTab('bg'); await loadBgFromStorage({ force: false }); }}
+                        >
+                          CONTRACAPA
                         </button>
                       </div>
                     </div>
@@ -955,6 +1074,66 @@ export default function DiscografiaAdmin() {
                                   e.preventDefault();
                                   e.stopPropagation();
                                   deleteCoverFromStorage(img.path);
+                                }}
+                              >
+                                ×
+                              </button>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    ) : null}
+
+                    {galleryTab === 'bg' ? (
+                      <div className="admin-cover-grid">
+                        <label
+                          className={`admin-cover-tile admin-cover-tile-upload ${coverPickerLoading ? 'is-loading' : ''}`}
+                          title="Enviar imagens"
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const files = e.dataTransfer?.files;
+                            if (files && files.length) uploadBgFiles(files);
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        >
+                          <input
+                            key={galleryUploadInputKey}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={e => uploadBgFiles(e.target.files)}
+                            style={{ display: 'none' }}
+                          />
+                          <div className="admin-cover-upload-inner">
+                            <div className="admin-cover-upload-plus">+</div>
+                            <div className="admin-cover-upload-text">ENVIAR</div>
+                          </div>
+                        </label>
+
+                        {bgPickerImages.length === 0 ? (
+                          <div className="admin-hint">Nenhuma imagem encontrada em <b>discography/bg</b>.</div>
+                        ) : (
+                          bgPickerImages.map(img => (
+                            <button
+                              key={img.path}
+                              type="button"
+                              className={`admin-cover-tile ${form.bgUrl === img.url ? 'is-selected' : ''}`}
+                              onClick={() => selectBgFromStorage(img.url)}
+                              title={img.path}
+                            >
+                              <img src={img.url} alt={img.path} />
+                              <button
+                                type="button"
+                                className="admin-cover-tile-delete"
+                                title="Excluir"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  deleteBgFromStorage(img.path);
                                 }}
                               >
                                 ×

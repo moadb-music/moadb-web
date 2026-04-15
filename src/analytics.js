@@ -1,5 +1,33 @@
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, auth } from './firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+
+// ── Exclusões de tracking ─────────────────────────────────────────────────────
+// Não rastreia localhost nem sessões autenticadas (admin)
+function isLocalhost() {
+  const h = window.location.hostname;
+  return h === 'localhost' || h === '127.0.0.1' || h === '::1' || h.endsWith('.localhost');
+}
+
+let _adminUser = null;
+let _authReady = false;
+const _authCallbacks = [];
+
+onAuthStateChanged(auth, (user) => {
+  _adminUser = user;
+  _authReady = true;
+  _authCallbacks.forEach(fn => fn());
+  _authCallbacks.length = 0;
+});
+
+function whenAuthReady() {
+  if (_authReady) return Promise.resolve();
+  return new Promise(resolve => _authCallbacks.push(resolve));
+}
+
+function shouldSkipTracking() {
+  return isLocalhost() || !!_adminUser;
+}
 
 function getDeviceType() {
   const ua = navigator.userAgent;
@@ -59,6 +87,7 @@ async function getCountry() {
 // Fire-and-forget: não bloqueia a navegação.
 export function trackOutboundClick(label, url, page = 'unknown') {
   try {
+    if (shouldSkipTracking()) return;
     const sessionId = getOrCreateSession();
     // addDoc é não-bloqueante — o SDK do Firebase enfileira internamente
     addDoc(collection(db, 'analytics_clicks'), {
@@ -66,6 +95,7 @@ export function trackOutboundClick(label, url, page = 'unknown') {
       url:       String(url || ''),
       page:      String(page || 'unknown'),
       sessionId: String(sessionId || ''),
+      hostname:  window.location.hostname,
       ts:        serverTimestamp(),
     }).catch(() => {});
   } catch {
@@ -125,6 +155,8 @@ if (typeof document !== 'undefined') {
 
 export async function trackPageView(page = 'home') {
   try {
+    await whenAuthReady();
+    if (shouldSkipTracking()) return;
     const sessionId = getOrCreateSession();
     const lang = navigator.language || 'unknown';
 
@@ -155,6 +187,7 @@ export async function trackPageView(page = 'home') {
       ...(utmMedium   ? { utmMedium }   : {}),
       ...(utmCampaign ? { utmCampaign } : {}),
       country,
+      hostname: window.location.hostname,
       screenW: window.screen.width,
       screenH: window.screen.height,
       ts: serverTimestamp(),

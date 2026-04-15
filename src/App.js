@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { trackPageView } from './analytics';
 import './App.css';
 import logoPng from './assets/logo.png';
@@ -213,13 +214,20 @@ function normalizeShopFromDb(data) {
   return {
     storeUrl: String(content.storeUrl || content.url || d.storeUrl || d.url || ''),
     items: rawItems
-      .map((it, idx) => ({
-        id: String(it?.id || idx),
-        title: String(it?.title || it?.name || ''),
-        href: String(it?.url || it?.productUrl || it?.href || it?.link || ''),
-        image: String(it?.imageUrl || it?.image || ''),
-        bgColor: String(it?.bgColor || ''),
-      }))
+      .map((it, idx) => {
+        const images = Array.isArray(it?.images) && it.images.length
+          ? it.images.map(String).filter(Boolean)
+          : (it?.imageUrl ? [String(it.imageUrl)] : []);
+        return {
+          id: String(it?.id || idx),
+          title: String(it?.title || it?.name || ''),
+          href: String(it?.url || it?.productUrl || it?.href || it?.link || ''),
+          image: images[0] || '',
+          images,
+          bgColor: String(it?.bgColor || ''),
+          destaque: it?.destaque === true,
+        };
+      })
       .filter((it) => it.title || it.image || it.href),
   };
 }
@@ -445,7 +453,85 @@ function useTouchSwipe(onSwipeLeft, onSwipeRight) {
   };
 }
 
+// ─── ShopCard: card com dots para alternar imagens ────────────────────────────
+function ShopCard({ item, className, onNavigate, featured }) {
+  const [activeImg, setActiveImg] = useState(0);
+  const [imgLoading, setImgLoading] = useState(false);
+  const images = item.images && item.images.length ? item.images : (item.image ? [item.image] : []);
+  const hasMultiple = images.length > 1;
+  const imgClass = featured ? 'shop-featured-img' : 'shop-grid-img';
+  const titleClass = featured ? 'shop-featured-title' : 'shop-grid-title';
+  const wrapClass = featured ? 'shop-featured-info' : null;
+
+  function switchImg(idx) {
+    if (idx === activeImg) return;
+    setImgLoading(true);
+    setActiveImg(idx);
+  }
+
+  return (
+    <div
+      className={className}
+      onMouseLeave={() => { setActiveImg(0); setImgLoading(false); }}
+    >
+      <div
+        className={imgClass}
+        style={{ background: item.bgColor || '#111' }}
+      >
+        <img
+          src={images[activeImg] || ''}
+          alt={item.title}
+          className={imgLoading ? 'shop-img-loading' : ''}
+          onLoad={() => setImgLoading(false)}
+          onError={() => setImgLoading(false)}
+        />
+
+        {/* spinner de loading */}
+        {imgLoading && (
+          <div className="shop-img-spinner" aria-hidden="true">
+            <span className="shop-img-spinner-ring" />
+          </div>
+        )}
+
+        {/* botão "ver" aparece no hover */}
+        <button
+          type="button"
+          className="shop-card-view-btn"
+          onClick={onNavigate}
+          aria-label={item.title}
+        >
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" width="14" height="14">
+            <path d="M3 13L13 3M13 3H7M13 3V9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+
+        {hasMultiple && (
+          <div className="shop-card-dots">
+            {images.map((_, idx) => (
+              <span
+                key={idx}
+                className={`shop-card-dot${activeImg === idx ? ' is-active' : ''}`}
+                onMouseEnter={(e) => { e.stopPropagation(); switchImg(idx); }}
+                role="presentation"
+              />
+            ))}
+          </div>
+        )}
+      </div>
+      {wrapClass ? (
+        <div className={wrapClass}>
+          <div className={titleClass}>{item.title}</div>
+        </div>
+      ) : (
+        <div className={titleClass}>{item.title}</div>
+      )}
+    </div>
+  );
+}
+
 function App() {
+  const navigate = useNavigate();
+
   // Redirect: mobile + domínio moadb.com.br → /tree
   useEffect(() => {
     const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -699,7 +785,12 @@ function App() {
     return { home: isVisible('home'), sobre: isVisible('sobre'), loja: isVisible('loja'), noticias: isVisible('noticias'), discografia: isVisible('discografia'), contato: isVisible('contato') };
   }, [pagesContent]);
 
-  const shopItems = useMemo(() => shopCfg?.items || [], [shopCfg]);
+  const shopItems = useMemo(() => {
+    const all = shopCfg?.items || [];
+    const destaques = all.filter((i) => i.destaque);
+    // se há itens marcados como destaque, usa eles; senão usa os primeiros
+    return destaques.length > 0 ? destaques : all;
+  }, [shopCfg]);
   const shopStoreUrl = String(shopCfg?.storeUrl || '').trim();
 
   const [shopIndex, setShopIndex] = useState(0);
@@ -1263,93 +1354,53 @@ function App() {
 
         <section id="loja" className={`shop reveal${!sectionVisible.loja ? ' section-hidden' : ''}`} aria-label="Loja" style={sectionBgStyle.loja}>
           <SectionBg bg={sectionBg.loja} />
+
           <div className="shop-inner">
-            <h2 className="shop-title">{isPt ? 'LOJA' : 'STORE'}</h2>
+            {/* ── cabeçalho ── */}
+            <div className="shop-header">
+              <div className="shop-header-left">
+                <div className="shop-eyebrow">{langKey === 'pt' ? 'MERCH OFICIAL' : 'OFFICIAL MERCH'}</div>
+                <h2 className="shop-title">{langKey === 'pt' ? 'LOJA' : 'STORE'}</h2>
+              </div>
+            </div>
 
-            <div
-              className="shop-carousel"
-              aria-label="Carrossel de produtos"
-              {...useTouchSwipe(
-                () => goShopIndex(shopIndex + 1),
-                () => goShopIndex(shopIndex - 1)
-              )}
-            >
-              {shopIndex > 0 && (
-                <button
-                  type="button"
-                  className="shop-nav-btn prev"
-                  onClick={() => goShopIndex(shopIndex - 1)}
-                  aria-label="Anterior"
-                >
-                  ‹
+            {shopItems.length === 0 ? (
+              <div className="shop-empty">
+                <button type="button" className="shop-full btn-outline" onClick={() => navigate('/loja')}>
+                  {langKey === 'pt' ? 'ACESSAR A LOJA' : 'VISIT STORE'}
                 </button>
-              )}
+              </div>
+            ) : (
+              <div className="shop-editorial">
+                {/* ── destaque: primeiro item ── */}
+                {shopItems[0] && (
+                  <ShopCard
+                    item={shopItems[0]}
+                    className="shop-featured"
+                    onNavigate={() => window.open(`/loja/${shopItems[0].id}`, '_blank', 'noreferrer')}
+                    featured
+                  />
+                )}
 
-              <div className="shop-viewport">
-                <div
-                  className="shop-track"
-                  style={{ transform: `translateX(-${shopIndex * (100 / shopSlidesVisible)}%)` }}
-                >
-                  {shopItems.map(item => (
-                    <div key={item.id} className="shop-slide">
-                      <a
-                        className="shop-card shop-card-link"
-                        href={item.href || shopStoreUrl || '#'}
-                        target={item.href || shopStoreUrl ? '_blank' : undefined}
-                        rel={item.href || shopStoreUrl ? 'noreferrer' : undefined}
-                        aria-label={`${langKey === 'pt' ? 'Comprar' : 'Buy'}: ${item.title || ''}`.trim()}
-                        onClick={(e) => {
-                          if (!(item.href || shopStoreUrl)) e.preventDefault();
-                        }}
-                      >
-                        <div className="shop-image" style={item.bgColor ? { background: item.bgColor } : undefined}>
-                          <img src={item.image} alt="" />
-                        </div>
-                        <div className="shop-desc">{item.title}</div>
-                        <span className="shop-buy" aria-hidden="true">
-                          {langKey === 'pt' ? 'COMPRAR' : 'BUY'}
-                        </span>
-                      </a>
-                    </div>
+                {/* ── grid: demais itens ── */}
+                <div className="shop-grid">
+                  {shopItems.slice(1, 6).map((item) => (
+                    <ShopCard
+                      key={item.id}
+                      item={item}
+                      className="shop-grid-item"
+                      onNavigate={() => window.open(`/loja/${item.id}`, '_blank', 'noreferrer')}
+                    />
                   ))}
 
-                  <div className="shop-slide">
-                    <a
-                      className="shop-more"
-                      href={shopStoreUrl || '#'}
-                      target={shopStoreUrl ? '_blank' : undefined}
-                      rel={shopStoreUrl ? 'noreferrer' : undefined}
-                      aria-label={langKey === 'pt' ? 'Ver mais produtos' : 'See more products'}
-                    >
-                      <span className="shop-more-plus">+</span>
-                      <span className="shop-more-text">{langKey === 'pt' ? 'VER MAIS' : 'SEE MORE'}</span>
-                    </a>
-                  </div>
+                  {/* ── tile "ver mais" ── */}
+                  <button type="button" className="shop-grid-more" onClick={() => window.open('/loja', '_blank', 'noreferrer')}>
+                    <span className="shop-grid-more-count">+</span>
+                    <span className="shop-grid-more-label">{langKey === 'pt' ? 'VER TUDO' : 'SEE ALL'}</span>
+                  </button>
                 </div>
               </div>
-
-              {shopIndex < maxShopIndex && (
-                <button
-                  type="button"
-                  className="shop-nav-btn next"
-                  onClick={() => goShopIndex(shopIndex + 1)}
-                  aria-label="Próximo"
-                >
-                  ›
-                </button>
-              )}
-            </div>
-
-            <div className="shop-footer">
-              <a
-                className="shop-full btn-outline"
-                href={shopStoreUrl || '#'}
-                target={shopStoreUrl ? '_blank' : undefined}
-                rel={shopStoreUrl ? 'noreferrer' : undefined}
-              >
-                {langKey === 'pt' ? 'VER LOJA COMPLETA' : 'SEE MORE'}
-              </a>
-            </div>
+            )}
           </div>
         </section>
 

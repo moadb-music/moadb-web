@@ -9,6 +9,7 @@ import Tree from './Tree';
 import Donate from './Donate';
 import Members from './Members';
 import MembersLogin from './MembersLogin';
+import Loja from './Loja';
 import { AuthProvider } from './authContext';
 import reportWebVitals from './reportWebVitals';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
@@ -24,6 +25,7 @@ root.render(
           <Route path="/donate" element={<Donate />} />
           <Route path="/members" element={<Members />} />
           <Route path="/members/login" element={<MembersLogin />} />
+          <Route path="/loja/*" element={<Loja />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route
             path="/admin"
