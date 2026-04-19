@@ -557,7 +557,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 28px;
+  padding: 12px;
   position: relative;
 }
 
@@ -611,6 +611,22 @@
   letter-spacing: .5px;
   padding: 2px 7px;
   border-radius: 3px;
+}
+
+.loja-card-special-badge {
+  position: absolute;
+  top: 10px; left: 10px;
+  background: rgba(229,201,126,.15);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(229,201,126,.4);
+  color: #e5c97e;
+  font-family: Oswald, sans-serif;
+  font-size: .55rem;
+  font-weight: 600;
+  letter-spacing: .12em;
+  padding: 3px 8px;
+  border-radius: 2px;
 }
 
 /* dots */
@@ -818,6 +834,25 @@
   line-height: 1.1;
   color: #fff;
   margin: 0;
+}
+
+.loja-produto-collab {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(229,201,126,.07);
+  border: 1px solid rgba(229,201,126,.25);
+  border-left: 3px solid rgba(229,201,126,.6);
+  color: rgba(229,201,126,.85);
+  font-family: Inter, sans-serif;
+  font-size: .78rem;
+  line-height: 1.5;
+}
+.loja-produto-collab svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: rgba(229,201,126,.7);
 }
 
 .loja-produto-cor {

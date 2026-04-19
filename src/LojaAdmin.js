@@ -110,6 +110,7 @@ function normalizeShopFromDb(data) {
         ladoE:  String(it?.printSizes?.ladoE  || ''),
       },
       destaque: it?.destaque === true,
+      edicaoEspecial: it?.edicaoEspecial === true,
     })),
   };
 }
@@ -142,6 +143,7 @@ function serializeShopToDb(shop) {
               ladoE:  String(it.printSizes?.ladoE  || '').trim(),
             },
             destaque: it.destaque === true,
+            edicaoEspecial: it.edicaoEspecial === true,
           }))
         : [],
     },
@@ -152,7 +154,7 @@ const EMPTY_FORM = {
   id: '', name: '', descricao: '', productUrl: '', images: [], bgColor: '#070707',
   categoria: '', subcategoria: '', cor: '', printSide: '', printType: '', printSize: '',
   printSizes: { frente: '', costas: '', ladoD: '', ladoE: '' },
-  destaque: false,
+  destaque: false, edicaoEspecial: false,
 };
 
 // ─── histórico de valores por campo (localStorage) ───────────────────────────
@@ -335,6 +337,7 @@ export default function LojaAdmin() {
   // Settings modal
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsDraftUrl, setSettingsDraftUrl] = useState('');
+  const [settingsDraftBgColor, setSettingsDraftBgColor] = useState('#070707');
 
   const [dragSlot, setDragSlot] = useState(null);
 
@@ -531,6 +534,8 @@ export default function LojaAdmin() {
         ladoD:  it.printSizes?.ladoD  || '',
         ladoE:  it.printSizes?.ladoE  || '',
       },
+      destaque: it.destaque || false,
+      edicaoEspecial: it.edicaoEspecial || false,
     });
     setFormDirty(false);
     setEditorOpen(true);
@@ -561,7 +566,6 @@ export default function LojaAdmin() {
   }
 
   function cloneItem(it) {
-    // cria cópia com novo ID — nome igual, link em branco, abre editor
     setForm({
       id: uid(),
       name: it.name,
@@ -581,6 +585,8 @@ export default function LojaAdmin() {
         ladoD:  it.printSizes?.ladoD  || '',
         ladoE:  it.printSizes?.ladoE  || '',
       },
+      destaque: false,
+      edicaoEspecial: it.edicaoEspecial || false,
     });
     setFormDirty(true);
     setEditorOpen(true);
@@ -619,12 +625,20 @@ export default function LojaAdmin() {
   }
 
   // ── settings ──────────────────────────────────────────────────────────────
-  function openSettings() { setSettingsDraftUrl(storeUrl); setSettingsOpen(true); }
+  function openSettings() { setSettingsDraftUrl(storeUrl); setSettingsDraftBgColor('#070707'); setSettingsOpen(true); }
   async function saveSettings() {
     const next = String(settingsDraftUrl || '').trim();
     setStoreUrl(next);
     setSettingsOpen(false);
     try { await persist(items, next); } catch { window.alert('Falha ao salvar configurações.'); }
+  }
+
+  async function applyGlobalBgColor() {
+    const color = settingsDraftBgColor || '#070707';
+    if (!window.confirm(`Aplicar a cor "${color}" como fundo de todos os ${items.length} produtos?`)) return;
+    const next = items.map((it) => ({ ...it, bgColor: color }));
+    setItems(next);
+    try { await persist(next, storeUrl); window.alert('Cor de fundo aplicada a todos os produtos.'); } catch { window.alert('Falha ao salvar.'); }
   }
 
   // ── gallery ───────────────────────────────────────────────────────────────
@@ -942,6 +956,7 @@ export default function LojaAdmin() {
                         {it.cor ? <span className="admin-tag">{it.cor}</span> : null}
                         {it.printSide ? <span className="admin-tag">{it.printSide}</span> : null}
                         {it.printType ? <span className="admin-tag" style={{ background: 'rgba(139,0,0,.25)', color: '#ffb3b3' }}>{it.printType}</span> : null}
+                        {it.edicaoEspecial ? <span className="admin-tag" style={{ background: 'rgba(229,201,126,.18)', color: '#e5c97e', border: '1px solid rgba(229,201,126,.35)' }}>✦ Ed. Especial</span> : null}
                         {it.bgColor
                           ? <span className="loja-admin-color-dot" style={{ background: it.bgColor }} title={it.bgColor} />
                           : null
@@ -1170,6 +1185,24 @@ export default function LojaAdmin() {
                   </div>
                 </div>
 
+                {/* ── flags: edição especial ── */}
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center', padding: '10px 0', borderTop: '1px solid rgba(255,255,255,.07)' }}>
+                  <button
+                    type="button"
+                    className={`admin-switch${form.edicaoEspecial ? ' is-on' : ''}`}
+                    onClick={() => updateForm((p) => ({ ...p, edicaoEspecial: !p.edicaoEspecial }))}
+                    aria-label="Edição Especial"
+                  />
+                  <span style={{ fontFamily: 'Oswald, sans-serif', fontSize: '.72rem', letterSpacing: '.1em', textTransform: 'uppercase', color: form.edicaoEspecial ? '#e5c97e' : 'rgba(255,255,255,.4)' }}>
+                    Edição Especial
+                  </span>
+                  {form.edicaoEspecial && (
+                    <span style={{ fontSize: '.65rem', color: 'rgba(229,201,126,.6)', fontFamily: 'Inter, sans-serif' }}>
+                      Aparece em destaque no topo da loja
+                    </span>
+                  )}
+                </div>
+
                 <label className="admin-field loja-field-grow" style={{ marginBottom: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
                     <span className="admin-label" style={{ marginBottom: 0 }}>Descrição</span>
@@ -1220,7 +1253,40 @@ export default function LojaAdmin() {
               <div className="admin-hint" style={{ marginBottom: 16 }}>
                 Aparece como botão "Acessar Loja Oficial" na página <b>/loja</b>.
               </div>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+
+              {/* ── cor de fundo global ── */}
+              <div className="admin-field" style={{ borderTop: '1px solid rgba(255,255,255,.08)', paddingTop: 16, marginTop: 4 }}>
+                <span className="admin-label">Cor de fundo global dos mockups</span>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8 }}>
+                  <input
+                    type="color"
+                    value={settingsDraftBgColor}
+                    onChange={(e) => setSettingsDraftBgColor(e.target.value)}
+                    style={{ width: 40, height: 40, padding: 0, border: 0, background: 'transparent', cursor: 'pointer', flexShrink: 0 }}
+                    aria-label="Cor de fundo global"
+                  />
+                  <input
+                    className="admin-input"
+                    value={settingsDraftBgColor}
+                    onChange={(e) => setSettingsDraftBgColor(e.target.value)}
+                    placeholder="#070707"
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    className="admin-btn admin-btn-primary"
+                    onClick={applyGlobalBgColor}
+                    style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                  >
+                    APLICAR A TODOS
+                  </button>
+                </div>
+                <div className="admin-hint" style={{ marginTop: 8 }}>
+                  Substitui a cor de fundo de <b>todos os {items.length} produtos</b> de uma vez.
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
                 <button type="button" className="admin-btn" onClick={() => setSettingsOpen(false)}>CANCELAR</button>
                 <button type="button" className="admin-btn admin-btn-primary" onClick={saveSettings}>SALVAR</button>
               </div>

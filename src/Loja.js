@@ -202,6 +202,7 @@ function normalizeShopFromDb(data) {
           ladoE:  String(it?.printSizes?.ladoE  || ''),
         },
         descricao: String(it?.descricao || ''),
+        edicaoEspecial: it?.edicaoEspecial === true,
       }))
       .filter((it) => it.title || it.images.length || it.href),
   };
@@ -317,6 +318,7 @@ function LojaCard({ item, isPt, onClick }) {
   return (
     <div
       className="loja-card-outer"
+      onMouseEnter={() => { if (hasMultiple) switchImg(1); }}
       onMouseLeave={() => { setActiveImg(0); setImgLoading(false); }}
     >
       <button
@@ -348,6 +350,9 @@ function LojaCard({ item, isPt, onClick }) {
 
           {item.printType && (
             <span className="loja-card-print-badge">{item.printType}</span>
+          )}
+          {item.edicaoEspecial && (
+            <span className="loja-card-special-badge">✦ ED. ESPECIAL</span>
           )}
 
           {hasMultiple && (
@@ -459,15 +464,14 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
           ) : catFilter === 'all' && !search ? (
             /* ── Lançamentos: agrupa por subcategoria ── */
             (() => {
-              // coleta subcategorias na ordem em que aparecem nos itens
               const subcatsOrdered = [
                 ...new Set(filtered.map((i) => i.subcategoria).filter(Boolean))
               ];
-              // itens sem subcategoria ficam numa seção "Outros"
               const semSubcat = filtered.filter((i) => !i.subcategoria);
 
               return (
                 <>
+                  {/* ── seções por subcategoria ── */}
                   {subcatsOrdered.map((sub) => {
                     const subItems = filtered.filter((i) => i.subcategoria === sub);
                     if (!subItems.length) return null;
@@ -650,6 +654,19 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
             )}
 
             <h1 className="loja-produto-title">{item.title}</h1>
+
+            {item.edicaoEspecial && (
+              <div className="loja-produto-collab">
+                <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" width="13" height="13">
+                  <path d="M8 1l1.8 3.6L14 5.6l-3 2.9.7 4.1L8 10.5l-3.7 2.1.7-4.1-3-2.9 4.2-.6z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                </svg>
+                <span>
+                  {isPt
+                    ? 'Edição Especial — peça exclusiva em colaboração com outro projeto.'
+                    : 'Special Edition — exclusive piece in collaboration with another project.'}
+                </span>
+              </div>
+            )}
 
             {item.cor && (
               <div className="loja-produto-cor">
