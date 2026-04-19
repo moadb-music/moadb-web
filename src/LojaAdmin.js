@@ -8,6 +8,7 @@ import {
   uploadBytes,
 } from 'firebase/storage';
 import { db, storage } from './firebase';
+import PromoAdmin from './PromoAdmin';
 
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -338,6 +339,9 @@ export default function LojaAdmin() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsDraftUrl, setSettingsDraftUrl] = useState('');
   const [settingsDraftBgColor, setSettingsDraftBgColor] = useState('#070707');
+
+  // Promo modal
+  const [promoOpen, setPromoOpen] = useState(false);
 
   const [dragSlot, setDragSlot] = useState(null);
 
@@ -867,6 +871,7 @@ export default function LojaAdmin() {
         </div>
         <div className="admin-section-actions">
           <button type="button" className="admin-btn admin-icon-btn" onClick={openSettings} title="Configurações">⚙</button>
+          <button type="button" className="admin-btn" onClick={() => setPromoOpen(true)} title="Promoção / Popup">🎉 Promoção</button>
           <button type="button" className="admin-btn admin-btn-primary" onClick={openNewItem}>+ NOVO PRODUTO</button>
         </div>
       </header>
@@ -1235,34 +1240,49 @@ export default function LojaAdmin() {
       {/* ── settings modal ── */}
       {settingsOpen ? (
         <div className="admin-modal-backdrop" role="dialog" aria-modal="true">
-          <div className="admin-modal" style={{ width: 'min(560px, 96vw)' }}>
-            <div className="admin-modal-header">
-              <div className="admin-panel-title" style={{ borderBottom: 0, padding: 0 }}>CONFIGURAÇÕES</div>
-              <button type="button" className="admin-btn" onClick={() => setSettingsOpen(false)}>FECHAR</button>
+          <div style={{
+            width: 'min(480px, 96vw)',
+            background: '#111',
+            border: '1px solid rgba(255,255,255,.1)',
+            borderRadius: 12,
+          }}>
+            {/* header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,.08)',
+            }}>
+              <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: '.95rem', letterSpacing: '.08em', textTransform: 'uppercase', color: '#fff' }}>
+                Configurações
+              </div>
+              <button type="button" className="admin-btn" style={{ padding: '6px 8px' }} onClick={() => setSettingsOpen(false)}>
+                <svg viewBox="0 0 16 16" fill="none" width="13" height="13" style={{ display: 'block' }}>
+                  <path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </button>
             </div>
-            <div className="admin-form" style={{ padding: 0, marginTop: 16 }}>
+
+            <div style={{ padding: '20px 20px 24px', display: 'flex', flexDirection: 'column', gap: 0 }}>
               <label className="admin-field">
-                <span className="admin-label">Link geral da loja (externo)</span>
+                <span className="admin-label">Link externo da loja</span>
                 <input
                   className="admin-input"
                   value={settingsDraftUrl}
                   onChange={(e) => setSettingsDraftUrl(e.target.value)}
                   placeholder="https://..."
                 />
+                <div className="admin-hint" style={{ marginTop: 4 }}>
+                  Aparece como botão "Acessar Loja Oficial" na página <b>/loja</b>.
+                </div>
               </label>
-              <div className="admin-hint" style={{ marginBottom: 16 }}>
-                Aparece como botão "Acessar Loja Oficial" na página <b>/loja</b>.
-              </div>
 
-              {/* ── cor de fundo global ── */}
-              <div className="admin-field" style={{ borderTop: '1px solid rgba(255,255,255,.08)', paddingTop: 16, marginTop: 4 }}>
+              <div className="admin-field">
                 <span className="admin-label">Cor de fundo global dos mockups</span>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input
                     type="color"
                     value={settingsDraftBgColor}
                     onChange={(e) => setSettingsDraftBgColor(e.target.value)}
-                    style={{ width: 40, height: 40, padding: 0, border: 0, background: 'transparent', cursor: 'pointer', flexShrink: 0 }}
+                    style={{ width: 36, height: 36, padding: 2, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', cursor: 'pointer', flexShrink: 0, borderRadius: 6 }}
                     aria-label="Cor de fundo global"
                   />
                   <input
@@ -1272,24 +1292,52 @@ export default function LojaAdmin() {
                     placeholder="#070707"
                     style={{ flex: 1 }}
                   />
-                  <button
-                    type="button"
-                    className="admin-btn admin-btn-primary"
-                    onClick={applyGlobalBgColor}
-                    style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
-                  >
-                    APLICAR A TODOS
+                  <button type="button" className="admin-btn admin-btn-primary" onClick={applyGlobalBgColor} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    Aplicar a todos
                   </button>
                 </div>
-                <div className="admin-hint" style={{ marginTop: 8 }}>
-                  Substitui a cor de fundo de <b>todos os {items.length} produtos</b> de uma vez.
+                <div className="admin-hint" style={{ marginTop: 4 }}>
+                  Substitui o fundo de <b>todos os {items.length} produtos</b> de uma vez.
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
-                <button type="button" className="admin-btn" onClick={() => setSettingsOpen(false)}>CANCELAR</button>
-                <button type="button" className="admin-btn admin-btn-primary" onClick={saveSettings}>SALVAR</button>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+                <button type="button" className="admin-btn" onClick={() => setSettingsOpen(false)}>Cancelar</button>
+                <button type="button" className="admin-btn admin-btn-primary" onClick={saveSettings}>Salvar</button>
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── promo modal ── */}
+      {promoOpen ? (
+        <div className="admin-modal-backdrop" role="dialog" aria-modal="true">
+          <div style={{
+            width: 'min(860px, 96vw)',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            background: '#111',
+            border: '1px solid rgba(255,255,255,.1)',
+            borderRadius: 12,
+          }}>
+            {/* header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,.08)',
+              position: 'sticky', top: 0, background: '#111', zIndex: 2,
+            }}>
+              <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: '.95rem', letterSpacing: '.08em', textTransform: 'uppercase', color: '#fff' }}>
+                🎉 Promoção / Popup
+              </div>
+              <button type="button" className="admin-btn" style={{ padding: '6px 8px' }} onClick={() => setPromoOpen(false)}>
+                <svg viewBox="0 0 16 16" fill="none" width="13" height="13" style={{ display: 'block' }}>
+                  <path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div style={{ padding: '20px 20px 28px' }}>
+              <PromoAdmin />
             </div>
           </div>
         </div>

@@ -374,6 +374,13 @@ a{color:inherit;text-decoration:none}
   text-shadow:6px 6px 0 var(--red);
 }
 
+@media (max-width: 768px) {
+  .hero {
+    min-height: 100dvh;
+    padding: 80px 20px 60px;
+  }
+}
+
 .hero-title span{display:block}
 
 /* ABOUT */

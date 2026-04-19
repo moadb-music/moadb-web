@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import { trackPageView } from './analytics';
 import { useNavigate, useParams, Routes, Route } from 'react-router-dom';
 import logoPng from './assets/logo.png';
+import PromoPopup from './components/PromoPopup';
 import './App.css';
 import './Loja.css';
 
@@ -34,18 +35,43 @@ function FlagUK(props) {
 
 // ─── nav da loja ──────────────────────────────────────────────────────────────
 
-function LojaNav({ lang, setLang, backHref, storeUrl }) {
+const SITE_LINKS_PT = [
+  { href: '/#inicio',      label: 'INÍCIO' },
+  { href: '/#sobre',       label: 'SOBRE' },
+  { href: '/#loja',        label: 'LOJA' },
+  { href: '/#noticias',    label: 'NOTÍCIAS' },
+  { href: '/#discografia', label: 'DISCOGRAFIA' },
+  { href: '/#contato',     label: 'CONTATO' },
+  { href: '/donate',       label: 'APOIAR' },
+  { href: '/members',      label: 'MEMBROS' },
+];
+const SITE_LINKS_EN = [
+  { href: '/#inicio',      label: 'HOME' },
+  { href: '/#sobre',       label: 'ABOUT' },
+  { href: '/#loja',        label: 'STORE' },
+  { href: '/#noticias',    label: 'NEWS' },
+  { href: '/#discografia', label: 'DISCOGRAPHY' },
+  { href: '/#contato',     label: 'CONTACT' },
+  { href: '/donate',       label: 'SUPPORT' },
+  { href: '/members',      label: 'MEMBERS' },
+];
+
+function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias }) {
   const navigate = useNavigate();
   const isPt = lang === 'pt-BR';
   const [langOpen, setLangOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const langRef = useRef(null);
+  const siteLinks = isPt ? SITE_LINKS_PT : SITE_LINKS_EN;
 
   // fecha ao clicar fora ou pressionar Escape
   useEffect(() => {
     function onDocClick(e) {
       if (!langRef.current?.contains(e.target)) setLangOpen(false);
     }
-    function onKey(e) { if (e.key === 'Escape') setLangOpen(false); }
+    function onKey(e) {
+      if (e.key === 'Escape') { setLangOpen(false); setMenuOpen(false); }
+    }
     document.addEventListener('mousedown', onDocClick);
     document.addEventListener('keydown', onKey);
     return () => {
@@ -57,112 +83,196 @@ function LojaNav({ lang, setLang, backHref, storeUrl }) {
   return (
     <div className="loja-nav-wrapper">
       <header className="loja-nav">
-        {/* esquerda: logo — clica para voltar ao site com confirmação */}
-        <button
-          type="button"
-          className="loja-nav-site-btn"
-          onClick={() => {
-            const msg = isPt
-              ? 'Deseja sair da loja e voltar ao site?'
-              : 'Do you want to leave the store and go back to the site?';
-            if (window.confirm(msg)) navigate('/');
-          }}
-          aria-label={isPt ? 'Voltar ao site' : 'Back to site'}
-        >
-          <svg className="loja-nav-site-arrow" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <img
-            src={`${process.env.PUBLIC_URL}/logo.png`}
-            alt="Mind of a Dead Body"
-            className="loja-nav-site-logo"
-          />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {/* seta — só mobile */}
+          <button
+            type="button"
+            className="loja-nav-back-btn loja-nav-back-mobile"
+            onClick={() => navigate(-1)}
+            aria-label={isPt ? 'Voltar' : 'Back'}
+          >
+            <svg viewBox="0 0 16 16" fill="none" width="20" height="20" aria-hidden="true">
+              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
 
-        {/* direita: seletor de idioma */}
+          {/* logo — só desktop, com confirmação */}
+          <button
+            type="button"
+            className="loja-nav-site-link loja-nav-logo-desktop"
+            onClick={() => {
+              const msg = isPt ? 'Tem certeza que deseja sair da loja?' : 'Are you sure you want to leave the store?';
+              if (window.confirm(msg)) window.location.href = 'https://mindofadeadbody.com.br';
+            }}
+            aria-label="mindofadeadbody.com.br"
+          >
+            <img
+              src={`${process.env.PUBLIC_URL}/logo.png`}
+              alt=""
+              className="loja-nav-site-logo"
+            />
+          </button>
+        </div>
+
+        {/* direita: hamburguer (mobile) */}
         <div className="loja-nav-right">
-          <div className="lang-dropdown" ref={langRef}>
-            <button
-              type="button"
-              className="lang-dropdown-toggle"
-              aria-haspopup="menu"
-              aria-expanded={langOpen}
-              onClick={() => setLangOpen((v) => !v)}
-            >
-              <span className="lang-flag" aria-hidden="true">
-                {isPt ? <FlagBR /> : <FlagUK />}
-              </span>
-              <span className="lang-arrow" aria-hidden="true">▼</span>
-            </button>
-
-            {langOpen && (
-              <ul className="lang-dropdown-menu" role="menu" aria-label={isPt ? 'Selecionar idioma' : 'Select language'}>
-                <li>
-                  <button
-                    type="button"
-                    className={`lang-dropdown-item${isPt ? ' active' : ''}`}
-                    role="menuitem"
-                    onClick={() => { setLang('pt-BR'); setLangOpen(false); }}
-                  >
-                    <span className="lang-flag" aria-hidden="true"><FlagBR /></span>
-                    <span>Português</span>
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    className={`lang-dropdown-item${!isPt ? ' active' : ''}`}
-                    role="menuitem"
-                    onClick={() => { setLang('en'); setLangOpen(false); }}
-                  >
-                    <span className="lang-flag" aria-hidden="true"><FlagUK /></span>
-                    <span>English</span>
-                  </button>
-                </li>
-              </ul>
-            )}
-          </div>
+          {/* hamburguer — mobile only */}
+          <button
+            type="button"
+            className={`loja-hamburger${menuOpen ? ' is-open' : ''}`}
+            aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen(v => !v)}
+          >
+            <span /><span /><span />
+          </button>
         </div>
       </header>
 
-      {/* disclaimer — fixo abaixo do nav, acima do conteúdo */}
-      <div className="loja-disclaimer" role="note">
-        <svg className="loja-disclaimer-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-          <circle cx="10" cy="10" r="8.5" stroke="currentColor" strokeWidth="1.2"/>
-          <path d="M10 9v5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-          <circle cx="10" cy="6.5" r=".8" fill="currentColor"/>
-        </svg>
-        <span className="loja-disclaimer-text">
-          {isPt ? (
-            <>
-              Este site é um <strong>mostruário</strong> — todas as compras são finalizadas na{' '}
+      {/* disclaimer — fixo abaixo do nav no desktop */}
+      {storeUrl && (
+        <div className="loja-disclaimer loja-disclaimer--fixed" role="note">
+          <svg className="loja-disclaimer-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="10" cy="10" r="8.5" stroke="currentColor" strokeWidth="1.2"/>
+            <path d="M10 9v5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            <circle cx="10" cy="6.5" r=".8" fill="currentColor"/>
+          </svg>
+          <span className="loja-disclaimer-text">
+            {isPt ? (
+              <>Este site é um <strong>mostruário</strong> — todas as compras são finalizadas na{' '}
               <strong>Hotprinti</strong>, plataforma de print on demand parceira.
-              Os itens são produzidos sob demanda e enviados diretamente por eles.
-            </>
-          ) : (
-            <>
-              This site is a <strong>showcase</strong> — all purchases are completed on{' '}
+              Os itens são produzidos sob demanda e enviados diretamente por eles.</>
+            ) : (
+              <>This site is a <strong>showcase</strong> — all purchases are completed on{' '}
               <strong>Hotprinti</strong>, our print on demand partner platform.
-              Items are produced on demand and shipped directly by them.
-            </>
-          )}
-        </span>
-        {storeUrl && (
-          <a
-            className="loja-disclaimer-link"
-            href={storeUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
+              Items are produced on demand and shipped directly by them.</>
+            )}
+          </span>
+          <a className="loja-disclaimer-link" href={storeUrl} target="_blank" rel="noreferrer">
             {isPt ? 'Ir para a loja ↗' : 'Go to store ↗'}
           </a>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* drawer mobile */}
+      {menuOpen && (
+        <div className="loja-mobile-drawer" role="dialog" aria-modal="true" aria-label={isPt ? 'Menu' : 'Menu'}>
+
+          {/* categorias da loja */}
+          {categorias && categorias.length > 0 && filterProps && (
+            <>
+              {/* busca — primeiro */}
+              <div className="loja-drawer-search-wrap">
+                <svg className="loja-search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M13 13l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                <input
+                  type="search"
+                  className="loja-search"
+                  value={filterProps.search}
+                  onChange={(e) => { filterProps.setSearch(e.target.value); navigate('/loja'); }}
+                  placeholder={isPt ? 'Buscar produto…' : 'Search product…'}
+                  aria-label={isPt ? 'Buscar produto' : 'Search product'}
+                  style={{ width: '100%' }}
+                />
+                {filterProps.search && (
+                  <button type="button" className="loja-search-clear" onClick={() => filterProps.setSearch('')} aria-label="Limpar">×</button>
+                )}
+              </div>
+
+              <div className="loja-drawer-divider" />
+              <div className="loja-drawer-section-label">{isPt ? 'CATEGORIAS' : 'CATEGORIES'}</div>
+
+              {/* Lançamentos */}
+              <button
+                type="button"
+                className={`loja-drawer-link loja-drawer-cat${filterProps.catFilter === 'all' ? ' is-active' : ''}`}
+                onClick={() => { filterProps.selectCat('all'); navigate('/loja'); setMenuOpen(false); }}
+              >
+                {isPt ? 'Lançamentos' : 'New Arrivals'}
+              </button>
+
+              {/* Categorias com subcategorias sempre expandidas */}
+              {categorias.map(cat => {
+                const subcats = filterProps.subcatMap?.[cat] || [];
+                const isActive = filterProps.catFilter === cat;
+
+                return (
+                  <div key={cat}>
+                    {/* categoria — clicável, filtra por categoria */}
+                    <button
+                      type="button"
+                      className={`loja-drawer-link loja-drawer-cat${isActive && filterProps.subcatFilter === 'all' ? ' is-active' : ''}`}
+                      onClick={() => { filterProps.selectCat(cat); navigate('/loja'); setMenuOpen(false); }}
+                    >
+                      {cat}
+                    </button>
+
+                    {/* subcategorias — indentadas abaixo */}
+                    {subcats.map(sub => (
+                      <button
+                        key={sub}
+                        type="button"
+                        className={`loja-drawer-link loja-drawer-subcat${isActive && filterProps.subcatFilter === sub ? ' is-active' : ''}`}
+                        onClick={() => { filterProps.selectCatSubcat(cat, sub); navigate('/loja'); setMenuOpen(false); }}
+                      >
+                        {formatSubcat(sub)}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
+            </>
+          )}
+
+          {/* idioma removido — loja usa idioma do browser */}
+
+          {/* voltar ao site — no final do drawer */}
+          <div className="loja-drawer-divider" style={{ marginTop: 'auto' }} />
+          <button
+            type="button"
+            className="loja-drawer-link"
+            style={{ color: 'rgba(255,255,255,.3)', fontSize: '.75rem', display: 'flex', alignItems: 'center', gap: 8 }}
+            onClick={() => {
+              const msg = isPt ? 'Tem certeza que deseja sair da loja?' : 'Are you sure you want to leave the store?';
+              if (window.confirm(msg)) { setMenuOpen(false); window.location.href = 'https://mindofadeadbody.com.br'; }
+            }}
+          >
+            <svg viewBox="0 0 16 16" fill="none" width="13" height="13" aria-hidden="true">
+              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            {isPt ? '← mindofadeadbody.com.br' : '← mindofadeadbody.com.br'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
+
+function LojaDisclaimer({ isPt, storeUrl }) {
+  if (!storeUrl) return null;
+  return (
+    <div className="loja-disclaimer loja-disclaimer--inline" role="note">
+      <svg className="loja-disclaimer-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <circle cx="10" cy="10" r="8.5" stroke="currentColor" strokeWidth="1.2"/>
+        <path d="M10 9v5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        <circle cx="10" cy="6.5" r=".8" fill="currentColor"/>
+      </svg>
+      <span className="loja-disclaimer-text">
+        {isPt
+          ? <>Mostruário — compras na <strong>Hotprinti</strong>.</>
+          : <>Showcase — purchases on <strong>Hotprinti</strong>.</>}
+      </span>
+      <a className="loja-disclaimer-link" href={storeUrl} target="_blank" rel="noreferrer">
+        {isPt ? 'Ir para a loja ↗' : 'Go to store ↗'}
+      </a>
+    </div>
+  );
+}
+
 
 function isInAppWebView() {
   const ua = navigator.userAgent || '';
@@ -274,6 +384,17 @@ function corParaCss(cor) {
 
 // ─── hook de dados ────────────────────────────────────────────────────────────
 
+function useIsMobile(breakpoint = 600) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= breakpoint);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 function useShopData() {
   const [shopCfg, setShopCfg] = useState({ storeUrl: '', items: [] });
   const [loading, setLoading] = useState(true);
@@ -306,83 +427,119 @@ const BANNER_BG_STYLE = {
 
 function LojaCard({ item, isPt, onClick }) {
   const [activeImg, setActiveImg] = useState(0);
-  const [imgLoading, setImgLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const hasMultiple = item.images.length > 1;
+  const touchStartX = useRef(null);
 
+  // reset loaded quando muda de imagem
   function switchImg(idx) {
-    if (idx === activeImg) return;
-    setImgLoading(true);
-    setActiveImg(idx);
+    const next = ((idx % item.images.length) + item.images.length) % item.images.length;
+    if (next === activeImg) return;
+    setLoaded(false);
+    setActiveImg(next);
+  }
+
+  // toque no card: troca imagem (não navega)
+  function handleCardClick(e) {
+    if (!hasMultiple) return;
+    // se foi um swipe, não faz nada (já tratado no touchEnd)
+    if (touchStartX.current !== null) return;
+    switchImg(activeImg + 1);
+  }
+
+  function handleTouchStart(e) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchEnd(e) {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (!hasMultiple) return;
+    if (Math.abs(dx) < 30) {
+      // tap curto — troca para próxima imagem
+      switchImg(activeImg + 1);
+    } else if (dx < 0) {
+      switchImg(activeImg + 1);
+    } else {
+      switchImg(activeImg - 1);
+    }
   }
 
   return (
     <div
       className="loja-card-outer"
       onMouseEnter={() => { if (hasMultiple) switchImg(1); }}
-      onMouseLeave={() => { setActiveImg(0); setImgLoading(false); }}
+      onMouseLeave={() => { setActiveImg(0); setLoaded(false); }}
     >
+      {/* área da imagem — clique/swipe troca imagem no mobile */}
+      <div
+        className="loja-card-img-wrap"
+        style={{ background: item.bgColor || '#0a0a0a' }}
+        onClick={handleCardClick}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {item.images[activeImg] ? (
+          <>
+            <img
+              key={item.images[activeImg]}
+              src={item.images[activeImg]}
+              alt={item.title}
+              className={`loja-card-img${loaded ? ' is-loaded' : ''}`}
+              onLoad={() => setLoaded(true)}
+              onError={() => setLoaded(true)}
+            />
+            {!loaded && (
+              <div className="loja-card-img-spinner" aria-hidden="true">
+                <span className="loja-spinner" />
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="loja-card-img-empty" />
+        )}
+
+        {item.printType && (
+          <span className="loja-card-print-badge">{item.printType}</span>
+        )}
+        {item.edicaoEspecial && (
+          <span className="loja-card-special-badge">✦ ED. ESPECIAL</span>
+        )}
+
+        {hasMultiple && (
+          <div className="loja-card-dots">
+            {item.images.map((_, idx) => (
+              <span
+                key={idx}
+                className={`loja-card-dot${activeImg === idx ? ' is-active' : ''}`}
+                onMouseEnter={(e) => { e.stopPropagation(); switchImg(idx); }}
+                onClick={(e) => { e.stopPropagation(); switchImg(idx); }}
+                role="presentation"
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* info — não navega */}
+      <div className="loja-card-body">
+        {item.subcategoria && (
+          <div className="loja-card-sub">{formatSubcat(item.subcategoria)}</div>
+        )}
+        <div className="loja-card-title">{item.title}</div>
+        {item.cor && <div className="loja-card-cor">{item.cor}</div>}
+      </div>
+
+      {/* cta — único elemento que navega */}
       <button
         type="button"
-        className="loja-card"
+        className="loja-card-cta"
         onClick={onClick}
-        aria-label={item.title}
+        aria-label={`${isPt ? 'Ver produto' : 'View product'}: ${item.title}`}
       >
-        {/* imagem */}
-        <div className="loja-card-img-wrap" style={{ background: item.bgColor || '#0a0a0a' }}>
-          {item.images[activeImg] ? (
-            <>
-              <img
-                src={item.images[activeImg]}
-                alt={item.title}
-                className={`loja-card-img${imgLoading ? ' is-loading' : ''}`}
-                onLoad={() => setImgLoading(false)}
-                onError={() => setImgLoading(false)}
-              />
-              {imgLoading && (
-                <div className="loja-card-img-spinner" aria-hidden="true">
-                  <span className="loja-spinner" />
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="loja-card-img-empty" />
-          )}
-
-          {item.printType && (
-            <span className="loja-card-print-badge">{item.printType}</span>
-          )}
-          {item.edicaoEspecial && (
-            <span className="loja-card-special-badge">✦ ED. ESPECIAL</span>
-          )}
-
-          {hasMultiple && (
-            <div className="loja-card-dots">
-              {item.images.map((_, idx) => (
-                <span
-                  key={idx}
-                  className={`loja-card-dot${activeImg === idx ? ' is-active' : ''}`}
-                  onMouseEnter={(e) => { e.stopPropagation(); switchImg(idx); }}
-                  role="presentation"
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* info */}
-        <div className="loja-card-body">
-          {item.subcategoria && (
-            <div className="loja-card-sub">{formatSubcat(item.subcategoria)}</div>
-          )}
-          <div className="loja-card-title">{item.title}</div>
-          {item.cor && <div className="loja-card-cor">{item.cor}</div>}
-        </div>
-
-        {/* cta */}
-        <div className="loja-card-cta">
-          <span>{isPt ? 'VER PRODUTO' : 'VIEW PRODUCT'}</span>
-          <span className="loja-card-cta-arrow">→</span>
-        </div>
+        <span>{isPt ? 'VER PRODUTO' : 'VIEW PRODUCT'}</span>
+        <span className="loja-card-cta-arrow">→</span>
       </button>
     </div>
   );
@@ -390,10 +547,11 @@ function LojaCard({ item, isPt, onClick }) {
 
 // ─── catálogo (/loja) ─────────────────────────────────────────────────────────
 
-function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, hasSubbar }) {
+function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, hasSubbar, navCategorias }) {
   const navigate = useNavigate();
   const isPt = lang === 'pt-BR';
   const items = useMemo(() => shopCfg.items || [], [shopCfg]);
+  const isMobile = useIsMobile();
 
   const { catFilter, subcatFilter, search, categorias, subcatMap, selectCatSubcat } = filterProps;
 
@@ -417,11 +575,10 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
 
   return (
     <div className={`loja-page${hasSubbar ? ' has-subbar' : ''}`} style={PAGE_BG}>
-      <LojaNav lang={lang} setLang={setLang} storeUrl={storeUrl} />
+      <LojaNav lang={lang} setLang={setLang} storeUrl={storeUrl} filterProps={filterProps} categorias={navCategorias} />
 
       <main className="loja-main">
-
-        {/* ── banner full-width ── */}
+        <LojaDisclaimer isPt={isPt} storeUrl={storeUrl} />
         <div className="loja-banner">
           <div className="loja-banner-bg" style={BANNER_BG_STYLE} />
           <div className="loja-banner-content">
@@ -475,8 +632,10 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
                   {subcatsOrdered.map((sub) => {
                     const subItems = filtered.filter((i) => i.subcategoria === sub);
                     if (!subItems.length) return null;
-                    // pega a categoria desse grupo para o botão de filtro
                     const cat = subItems[0].categoria;
+                    const MOBILE_LIMIT = 5;
+                    const displayItems = isMobile ? subItems.slice(0, MOBILE_LIMIT) : subItems;
+                    const hasMore = isMobile && subItems.length > MOBILE_LIMIT;
                     return (
                       <div key={sub} className="loja-section">
                         <div className="loja-section-header">
@@ -495,10 +654,21 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
                           </div>
                         </div>
                         <div className="loja-grid">
-                          {subItems.map((item) => (
+                          {displayItems.map((item) => (
                             <LojaCard key={item.id} item={item} isPt={isPt} onClick={() => navigate(`/loja/${item.id}`)} />
                           ))}
                         </div>
+                        {hasMore && (
+                          <button
+                            type="button"
+                            className="loja-section-more"
+                            style={{ marginTop: 12, display: 'flex', alignSelf: 'center', margin: '12px auto 0' }}
+                            onClick={() => selectCatSubcat(cat, sub)}
+                          >
+                            {isPt ? `ver todos (${subItems.length})` : `see all (${subItems.length})`}
+                            <span className="loja-section-more-arrow"> →</span>
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -595,6 +765,7 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
       <LojaNav lang={lang} setLang={setLang} backHref="/loja" storeUrl={storeUrl} />
 
       <main className="loja-produto-main">
+        <LojaDisclaimer isPt={isPt} storeUrl={storeUrl} />
 
         {/* breadcrumb */}
         <nav className="loja-breadcrumb" aria-label="breadcrumb">
@@ -863,13 +1034,14 @@ export default function LojaRoot() {
       <Routes>
         <Route path="/" element={
           <LojaCatalogo shopCfg={shopCfg} loading={loading} lang={lang} setLang={setLang}
-            storeUrl={storeUrl} filterProps={filterProps} hasSubbar={subcats.length > 0} />
+            storeUrl={storeUrl} filterProps={filterProps} hasSubbar={subcats.length > 0} navCategorias={categorias} />
         } />
         <Route path="/:id" element={
           <LojaProduto shopCfg={shopCfg} loading={loading} lang={lang} setLang={setLang}
             hasSubbar={subcats.length > 0} />
         } />
       </Routes>
+      <PromoPopup lang={lang} />
     </>
   );
 }
