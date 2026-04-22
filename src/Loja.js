@@ -439,14 +439,7 @@ function LojaCard({ item, isPt, onClick }) {
     setActiveImg(next);
   }
 
-  // toque no card: troca imagem (não navega)
-  function handleCardClick(e) {
-    if (!hasMultiple) return;
-    // se foi um swipe, não faz nada (já tratado no touchEnd)
-    if (touchStartX.current !== null) return;
-    switchImg(activeImg + 1);
-  }
-
+  // toque no card: só swipe troca imagem
   function handleTouchStart(e) {
     touchStartX.current = e.touches[0].clientX;
   }
@@ -456,14 +449,9 @@ function LojaCard({ item, isPt, onClick }) {
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     touchStartX.current = null;
     if (!hasMultiple) return;
-    if (Math.abs(dx) < 30) {
-      // tap curto — troca para próxima imagem
-      switchImg(activeImg + 1);
-    } else if (dx < 0) {
-      switchImg(activeImg + 1);
-    } else {
-      switchImg(activeImg - 1);
-    }
+    if (Math.abs(dx) < 30) return; // tap curto — não faz nada
+    if (dx < 0) switchImg(activeImg + 1);
+    else switchImg(activeImg - 1);
   }
 
   return (
@@ -476,7 +464,6 @@ function LojaCard({ item, isPt, onClick }) {
       <div
         className="loja-card-img-wrap"
         style={{ background: item.bgColor || '#0a0a0a' }}
-        onClick={handleCardClick}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >

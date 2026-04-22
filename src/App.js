@@ -532,14 +532,7 @@ function ShopCard({ item, className, onNavigate, featured }) {
 function App() {
   const navigate = useNavigate();
 
-  // Redirect: mobile + domínio moadb.com.br → /tree
-  useEffect(() => {
-    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const isMoadb = window.location.hostname.includes('moadb.com.br');
-    if (isMobile && isMoadb) {
-      window.location.replace('/tree');
-    }
-  }, []);
+
 
   // Guarda o hash inicial e remove da URL para evitar scroll nativo prematuro
   const initialHashRef = useRef(window.location.hash);
