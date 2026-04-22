@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
 import { db, storage } from './firebase';
@@ -1174,7 +1174,7 @@ export default function NoticiasAdmin({ onDirtyChange }) {
                       ) : (
                         <div className="news-modal-video">
                           <iframe
-                            src={(() => { try { const u = new URL(draft.mediaUrl); const id = u.searchParams.get('v') || (u.hostname === 'youtu.be' ? u.pathname.slice(1) : u.pathname.split('/shorts/')[1]?.split('?')[0] || u.pathname.split('/embed/')[1]?.split('/')[0] || u.pathname.slice(1)); return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1` : draft.mediaUrl; } catch { return draft.mediaUrl; } })()}
+                            src={(() => { try { const u = new URL(draft.mediaUrl); const id = u.searchParams.get('v') || (u.hostname === 'youtu.be' ? u.pathname.slice(1) : u.pathname.split('/shorts/')[1]?.split('→')[0] || u.pathname.split('/embed/')[1]?.split('/')[0] || u.pathname.slice(1)); return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1` : draft.mediaUrl; } catch { return draft.mediaUrl; } })()}
                             title={modalTitle}
                             frameBorder="0"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

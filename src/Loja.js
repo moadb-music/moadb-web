@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import { trackPageView } from './analytics';
@@ -40,10 +41,10 @@ function FlagUK(props) {
 // --- nav da loja --------------------------------------------------------------
 
 const SITE_LINKS_PT = [
-  { href: '/#inicio',      label: 'IN�CIO' },
+  { href: '/#inicio',      label: 'INÍCIO' },
   { href: '/#sobre',       label: 'SOBRE' },
   { href: '/#loja',        label: 'LOJA' },
-  { href: '/#noticias',    label: 'NOT�CIAS' },
+  { href: '/#noticias',    label: 'NOTÍCIAS' },
   { href: '/#discografia', label: 'DISCOGRAFIA' },
   { href: '/#contato',     label: 'CONTATO' },
   { href: '/donate',       label: 'APOIAR' },
@@ -88,7 +89,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
     <div className="loja-nav-wrapper">
       <header className="loja-nav">
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {/* seta � s� mobile */}
+          {/* seta — só mobile */}
           <button
             type="button"
             className="loja-nav-back-btn loja-nav-back-mobile"
@@ -100,7 +101,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
             </svg>
           </button>
 
-          {/* logo � s� desktop, com confirma��o */}
+          {/* logo — só desktop, com confirmação */}
           <button
             type="button"
             className="loja-nav-site-link loja-nav-logo-desktop"
@@ -120,7 +121,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
 
         {/* direita: hamburguer (mobile) */}
         <div className="loja-nav-right">
-          {/* hamburguer � mobile only */}
+          {/* hamburguer — mobile only */}
           <button
             type="button"
             className={`loja-hamburger${menuOpen ? ' is-open' : ''}`}
@@ -133,7 +134,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
         </div>
       </header>
 
-      {/* disclaimer � fixo abaixo do nav no desktop */}
+      {/* disclaimer — fixo abaixo do nav no desktop */}
       {storeUrl && (
         <div className="loja-disclaimer loja-disclaimer--fixed" role="note">
           <svg className="loja-disclaimer-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -143,11 +144,11 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
           </svg>
           <span className="loja-disclaimer-text">
             {isPt ? (
-              <>Este site � um <strong>mostru�rio</strong> � todas as compras s�o finalizadas na{' '}
+              <>Este site é um <strong>mostruário</strong> — todas as compras são finalizadas na{' '}
               <strong>Hotprinti</strong>, plataforma de print on demand parceira.
-              Os itens s�o produzidos sob demanda e enviados diretamente por eles.</>
+              Os itens são produzidos sob demanda e enviados diretamente por eles.</>
             ) : (
-              <>This site is a <strong>showcase</strong> � all purchases are completed on{' '}
+              <>This site is a <strong>showcase</strong> — all purchases are completed on{' '}
               <strong>Hotprinti</strong>, our print on demand partner platform.
               Items are produced on demand and shipped directly by them.</>
             )}
@@ -165,7 +166,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
           {/* categorias da loja */}
           {categorias && categorias.length > 0 && filterProps && (
             <>
-              {/* busca � primeiro */}
+              {/* busca — primeiro */}
               <div className="loja-drawer-search-wrap">
                 <svg className="loja-search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                   <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
@@ -176,25 +177,25 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
                   className="loja-search"
                   value={filterProps.search}
                   onChange={(e) => { filterProps.setSearch(e.target.value); navigate(lojaPath()); }}
-                  placeholder={isPt ? 'Buscar produto�' : 'Search product�'}
+                  placeholder={isPt ? 'Buscar produto…' : 'Search product…'}
                   aria-label={isPt ? 'Buscar produto' : 'Search product'}
                   style={{ width: '100%' }}
                 />
                 {filterProps.search && (
-                  <button type="button" className="loja-search-clear" onClick={() => filterProps.setSearch('')} aria-label="Limpar">�</button>
+                  <button type="button" className="loja-search-clear" onClick={() => filterProps.setSearch('')} aria-label="Limpar">✕</button>
                 )}
               </div>
 
               <div className="loja-drawer-divider" />
               <div className="loja-drawer-section-label">{isPt ? 'CATEGORIAS' : 'CATEGORIES'}</div>
 
-              {/* Lan�amentos */}
+              {/* Lançamentos */}
               <button
                 type="button"
                 className={`loja-drawer-link loja-drawer-cat${filterProps.catFilter === 'all' ? ' is-active' : ''}`}
                 onClick={() => { filterProps.selectCat('all'); navigate(lojaPath()); setMenuOpen(false); }}
               >
-                {isPt ? 'Lan�amentos' : 'New Arrivals'}
+                {isPt ? 'Lançamentos' : 'New Arrivals'}
               </button>
 
               {/* Categorias com subcategorias sempre expandidas */}
@@ -204,7 +205,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
 
                 return (
                   <div key={cat}>
-                    {/* categoria � clic�vel, filtra por categoria */}
+                    {/* categoria — clicável, filtra por categoria */}
                     <button
                       type="button"
                       className={`loja-drawer-link loja-drawer-cat${isActive && filterProps.subcatFilter === 'all' ? ' is-active' : ''}`}
@@ -213,7 +214,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
                       {cat}
                     </button>
 
-                    {/* subcategorias � indentadas abaixo */}
+                    {/* subcategorias — indentadas abaixo */}
                     {subcats.map(sub => (
                       <button
                         key={sub}
@@ -230,9 +231,9 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
             </>
           )}
 
-          {/* idioma removido � loja usa idioma do browser */}
+          {/* idioma removido — loja usa idioma do browser */}
 
-          {/* voltar ao site � no final do drawer */}
+          {/* voltar ao site — no final do drawer */}
           <div className="loja-drawer-divider" style={{ marginTop: 'auto' }} />
           <button
             type="button"
@@ -267,8 +268,8 @@ function LojaDisclaimer({ isPt, storeUrl }) {
       </svg>
       <span className="loja-disclaimer-text">
         {isPt
-          ? <>Mostru�rio � compras na <strong>Hotprinti</strong>.</>
-          : <>Showcase � purchases on <strong>Hotprinti</strong>.</>}
+          ? <>Mostruário — compras na <strong>Hotprinti</strong>.</>
+          : <>Showcase — purchases on <strong>Hotprinti</strong>.</>}
       </span>
       <a className="loja-disclaimer-link" href={storeUrl} target="_blank" rel="noreferrer">
         {isPt ? 'Ir para a loja ?' : 'Go to store ?'}
@@ -327,14 +328,14 @@ const PRINT_INFO = {
     DTG: {
       label: 'DTG',
       fullName: 'Direct to Garment',
-      desc: 'A tinta � aplicada diretamente na malha com jato de tinta especializado. Resultado suave ao toque, cores vibrantes e produ��o r�pida.',
+      desc: 'A tinta é aplicada diretamente na malha com jato de tinta especializado. Resultado suave ao toque, cores vibrantes e produção rápida.',
       prazo: null,
     },
     DTF: {
       label: 'DTF',
       fullName: 'Direct to Film',
-      desc: 'A estampa � impressa em filme e transferida para a pe�a com calor. Alta durabilidade, bordas n�tidas e excelente cobertura em qualquer cor de tecido.',
-      prazo: '? Impress�o DTF pode levar mais tempo para ser produzida.',
+      desc: 'A estampa é impressa em filme e transferida para a peça com calor. Alta durabilidade, bordas nítidas e excelente cobertura em qualquer cor de tecido.',
+      prazo: '⚠ Impressão DTF pode levar mais tempo para ser produzida.',
     },
   },
   en: {
@@ -381,7 +382,7 @@ function corParaCss(cor) {
   if (!cor) return null;
   const key = String(cor).toLowerCase().trim();
   if (COR_MAP[key]) return COR_MAP[key];
-  // se j� for hex ou rgb, usa direto
+  // se já for hex ou rgb, usa direto
   if (/^#[0-9a-f]{3,8}$/i.test(key) || /^rgb/.test(key)) return cor;
   return null;
 }
@@ -413,8 +414,8 @@ function useShopData() {
   return { shopCfg, loading };
 }
 
-// --- bg da p�gina ------------------------------------------------------------
-// Tenta carregar store-bg.jpg; se n�o existir, o CSS define o fallback cinza escuro
+// --- bg da página ------------------------------------------------------------
+// Tenta carregar store-bg.jpg; se não existir, o CSS define o fallback cinza escuro
 const PAGE_BG = {
   backgroundImage: `url(${process.env.PUBLIC_URL}/images/store-bg.jpg)`,
   backgroundSize: 'cover',
@@ -422,12 +423,12 @@ const PAGE_BG = {
   backgroundAttachment: 'fixed',
 };
 
-// bg do banner � aplicado via style para usar PUBLIC_URL corretamente
+// bg do banner — aplicado via style para usar PUBLIC_URL corretamente
 const BANNER_BG_STYLE = {
   backgroundImage: `url(${process.env.PUBLIC_URL}/images/banner.jpg)`,
 };
 
-// --- card do cat�logo com troca de imagem ------------------------------------
+// --- card do catálogo com troca de imagem ------------------------------------
 
 function LojaCard({ item, isPt, onClick }) {
   const [activeImg, setActiveImg] = useState(0);
@@ -530,7 +531,7 @@ function LojaCard({ item, isPt, onClick }) {
         )}
       </div>
 
-      {/* info � n�o navega */}
+      {/* info — não navega */}
       <div className="loja-card-body">
         {item.subcategoria && (
           <div className="loja-card-sub">{formatSubcat(item.subcategoria)}</div>
@@ -539,7 +540,7 @@ function LojaCard({ item, isPt, onClick }) {
         {item.cor && <div className="loja-card-cor">{item.cor}</div>}
       </div>
 
-      {/* cta � �nico elemento que navega */}
+      {/* cta — único elemento que navega */}
       <button
         type="button"
         className="loja-card-cta"
@@ -550,13 +551,13 @@ function LojaCard({ item, isPt, onClick }) {
         aria-label={`${isPt ? 'Ver produto' : 'View product'}: ${item.title}`}
       >
         <span>{isPt ? 'VER PRODUTO' : 'VIEW PRODUCT'}</span>
-        <span className="loja-card-cta-arrow">?</span>
+        <span className="loja-card-cta-arrow">→</span>
       </button>
     </div>
   );
 }
 
-// --- cat�logo (/loja) ---------------------------------------------------------
+// --- catálogo (/loja) ---------------------------------------------------------
 
 function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, hasSubbar, navCategorias }) {
   const navigate = useNavigate();
@@ -606,7 +607,7 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
         {/* -- grid de produtos -- */}
         <div className="loja-catalog-section">
 
-          {/* meta: s� count, sem loja oficial aqui */}
+          {/* meta: só count, sem loja oficial aqui */}
           <div className="loja-catalog-meta">
             <span className="loja-catalog-count">
               <strong>{filtered.length}</strong>
@@ -615,7 +616,7 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
                 : (isPt ? 'produtos' : 'products')}
               {catFilter !== 'all'
                 ? <span className="loja-catalog-count-tag">{catFilter}</span>
-                : <span className="loja-catalog-count-tag">{isPt ? 'Lan�amentos' : 'New Arrivals'}</span>}
+                : <span className="loja-catalog-count-tag">{isPt ? 'Lançamentos' : 'New Arrivals'}</span>}
               {subcatFilter !== 'all'
                 ? <span className="loja-catalog-count-tag">{formatSubcat(subcatFilter)}</span>
                 : null}
@@ -626,11 +627,11 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
           </div>
 
           {loading ? (
-            <div className="loja-loading">{isPt ? 'Carregando�' : 'Loading�'}</div>
+            <div className="loja-loading">{isPt ? 'Carregando…' : 'Loading…'}</div>
           ) : filtered.length === 0 ? (
             <div className="loja-empty">{isPt ? 'Nenhum produto encontrado.' : 'No products found.'}</div>
           ) : catFilter === 'all' && !search ? (
-            /* -- Lan�amentos: agrupa por subcategoria -- */
+            /* -- Lançamentos: agrupa por subcategoria -- */
             (() => {
               const subcatsOrdered = [
                 ...new Set(filtered.map((i) => i.subcategoria).filter(Boolean))
@@ -639,7 +640,7 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
 
               return (
                 <>
-                  {/* -- se��es por subcategoria -- */}
+                  {/* -- seções por subcategoria -- */}
                   {subcatsOrdered.map((sub) => {
                     const subItems = filtered.filter((i) => i.subcategoria === sub);
                     if (!subItems.length) return null;
@@ -659,7 +660,7 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
                                 className="loja-section-more"
                                 onClick={() => selectCatSubcat(cat, sub)}
                               >
-                                {isPt ? 'ver todos' : 'see all'} <span className="loja-section-more-arrow">?</span>
+                                {isPt ? 'ver todos' : 'see all'} <span className="loja-section-more-arrow">→</span>
                               </button>
                             </div>
                           </div>
@@ -677,7 +678,7 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
                             onClick={() => selectCatSubcat(cat, sub)}
                           >
                             {isPt ? `ver todos (${subItems.length})` : `see all (${subItems.length})`}
-                            <span className="loja-section-more-arrow"> ?</span>
+                            <span className="loja-section-more-arrow"> →</span>
                           </button>
                         )}
                       </div>
@@ -713,10 +714,10 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
         <div className="loja-footer-bottom">
           {storeUrl && (
             <a className="loja-footer-store" href={storeUrl} target="_blank" rel="noreferrer">
-              {isPt ? 'Loja oficial ?' : 'Official store ?'}
+              {isPt ? 'Loja oficial →' : 'Official store →'}
             </a>
           )}
-          <span>� {new Date().getFullYear()} MIND OF A DEAD BODY</span>
+          <span>© {new Date().getFullYear()} MIND OF A DEAD BODY</span>
         </div>
       </footer>
     </div>
@@ -736,8 +737,20 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
   );
 
   const [activeImg, setActiveImg] = useState(0);
-  useEffect(() => { setActiveImg(0); }, [id]);
+  const [lightbox, setLightbox] = useState(false);
+  useEffect(() => { setActiveImg(0); setLightbox(false); }, [id]);
   useEffect(() => { if (item) trackPageView(`loja-produto-${item.id}`); }, [item]);
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setLightbox(false);
+      if (e.key === 'ArrowRight') setActiveImg((i) => (i + 1) % (item?.images?.length || 1));
+      if (e.key === 'ArrowLeft') setActiveImg((i) => (i - 1 + (item?.images?.length || 1)) % (item?.images?.length || 1));
+    };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
+  }, [lightbox, item]);
 
   const printInfo = item ? PRINT_INFO[isPt ? 'pt' : 'en'][item.printType] : null;
   const sizes = item?.printSizes || {};
@@ -752,7 +765,7 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
     return (
       <div className={`loja-page${hasSubbar ? ' has-subbar' : ''}`} style={PAGE_BG}>
         <LojaNav lang={lang} setLang={setLang} backHref={lojaPath()} storeUrl={storeUrl} />
-        <main className="loja-main"><div className="loja-loading">{isPt ? 'Carregando�' : 'Loading�'}</div></main>
+        <main className="loja-main"><div className="loja-loading">{isPt ? 'Carregando…' : 'Loading…'}</div></main>
       </div>
     );
   }
@@ -762,9 +775,9 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
       <div className={`loja-page${hasSubbar ? ' has-subbar' : ''}`} style={PAGE_BG}>
         <LojaNav lang={lang} setLang={setLang} backHref={lojaPath()} storeUrl={storeUrl} />
         <main className="loja-main">
-          <div className="loja-empty">{isPt ? 'Produto n�o encontrado.' : 'Product not found.'}</div>
+          <div className="loja-empty">{isPt ? 'Produto não encontrado.' : 'Product not found.'}</div>
           <button type="button" className="loja-back-link" onClick={() => navigate(lojaPath())}>
-            ? {isPt ? 'Voltar � loja' : 'Back to store'}
+            ← {isPt ? 'Voltar à loja' : 'Back to store'}
           </button>
         </main>
       </div>
@@ -785,14 +798,14 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
           </button>
           {item.categoria && (
             <>
-              <span className="loja-breadcrumb-sep">�</span>
+              <span className="loja-breadcrumb-sep">›</span>
               <button type="button" className="loja-breadcrumb-link"
                 onClick={() => navigate(lojaPath(), { state: { cat: item.categoria } })}>
                 {item.categoria}
               </button>
             </>
           )}
-          <span className="loja-breadcrumb-sep">�</span>
+          <span className="loja-breadcrumb-sep">›</span>
           <span className="loja-breadcrumb-current">{item.title}</span>
         </nav>
 
@@ -800,11 +813,24 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
 
           {/* -- galeria -- */}
           <div className="loja-produto-gallery">
-            <div className="loja-produto-main-img" style={{ background: item.bgColor || '#0a0a0a' }}>
+            <div
+              className="loja-produto-main-img"
+              style={{ background: item.bgColor || '#0a0a0a', cursor: 'zoom-in' }}
+              onClick={() => item.images[activeImg] && setLightbox(true)}
+            >
               {item.images[activeImg]
                 ? <img src={item.images[activeImg]} alt={item.title} />
                 : <div className="loja-card-img-empty" />
               }
+              {item.images[activeImg] && (
+                <span className="loja-zoom-hint" aria-hidden="true">
+                  <svg viewBox="0 0 20 20" fill="none" width="16" height="16">
+                    <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="1.5"/>
+                    <path d="M13.5 13.5L17 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M9 6v6M6 9h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                </span>
+              )}
             </div>
 
             {item.images.length > 1 && (
@@ -825,6 +851,59 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
             )}
           </div>
 
+          {/* -- lightbox -- */}
+          {lightbox && createPortal(
+            <div
+              className="loja-lightbox"
+              onClick={() => setLightbox(false)}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Imagem ampliada"
+            >
+              <button
+                type="button"
+                className="loja-lightbox-close"
+                onClick={() => setLightbox(false)}
+                aria-label="Fechar"
+              >✕</button>
+              {item.images.length > 1 && (
+                <button
+                  type="button"
+                  className="loja-lightbox-nav loja-lightbox-prev"
+                  onClick={(e) => { e.stopPropagation(); setActiveImg((activeImg - 1 + item.images.length) % item.images.length); }}
+                  aria-label="Anterior"
+                >‹</button>
+              )}
+              <img
+                src={item.images[activeImg]}
+                alt={item.title}
+                className="loja-lightbox-img"
+                onClick={(e) => e.stopPropagation()}
+              />
+              {item.images.length > 1 && (
+                <button
+                  type="button"
+                  className="loja-lightbox-nav loja-lightbox-next"
+                  onClick={(e) => { e.stopPropagation(); setActiveImg((activeImg + 1) % item.images.length); }}
+                  aria-label="Próximo"
+                >›</button>
+              )}
+              {item.images.length > 1 && (
+                <div className="loja-lightbox-dots">
+                  {item.images.map((_, i) => (
+                    <span
+                      key={i}
+                      className={`loja-lightbox-dot${activeImg === i ? ' is-active' : ''}`}
+                      onClick={(e) => { e.stopPropagation(); setActiveImg(i); }}
+                      role="presentation"
+                    />
+                  ))}
+                </div>
+              )}
+            </div>,
+            document.body
+          )}
+
           {/* -- info -- */}
           <div className="loja-produto-info">
 
@@ -844,8 +923,8 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
                 </svg>
                 <span>
                   {isPt
-                    ? 'Edi��o Especial � pe�a exclusiva em colabora��o com outro projeto.'
-                    : 'Special Edition � exclusive piece in collaboration with another project.'}
+                    ? 'Edição Especial — peça exclusiva em colaboração com outro projeto.'
+                    : 'Special Edition — exclusive piece in collaboration with another project.'}
                 </span>
               </div>
             )}
@@ -871,7 +950,7 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
             {(printInfo || sizeEntries.length > 0) && (
               <div className="loja-produto-specs">
 
-                {/* cabe�alho com �cone */}
+                {/* cabeçalho com ícone */}
                 <div className="loja-produto-specs-header">
                   <svg className="loja-produto-specs-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                     <circle cx="10" cy="10" r="8.5" stroke="currentColor" strokeWidth="1.2"/>
@@ -879,18 +958,18 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
                     <circle cx="10" cy="6.5" r=".8" fill="currentColor"/>
                   </svg>
                   <span className="loja-produto-specs-title">
-                    {isPt ? 'Especifica��es de Impress�o' : 'Print Specifications'}
+                    {isPt ? 'Especificações de Impressão' : 'Print Specifications'}
                   </span>
                   {printInfo && (
                     <span className="loja-produto-specs-badge">{printInfo.label}</span>
                   )}
                 </div>
 
-                {/* t�cnica � descri��o expandida */}
+                {/* técnica — descrição expandida */}
                 {printInfo && (
                   <div className="loja-produto-specs-technique">
                     <div className="loja-produto-specs-technique-name">
-                      {printInfo.label} <span>� {printInfo.fullName}</span>
+                      {printInfo.label} <span>— {printInfo.fullName}</span>
                     </div>
                     <p className="loja-produto-specs-technique-desc">{printInfo.desc}</p>
                   </div>
@@ -900,7 +979,7 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
                 <div className="loja-produto-specs-rows">
                   {item.printSide && (
                     <div className="loja-produto-spec-row">
-                      <span>{isPt ? 'Posi��o' : 'Position'}</span>
+                      <span>{isPt ? 'Posição' : 'Position'}</span>
                       <strong>{item.printSide}</strong>
                     </div>
                   )}
@@ -928,7 +1007,7 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
             {item.href && (
               <button type="button" className="loja-produto-cta" onClick={() => openPlatformLink(item.href)}>
                 {isPt ? 'VER NA LOJA' : 'VIEW IN STORE'}
-                <span className="loja-produto-cta-arrow">?</span>
+                <span className="loja-produto-cta-arrow">→</span>
               </button>
             )}
 
@@ -938,7 +1017,7 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
 
       <footer className="loja-footer">
         <div className="loja-footer-bottom">
-          <span>� {new Date().getFullYear()} MIND OF A DEAD BODY</span>
+          <span>© {new Date().getFullYear()} MIND OF A DEAD BODY</span>
         </div>
       </footer>
     </div>
@@ -955,7 +1034,7 @@ export default function LojaRoot() {
   const { shopCfg, loading } = useShopData();
   const storeUrl = String(shopCfg.storeUrl || '').trim();
 
-  // estado de filtro elevado para o root � compartilhado entre cat�logo e produto
+  // estado de filtro elevado para o root — compartilhado entre catálogo e produto
   const categorias = useMemo(() => {
     const cats = [...new Set((shopCfg.items || []).map((i) => i.categoria).filter(Boolean))];
     return cats;
@@ -990,14 +1069,14 @@ export default function LojaRoot() {
 
   return (
     <>
-      {/* topbar fixa � aparece em todas as telas da loja */}
+      {/* topbar fixa — aparece em todas as telas da loja */}
       <div className="loja-topbar">
         <div className="loja-topbar-inner">
           <div className="loja-cats" role="tablist">
             <button type="button" role="tab" aria-selected={catFilter === 'all'}
               className={`loja-cat-btn${catFilter === 'all' ? ' is-active' : ''}`}
               onClick={() => { selectCat('all'); navigate(lojaPath()); }}>
-              {isPt ? 'Lan�amentos' : 'New Arrivals'}
+              {isPt ? 'Lançamentos' : 'New Arrivals'}
             </button>
             {categorias.map((cat) => (
               <button key={cat} type="button" role="tab" aria-selected={catFilter === cat}
@@ -1014,10 +1093,10 @@ export default function LojaRoot() {
             </svg>
             <input type="search" className="loja-search" value={search}
               onChange={(e) => { setSearch(e.target.value); navigate(lojaPath()); }}
-              placeholder={isPt ? 'Buscar produto�' : 'Search product�'}
+              placeholder={isPt ? 'Buscar produto…' : 'Search product…'}
               aria-label={isPt ? 'Buscar produto' : 'Search product'} />
             {search && (
-              <button type="button" className="loja-search-clear" onClick={() => setSearch('')} aria-label="Limpar">�</button>
+              <button type="button" className="loja-search-clear" onClick={() => setSearch('')} aria-label="Limpar">✕</button>
             )}
           </div>
         </div>

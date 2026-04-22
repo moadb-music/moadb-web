@@ -536,7 +536,7 @@ a{color:inherit;text-decoration:none}
 /* card base */
 .shc-card {
   flex: 1;
-  height: 280px;
+  height: 380px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -565,7 +565,7 @@ a{color:inherit;text-decoration:none}
 /* dimmed quando outro esta ativo */
 .shc-card.is-dimmed {
   flex: 1;
-  height: 200px;
+  height: 320px;
   filter: brightness(.3) saturate(.15);
   opacity: .5;
 }

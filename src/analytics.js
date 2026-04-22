@@ -1,4 +1,4 @@
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+﻿import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import YouTubeSegmentPicker from './YouTubeSegmentPicker';
 import { useEffect } from 'react';
 import {
@@ -826,7 +826,7 @@ export default function DiscografiaAdmin() {
                             <div className="admin-tracklist-name" title={t.name}>{t.name || '—'}</div>
                             <div className="admin-tracklist-meta">
                               {t.youtubeUrl ? <span className="admin-tag">YT</span> : <span className="admin-tag admin-tag-muted">sem YT</span>}
-                              <span className="admin-tag">{Math.max(0, Number(t.startSec ?? 0))}s → {Math.max(0, Number(t.endSec ?? 0))}s</span>
+                              <span className="admin-tag">{Math.max(0, Number(t.startSec ?? 0))}s ? {Math.max(0, Number(t.endSec ?? 0))}s</span>
                               {t.youtubeUrl ? (
                                 <a className="admin-tag admin-tag-link" href={t.youtubeUrl} target="_blank" rel="noreferrer">abrir</a>
                               ) : null}

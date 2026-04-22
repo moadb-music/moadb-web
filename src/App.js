@@ -1440,14 +1440,14 @@ function App() {
           </div>
         </section>
 
-        <section id="noticias" className={`news reveal${!sectionVisible.noticias ? ' section-hidden' : ''}`} aria-label="Not├¡cias" style={sectionBgStyle.noticias}>
+        <section id="noticias" className={`news reveal${!sectionVisible.noticias ? ' section-hidden' : ''}`} aria-label="Notícias" style={sectionBgStyle.noticias}>
           <SectionBg bg={sectionBg.noticias} />
           <div className="news-inner">
-            <h2 className="news-title">{isPt ? 'NOT├ìCIAS' : 'NEWS'}</h2>
+            <h2 className="news-title">{isPt ? 'NOTÍCIAS' : 'NEWS'}</h2>
 
             <div
               className="news-carousel"
-              aria-label="Carrossel de not├¡cias"
+              aria-label="Carrossel de notícias"
               {...useTouchSwipe(
                 () => goNewsScrollIndex(newsIndex + 1),
                 () => goNewsScrollIndex(newsIndex - 1)
@@ -1460,7 +1460,7 @@ function App() {
                   aria-label="Anterior"
                   onClick={() => goNewsScrollIndex(newsIndex - 1)}
                 >
-                  ÔÇ╣
+                  ‹
                 </button>
               ) : null}
 
@@ -1468,7 +1468,7 @@ function App() {
                 className="news-viewport"
                 ref={newsViewportRef}
                 style={{
-                  // exp├Áe para o CSS calcular o flex-basis (4 cards)
+                  // expõe para o CSS calcular o flex-basis (4 cards)
                   '--news-cols': newsVisibleCount,
                 }}
               >
@@ -1481,16 +1481,16 @@ function App() {
                   {newsError ? (
                     <div className="news-empty" role="status">
                       {langKey === 'pt'
-                        ? `Falha ao carregar not├¡cias (${newsError}).`
+                        ? `Falha ao carregar notícias (${newsError}).`
                         : `Failed to load news (${newsError}).`}
                     </div>
                   ) : newsLoading ? (
                     <div className="news-empty" role="status">
-                      {langKey === 'pt' ? 'Carregando not├¡ciasÔÇª' : 'Loading newsÔÇª'}
+                      {langKey === 'pt' ? 'Carregando notícias…' : 'Loading news…'}
                     </div>
                   ) : (visibleNewsItems || []).length === 0 ? (
                     <div className="news-empty" role="status">
-                      {langKey === 'pt' ? 'Sem not├¡cias no momento.' : 'No news yet.'}
+                      {langKey === 'pt' ? 'Sem notícias no momento.' : 'No news yet.'}
                     </div>
                   ) : (
                     (visibleNewsItems || []).map((post) => {
@@ -1515,7 +1515,7 @@ function App() {
                                 href={mediaHref}
                                 target="_blank"
                                 rel="noreferrer"
-                                aria-label={isVideo ? (isPt ? 'Abrir v├¡deo' : 'Open video') : (isPt ? 'Abrir not├¡cia' : 'Open post')}
+                                aria-label={isVideo ? (isPt ? 'Abrir vídeo' : 'Open video') : (isPt ? 'Abrir notícia' : 'Open post')}
                                 onClick={(e) => { e.preventDefault(); setOpenNewsPost(post); }}
                               >
                                 {thumbSrc ? <img src={thumbSrc} alt="" /> : null}
@@ -1579,7 +1579,7 @@ function App() {
                                 onClick={() => setOpenNewsPost(post)}
                                 aria-expanded={isExpanded}
                               >
-                                {langKey === 'pt' ? (isExpanded ? 'Ler menos' : 'Ler maisÔÇª') : isExpanded ? 'Read less' : 'Read moreÔÇª'}
+                                {langKey === 'pt' ? (isExpanded ? 'Ler menos' : 'Ler mais…') : isExpanded ? 'Read less' : 'Read more…'}
                               </button>
                             ) : null}
 
@@ -1600,10 +1600,10 @@ function App() {
                 <button
                   type="button"
                   className="news-nav news-next"
-                  aria-label="Pr├│ximo"
+                  aria-label="Próximo"
                   onClick={() => goNewsScrollIndex(newsIndex + 1)}
                 >
-                  ÔÇ║
+                  ›
                 </button>
               ) : null}
             </div>
@@ -1615,7 +1615,7 @@ function App() {
           <div className="discography-inner">
             <h2 className="discography-title">{isPt ? 'DISCOGRAFIA' : 'DISCOGRAPHY'}</h2>
 
-            <div className="discography-grid" aria-label="Lan├ºamentos">
+            <div className="discography-grid" aria-label="Lançamentos">
               {discography.length ? (
                 discography.map((rel) => {
                   const kind = String(rel.type || '').toUpperCase();
@@ -1628,7 +1628,7 @@ function App() {
                       key={rel.id}
                       className="discography-card reveal-item"
                       style={cover ? { '--disco-cover-url': `url(${cover})` } : undefined}
-                      aria-label={`${title || (langKey === 'pt' ? 'Lan├ºamento' : 'Release')}${year ? ` (${year})` : ''}`}
+                      aria-label={`${title || (langKey === 'pt' ? 'Lançamento' : 'Release')}${year ? ` (${year})` : ''}`}
                       role="button"
                       tabIndex={0}
                       onClick={() => setOpenReleaseId(String(rel.id))}
@@ -1637,13 +1637,13 @@ function App() {
                       }}
                     >
                       <div className="discography-cover">
-                        <img src={cover || 'https://via.placeholder.com/800x800?text=Cover'} alt={title ? `Capa de ${title}` : 'Capa do lan├ºamento'} />
+                        <img src={cover || 'https://via.placeholder.com/800x800?text=Cover'} alt={title ? `Capa de ${title}` : 'Capa do lançamento'} />
                       </div>
 
                       <div className="discography-meta">
                         <div className="discography-info">
                           <div className="discography-kind">{kind || 'RELEASE'}</div>
-                          <div className="discography-name">{title || (langKey === 'pt' ? 'LAN├çAMENTO' : 'RELEASE')}</div>
+                          <div className="discography-name">{title || (langKey === 'pt' ? 'LANÇAMENTO' : 'RELEASE')}</div>
                           <div className="discography-tracks">
                             {rel.tracks && rel.tracks.length > 0
                               ? `${rel.tracks.length} ${langKey === 'pt' ? (rel.tracks.length === 1 ? 'FAIXA' : 'FAIXAS') : (rel.tracks.length === 1 ? 'TRACK' : 'TRACKS')}`
@@ -1667,13 +1667,13 @@ function App() {
             className="site-modal-backdrop"
             role="dialog"
             aria-modal="true"
-            aria-label={langKey === 'pt' ? 'Detalhes do lan├ºamento' : 'Release details'}
+            aria-label={langKey === 'pt' ? 'Detalhes do lançamento' : 'Release details'}
             onMouseDown={() => setOpenReleaseId(null)}
           >
             <div className="site-modal" onMouseDown={(e) => e.stopPropagation()}>
               <div className="site-modal-header">
                 <button type="button" className="site-modal-close" onClick={() => setOpenReleaseId(null)} aria-label="Fechar">
-                  ├ù
+                  ✕
                 </button>
               </div>
 
@@ -1681,15 +1681,15 @@ function App() {
                 <div className="disco-modal-grid">
                   <div className="disco-modal-left-panel">
                     <div className="disco-modal-cover">
-                      <img src={openRelease.coverUrl || 'https://via.placeholder.com/800x800?text=Cover'} alt={openRelease.title ? `Capa de ${openRelease.title}` : 'Capa do lan├ºamento'} />
+                      <img src={openRelease.coverUrl || 'https://via.placeholder.com/800x800?text=Cover'} alt={openRelease.title ? `Capa de ${openRelease.title}` : 'Capa do lançamento'} />
                     </div>
 
                     <div className="disco-modal-info">
                       <h2 className="disco-modal-title">{String(openRelease.title || '').toUpperCase()}</h2>
                       <div className="disco-modal-kicker">
                         {String(openRelease.type || '').toUpperCase()}
-                        {openRelease.year ? ` ÔÇó ${openRelease.year}` : ''}
-                        {openRelease.tracks && openRelease.tracks.length > 0 ? ` ÔÇó ${openRelease.tracks.length} ${langKey === 'pt' ? (openRelease.tracks.length === 1 ? 'FAIXA' : 'FAIXAS') : (openRelease.tracks.length === 1 ? 'TRACK' : 'TRACKS')}` : ''}
+                        {openRelease.year ? ` • ${openRelease.year}` : ''}
+                        {openRelease.tracks && openRelease.tracks.length > 0 ? ` • ${openRelease.tracks.length} ${langKey === 'pt' ? (openRelease.tracks.length === 1 ? 'FAIXA' : 'FAIXAS') : (openRelease.tracks.length === 1 ? 'TRACK' : 'TRACKS')}` : ''}
                       </div>
 
                       <div className="disco-modal-links" aria-label={langKey === 'pt' ? 'Plataformas' : 'Platforms'}>
@@ -1838,7 +1838,7 @@ function App() {
                 <div className="contact-block">
                   <div className="contact-kicker">{isPt ? 'APOIE O PROJETO' : 'SUPPORT THE PROJECT'}</div>
                   <p className="contact-help">
-                    {isPt ? 'Sua contribui├º├úo ajuda a manter viva a chama do metal independente.' : 'Your contribution helps keep the flame of independent metal alive.'}
+                    {isPt ? 'Sua contribuição ajuda a manter viva a chama do metal independente.' : 'Your contribution helps keep the flame of independent metal alive.'}
                   </p>
                   <div className="contact-support-btns">
                     <button type="button" className="support-opt support-opt--pix" onClick={() => { setSupportView('pix'); setSupportOpen(true); }}>
@@ -1847,7 +1847,7 @@ function App() {
                     </button>
                     <button type="button" className="support-opt support-opt--stripe" onClick={() => { setSupportView('stripe'); setSupportOpen(true); }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
-                      {isPt ? 'CART├âO & OUTROS' : 'CARD & MORE'}
+                      {isPt ? 'CARTÃO & OUTROS' : 'CARD & MORE'}
                     </button>
                     <button type="button" className="support-opt support-opt--bmc" onClick={() => { const btn = document.querySelector('#bmc-wbtn'); if(btn){ btn.style.pointerEvents='auto'; btn.click(); btn.style.pointerEvents='none'; } }}>
                       <img src="https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg" alt="" width="20" height="20" />
@@ -1855,7 +1855,7 @@ function App() {
                     </button>
                   </div>
                   <a href="/donate" className="contact-donate-link">
-                    {isPt ? 'Ver detalhes ÔåÆ' : 'See details ÔåÆ'}
+                    {isPt ? 'Ver detalhes →' : 'See details →'}
                   </a>
                 </div>
               </div>
@@ -1887,7 +1887,7 @@ function App() {
 
                 {contactStatus === 'ok' && (
                   <p className="contact-feedback contact-feedback--ok">
-                    {isPt ? 'Ô£ô Mensagem enviada!' : 'Ô£ô Message sent!'}
+                    {isPt ? '✓ Mensagem enviada!' : '✓ Message sent!'}
                   </p>
                 )}
                 {contactStatus === 'error' && (
@@ -1907,7 +1907,7 @@ function App() {
         </section>
       </main>
 
-      <footer className="site-footer" aria-label="Rodap├®">
+      <footer className="site-footer" aria-label="Rodapé">
         <div className="site-footer-inner">
           <div className="footer-icons" aria-label="Links">
             <div className="footer-platforms">
@@ -1946,7 +1946,7 @@ function App() {
           </div>
 
           <div className="footer-copy">
-            ┬® {new Date().getFullYear()} MIND OF A DEAD BODY ÔÇö{' '}
+            © {new Date().getFullYear()} MIND OF A DEAD BODY —{' '}
             <a
               href="https://mindplacemusic.com.br?utm_source=mindofadeadbody&utm_medium=footer&utm_campaign=referral"
               target="_blank"
@@ -1962,7 +1962,7 @@ function App() {
       {openNewsPost && (
         <div className="news-modal-backdrop" onMouseDown={() => setOpenNewsPost(null)}>
           <div className="news-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <button className="news-modal-close" onClick={() => setOpenNewsPost(null)} aria-label="Fechar">├ù</button>
+            <button className="news-modal-close" onClick={() => setOpenNewsPost(null)} aria-label="Fechar">✕</button>
             <div className="news-modal-inner">
             {(openNewsPost.mediaKind === 'video' || openNewsPost.mediaKind === 'video_vertical') && openNewsPost.mediaUrl ? (
               openNewsPost.mediaUrl.includes('instagram.com') ? (
@@ -1972,7 +1972,7 @@ function App() {
               ) : (
               <div className="news-modal-video">
                 <iframe
-                  src={(() => { try { const u = new URL(openNewsPost.mediaUrl); const id = u.searchParams.get('v') || (u.hostname === 'youtu.be' ? u.pathname.slice(1) : u.pathname.split('/shorts/')[1]?.split('?')[0] || u.pathname.split('/embed/')[1]?.split('/')[0] || u.pathname.slice(1)); return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1` : openNewsPost.mediaUrl; } catch { return openNewsPost.mediaUrl; } })()}
+                  src={(() => { try { const u = new URL(openNewsPost.mediaUrl); const id = u.searchParams.get('v') || (u.hostname === 'youtu.be' ? u.pathname.slice(1) : u.pathname.split('/shorts/')[1]?.split('→')[0] || u.pathname.split('/embed/')[1]?.split('/')[0] || u.pathname.slice(1)); return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1` : openNewsPost.mediaUrl; } catch { return openNewsPost.mediaUrl; } })()}
                   title={openNewsPost.title}
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -2017,7 +2017,7 @@ function App() {
                 </button>
                 <button className="support-opt support-opt--stripe" onClick={() => setSupportView('stripe')}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
-                  {isPt ? 'CART├âO & OUTROS' : 'CARD & MORE'}
+                  {isPt ? 'CARTÃO & OUTROS' : 'CARD & MORE'}
                 </button>
                 <a
                   className="support-opt support-opt--bmc"
@@ -2034,9 +2034,9 @@ function App() {
             )}
             {supportView === 'stripe' && (
               <>
-                <button className="support-back" onClick={() => setSupportView(null)} aria-label="Voltar">ÔÇ╣</button>
-                <button className="support-close" onClick={closeSupport} aria-label="Fechar">Ô£ò</button>
-                <div className="support-panel-title">{isPt ? 'CART├âO & OUTROS' : 'CARD & MORE'}</div>
+                <button className="support-back" onClick={() => setSupportView(null)} aria-label="Voltar">‹</button>
+                <button className="support-close" onClick={closeSupport} aria-label="Fechar">✕</button>
+                <div className="support-panel-title">{isPt ? 'CARTÃO & OUTROS' : 'CARD & MORE'}</div>
                 <StripeWidget isPt={isPt} onBack={() => setSupportView(null)} />
               </>
             )}

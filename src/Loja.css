@@ -1565,3 +1565,96 @@
   .promo-cupom-code { font-size: 1rem; letter-spacing: 3px; }
   .promo-countdown-num { font-size: 1.3rem; }
 }
+
+/* ── Lightbox ──────────────────────────────────────────────────────────────── */
+.loja-zoom-hint {
+  position: absolute;
+  bottom: 10px; right: 10px;
+  background: rgba(0,0,0,.55);
+  color: rgba(255,255,255,.7);
+  border-radius: 4px;
+  padding: 5px 6px;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.loja-produto-main-img:hover .loja-zoom-hint { opacity: 1; }
+
+.loja-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: lb-in .2s ease;
+}
+@keyframes lb-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.loja-lightbox-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 2px;
+  box-shadow: 0 8px 60px rgba(0,0,0,.8);
+  animation: lb-img-in .25s cubic-bezier(.22,1,.36,1);
+}
+@keyframes lb-img-in {
+  from { transform: scale(.93); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.loja-lightbox-close {
+  position: absolute;
+  top: 20px; right: 24px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  color: rgba(255,255,255,.8);
+  font-size: 1.1rem;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background .15s, color .15s;
+  z-index: 1;
+}
+.loja-lightbox-close:hover { background: rgba(255,255,255,.16); color: #fff; }
+
+.loja-lightbox-nav {
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.8);
+  font-size: 1.6rem;
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background .15s, color .15s;
+  z-index: 1;
+  line-height: 1;
+}
+.loja-lightbox-nav:hover { background: rgba(255,255,255,.16); color: #fff; }
+.loja-lightbox-prev { left: 20px; }
+.loja-lightbox-next { right: 20px; }
+
+.loja-lightbox-dots {
+  position: absolute;
+  bottom: 20px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 8px; align-items: center;
+}
+.loja-lightbox-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.3);
+  cursor: pointer;
+  transition: background .15s, transform .15s;
+}
+.loja-lightbox-dot.is-active { background: #fff; transform: scale(1.3); }

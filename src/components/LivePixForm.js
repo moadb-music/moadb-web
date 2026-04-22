@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 
 const AMOUNTS = [5, 10, 20, 50];
 
@@ -15,7 +15,7 @@ export default function LivePixForm({ isPt }) {
     if (message) params.set('message', message);
     const query = params.toString();
     window.open(
-      `https://livepix.gg/mindofadeadbody${query ? '?' + query : ''}`,
+      `https://livepix.gg/mindofadeadbody${query ? '→' + query : ''}`,
       '_blank',
       'noopener,noreferrer'
     );
