@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import { trackPageView } from './analytics';
@@ -8,7 +8,11 @@ import PromoPopup from './components/PromoPopup';
 import './App.css';
 import './Loja.css';
 
-// ─── flags (igual ao SiteNav) ─────────────────────────────────────────────────
+// Base path da loja: '' no subdomínio loja.moadb.com.br, '/loja' nos demais
+const LOJA_BASE = window.location.hostname === 'loja.moadb.com.br' ? '' : '/loja';
+const lojaPath = (id) => id ? `${LOJA_BASE}/${id}` : (LOJA_BASE || '/');
+
+// --- flags (igual ao SiteNav) -------------------------------------------------
 
 function FlagBR(props) {
   return (
@@ -33,13 +37,13 @@ function FlagUK(props) {
   );
 }
 
-// ─── nav da loja ──────────────────────────────────────────────────────────────
+// --- nav da loja --------------------------------------------------------------
 
 const SITE_LINKS_PT = [
-  { href: '/#inicio',      label: 'INÍCIO' },
+  { href: '/#inicio',      label: 'IN�CIO' },
   { href: '/#sobre',       label: 'SOBRE' },
   { href: '/#loja',        label: 'LOJA' },
-  { href: '/#noticias',    label: 'NOTÍCIAS' },
+  { href: '/#noticias',    label: 'NOT�CIAS' },
   { href: '/#discografia', label: 'DISCOGRAFIA' },
   { href: '/#contato',     label: 'CONTATO' },
   { href: '/donate',       label: 'APOIAR' },
@@ -84,7 +88,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
     <div className="loja-nav-wrapper">
       <header className="loja-nav">
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {/* seta — só mobile */}
+          {/* seta � s� mobile */}
           <button
             type="button"
             className="loja-nav-back-btn loja-nav-back-mobile"
@@ -96,7 +100,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
             </svg>
           </button>
 
-          {/* logo — só desktop, com confirmação */}
+          {/* logo � s� desktop, com confirma��o */}
           <button
             type="button"
             className="loja-nav-site-link loja-nav-logo-desktop"
@@ -116,7 +120,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
 
         {/* direita: hamburguer (mobile) */}
         <div className="loja-nav-right">
-          {/* hamburguer — mobile only */}
+          {/* hamburguer � mobile only */}
           <button
             type="button"
             className={`loja-hamburger${menuOpen ? ' is-open' : ''}`}
@@ -129,7 +133,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
         </div>
       </header>
 
-      {/* disclaimer — fixo abaixo do nav no desktop */}
+      {/* disclaimer � fixo abaixo do nav no desktop */}
       {storeUrl && (
         <div className="loja-disclaimer loja-disclaimer--fixed" role="note">
           <svg className="loja-disclaimer-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -139,17 +143,17 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
           </svg>
           <span className="loja-disclaimer-text">
             {isPt ? (
-              <>Este site é um <strong>mostruário</strong> — todas as compras são finalizadas na{' '}
+              <>Este site � um <strong>mostru�rio</strong> � todas as compras s�o finalizadas na{' '}
               <strong>Hotprinti</strong>, plataforma de print on demand parceira.
-              Os itens são produzidos sob demanda e enviados diretamente por eles.</>
+              Os itens s�o produzidos sob demanda e enviados diretamente por eles.</>
             ) : (
-              <>This site is a <strong>showcase</strong> — all purchases are completed on{' '}
+              <>This site is a <strong>showcase</strong> � all purchases are completed on{' '}
               <strong>Hotprinti</strong>, our print on demand partner platform.
               Items are produced on demand and shipped directly by them.</>
             )}
           </span>
           <a className="loja-disclaimer-link" href={storeUrl} target="_blank" rel="noreferrer">
-            {isPt ? 'Ir para a loja ↗' : 'Go to store ↗'}
+            {isPt ? 'Ir para a loja ?' : 'Go to store ?'}
           </a>
         </div>
       )}
@@ -161,7 +165,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
           {/* categorias da loja */}
           {categorias && categorias.length > 0 && filterProps && (
             <>
-              {/* busca — primeiro */}
+              {/* busca � primeiro */}
               <div className="loja-drawer-search-wrap">
                 <svg className="loja-search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                   <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
@@ -171,26 +175,26 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
                   type="search"
                   className="loja-search"
                   value={filterProps.search}
-                  onChange={(e) => { filterProps.setSearch(e.target.value); navigate('/loja'); }}
-                  placeholder={isPt ? 'Buscar produto…' : 'Search product…'}
+                  onChange={(e) => { filterProps.setSearch(e.target.value); navigate(lojaPath()); }}
+                  placeholder={isPt ? 'Buscar produto�' : 'Search product�'}
                   aria-label={isPt ? 'Buscar produto' : 'Search product'}
                   style={{ width: '100%' }}
                 />
                 {filterProps.search && (
-                  <button type="button" className="loja-search-clear" onClick={() => filterProps.setSearch('')} aria-label="Limpar">×</button>
+                  <button type="button" className="loja-search-clear" onClick={() => filterProps.setSearch('')} aria-label="Limpar">�</button>
                 )}
               </div>
 
               <div className="loja-drawer-divider" />
               <div className="loja-drawer-section-label">{isPt ? 'CATEGORIAS' : 'CATEGORIES'}</div>
 
-              {/* Lançamentos */}
+              {/* Lan�amentos */}
               <button
                 type="button"
                 className={`loja-drawer-link loja-drawer-cat${filterProps.catFilter === 'all' ? ' is-active' : ''}`}
-                onClick={() => { filterProps.selectCat('all'); navigate('/loja'); setMenuOpen(false); }}
+                onClick={() => { filterProps.selectCat('all'); navigate(lojaPath()); setMenuOpen(false); }}
               >
-                {isPt ? 'Lançamentos' : 'New Arrivals'}
+                {isPt ? 'Lan�amentos' : 'New Arrivals'}
               </button>
 
               {/* Categorias com subcategorias sempre expandidas */}
@@ -200,22 +204,22 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
 
                 return (
                   <div key={cat}>
-                    {/* categoria — clicável, filtra por categoria */}
+                    {/* categoria � clic�vel, filtra por categoria */}
                     <button
                       type="button"
                       className={`loja-drawer-link loja-drawer-cat${isActive && filterProps.subcatFilter === 'all' ? ' is-active' : ''}`}
-                      onClick={() => { filterProps.selectCat(cat); navigate('/loja'); setMenuOpen(false); }}
+                      onClick={() => { filterProps.selectCat(cat); navigate(lojaPath()); setMenuOpen(false); }}
                     >
                       {cat}
                     </button>
 
-                    {/* subcategorias — indentadas abaixo */}
+                    {/* subcategorias � indentadas abaixo */}
                     {subcats.map(sub => (
                       <button
                         key={sub}
                         type="button"
                         className={`loja-drawer-link loja-drawer-subcat${isActive && filterProps.subcatFilter === sub ? ' is-active' : ''}`}
-                        onClick={() => { filterProps.selectCatSubcat(cat, sub); navigate('/loja'); setMenuOpen(false); }}
+                        onClick={() => { filterProps.selectCatSubcat(cat, sub); navigate(lojaPath()); setMenuOpen(false); }}
                       >
                         {formatSubcat(sub)}
                       </button>
@@ -226,9 +230,9 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
             </>
           )}
 
-          {/* idioma removido — loja usa idioma do browser */}
+          {/* idioma removido � loja usa idioma do browser */}
 
-          {/* voltar ao site — no final do drawer */}
+          {/* voltar ao site � no final do drawer */}
           <div className="loja-drawer-divider" style={{ marginTop: 'auto' }} />
           <button
             type="button"
@@ -242,7 +246,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
             <svg viewBox="0 0 16 16" fill="none" width="13" height="13" aria-hidden="true">
               <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            {isPt ? '← mindofadeadbody.com.br' : '← mindofadeadbody.com.br'}
+            {isPt ? '? mindofadeadbody.com.br' : '? mindofadeadbody.com.br'}
           </button>
         </div>
       )}
@@ -250,7 +254,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
   );
 }
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+// --- helpers ------------------------------------------------------------------
 
 function LojaDisclaimer({ isPt, storeUrl }) {
   if (!storeUrl) return null;
@@ -263,11 +267,11 @@ function LojaDisclaimer({ isPt, storeUrl }) {
       </svg>
       <span className="loja-disclaimer-text">
         {isPt
-          ? <>Mostruário — compras na <strong>Hotprinti</strong>.</>
-          : <>Showcase — purchases on <strong>Hotprinti</strong>.</>}
+          ? <>Mostru�rio � compras na <strong>Hotprinti</strong>.</>
+          : <>Showcase � purchases on <strong>Hotprinti</strong>.</>}
       </span>
       <a className="loja-disclaimer-link" href={storeUrl} target="_blank" rel="noreferrer">
-        {isPt ? 'Ir para a loja ↗' : 'Go to store ↗'}
+        {isPt ? 'Ir para a loja ?' : 'Go to store ?'}
       </a>
     </div>
   );
@@ -323,14 +327,14 @@ const PRINT_INFO = {
     DTG: {
       label: 'DTG',
       fullName: 'Direct to Garment',
-      desc: 'A tinta é aplicada diretamente na malha com jato de tinta especializado. Resultado suave ao toque, cores vibrantes e produção rápida.',
+      desc: 'A tinta � aplicada diretamente na malha com jato de tinta especializado. Resultado suave ao toque, cores vibrantes e produ��o r�pida.',
       prazo: null,
     },
     DTF: {
       label: 'DTF',
       fullName: 'Direct to Film',
-      desc: 'A estampa é impressa em filme e transferida para a peça com calor. Alta durabilidade, bordas nítidas e excelente cobertura em qualquer cor de tecido.',
-      prazo: '⚠ Impressão DTF pode levar mais tempo para ser produzida.',
+      desc: 'A estampa � impressa em filme e transferida para a pe�a com calor. Alta durabilidade, bordas n�tidas e excelente cobertura em qualquer cor de tecido.',
+      prazo: '? Impress�o DTF pode levar mais tempo para ser produzida.',
     },
   },
   en: {
@@ -344,7 +348,7 @@ const PRINT_INFO = {
       label: 'DTF',
       fullName: 'Direct to Film',
       desc: 'The design is printed on film and heat-transferred onto the garment. High durability, sharp edges and great coverage on any fabric color.',
-      prazo: '⚠ DTF printing may take longer to produce.',
+      prazo: '? DTF printing may take longer to produce.',
     },
   },
 };
@@ -353,7 +357,7 @@ function formatSubcat(s) {
   return String(s || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-// mapa de nomes de cor em PT/EN → valor CSS
+// mapa de nomes de cor em PT/EN ? valor CSS
 const COR_MAP = {
   preto: '#111', black: '#111',
   branco: '#fff', white: '#fff',
@@ -377,12 +381,12 @@ function corParaCss(cor) {
   if (!cor) return null;
   const key = String(cor).toLowerCase().trim();
   if (COR_MAP[key]) return COR_MAP[key];
-  // se já for hex ou rgb, usa direto
+  // se j� for hex ou rgb, usa direto
   if (/^#[0-9a-f]{3,8}$/i.test(key) || /^rgb/.test(key)) return cor;
   return null;
 }
 
-// ─── hook de dados ────────────────────────────────────────────────────────────
+// --- hook de dados ------------------------------------------------------------
 
 function useIsMobile(breakpoint = 600) {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= breakpoint);
@@ -409,8 +413,8 @@ function useShopData() {
   return { shopCfg, loading };
 }
 
-// ─── bg da página ────────────────────────────────────────────────────────────
-// Tenta carregar store-bg.jpg; se não existir, o CSS define o fallback cinza escuro
+// --- bg da p�gina ------------------------------------------------------------
+// Tenta carregar store-bg.jpg; se n�o existir, o CSS define o fallback cinza escuro
 const PAGE_BG = {
   backgroundImage: `url(${process.env.PUBLIC_URL}/images/store-bg.jpg)`,
   backgroundSize: 'cover',
@@ -418,18 +422,19 @@ const PAGE_BG = {
   backgroundAttachment: 'fixed',
 };
 
-// bg do banner — aplicado via style para usar PUBLIC_URL corretamente
+// bg do banner � aplicado via style para usar PUBLIC_URL corretamente
 const BANNER_BG_STYLE = {
   backgroundImage: `url(${process.env.PUBLIC_URL}/images/banner.jpg)`,
 };
 
-// ─── card do catálogo com troca de imagem ────────────────────────────────────
+// --- card do cat�logo com troca de imagem ------------------------------------
 
 function LojaCard({ item, isPt, onClick }) {
   const [activeImg, setActiveImg] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const hasMultiple = item.images.length > 1;
   const touchStartX = useRef(null);
+  const hoverTimeoutRef = useRef(null);
 
   // reset loaded quando muda de imagem
   function switchImg(idx) {
@@ -449,7 +454,7 @@ function LojaCard({ item, isPt, onClick }) {
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     touchStartX.current = null;
     if (!hasMultiple) return;
-    if (Math.abs(dx) < 30) return; // tap curto — não faz nada
+    if (Math.abs(dx) < 30) return; // tap curto – não faz nada
     if (dx < 0) switchImg(activeImg + 1);
     else switchImg(activeImg - 1);
   }
@@ -457,13 +462,21 @@ function LojaCard({ item, isPt, onClick }) {
   return (
     <div
       className="loja-card-outer"
-      onMouseEnter={() => { if (hasMultiple) switchImg(1); }}
-      onMouseLeave={() => { setActiveImg(0); setLoaded(false); }}
+      onMouseLeave={() => { setActiveImg(0); }}
+      onClick={onClick}
+      style={{ cursor: 'pointer' }}
     >
-      {/* área da imagem — clique/swipe troca imagem no mobile */}
+      {/* área da imagem – clique/swipe troca imagem no mobile */}
       <div
         className="loja-card-img-wrap"
         style={{ background: item.bgColor || '#0a0a0a' }}
+        onMouseEnter={(e) => {
+          // Só troca para imagem 1 se o hover não for num dot
+          if (hasMultiple && !e.target.closest('.loja-card-dot')) {
+            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+            hoverTimeoutRef.current = setTimeout(() => switchImg(1), 10);
+          }
+        }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -500,8 +513,16 @@ function LojaCard({ item, isPt, onClick }) {
               <span
                 key={idx}
                 className={`loja-card-dot${activeImg === idx ? ' is-active' : ''}`}
-                onMouseEnter={(e) => { e.stopPropagation(); switchImg(idx); }}
-                onClick={(e) => { e.stopPropagation(); switchImg(idx); }}
+                onMouseMove={() => {
+                  console.log('dot hover', idx);
+                  if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+                  switchImg(idx);
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log('dot click', idx);
+                  switchImg(idx);
+                }}
                 role="presentation"
               />
             ))}
@@ -509,7 +530,7 @@ function LojaCard({ item, isPt, onClick }) {
         )}
       </div>
 
-      {/* info — não navega */}
+      {/* info � n�o navega */}
       <div className="loja-card-body">
         {item.subcategoria && (
           <div className="loja-card-sub">{formatSubcat(item.subcategoria)}</div>
@@ -518,21 +539,24 @@ function LojaCard({ item, isPt, onClick }) {
         {item.cor && <div className="loja-card-cor">{item.cor}</div>}
       </div>
 
-      {/* cta — único elemento que navega */}
+      {/* cta � �nico elemento que navega */}
       <button
         type="button"
         className="loja-card-cta"
-        onClick={onClick}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
         aria-label={`${isPt ? 'Ver produto' : 'View product'}: ${item.title}`}
       >
         <span>{isPt ? 'VER PRODUTO' : 'VIEW PRODUCT'}</span>
-        <span className="loja-card-cta-arrow">→</span>
+        <span className="loja-card-cta-arrow">?</span>
       </button>
     </div>
   );
 }
 
-// ─── catálogo (/loja) ─────────────────────────────────────────────────────────
+// --- cat�logo (/loja) ---------------------------------------------------------
 
 function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, hasSubbar, navCategorias }) {
   const navigate = useNavigate();
@@ -579,10 +603,10 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
           </div>
         </div>
 
-        {/* ── grid de produtos ── */}
+        {/* -- grid de produtos -- */}
         <div className="loja-catalog-section">
 
-          {/* meta: só count, sem loja oficial aqui */}
+          {/* meta: s� count, sem loja oficial aqui */}
           <div className="loja-catalog-meta">
             <span className="loja-catalog-count">
               <strong>{filtered.length}</strong>
@@ -591,7 +615,7 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
                 : (isPt ? 'produtos' : 'products')}
               {catFilter !== 'all'
                 ? <span className="loja-catalog-count-tag">{catFilter}</span>
-                : <span className="loja-catalog-count-tag">{isPt ? 'Lançamentos' : 'New Arrivals'}</span>}
+                : <span className="loja-catalog-count-tag">{isPt ? 'Lan�amentos' : 'New Arrivals'}</span>}
               {subcatFilter !== 'all'
                 ? <span className="loja-catalog-count-tag">{formatSubcat(subcatFilter)}</span>
                 : null}
@@ -602,11 +626,11 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
           </div>
 
           {loading ? (
-            <div className="loja-loading">{isPt ? 'Carregando…' : 'Loading…'}</div>
+            <div className="loja-loading">{isPt ? 'Carregando�' : 'Loading�'}</div>
           ) : filtered.length === 0 ? (
             <div className="loja-empty">{isPt ? 'Nenhum produto encontrado.' : 'No products found.'}</div>
           ) : catFilter === 'all' && !search ? (
-            /* ── Lançamentos: agrupa por subcategoria ── */
+            /* -- Lan�amentos: agrupa por subcategoria -- */
             (() => {
               const subcatsOrdered = [
                 ...new Set(filtered.map((i) => i.subcategoria).filter(Boolean))
@@ -615,7 +639,7 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
 
               return (
                 <>
-                  {/* ── seções por subcategoria ── */}
+                  {/* -- se��es por subcategoria -- */}
                   {subcatsOrdered.map((sub) => {
                     const subItems = filtered.filter((i) => i.subcategoria === sub);
                     if (!subItems.length) return null;
@@ -635,14 +659,14 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
                                 className="loja-section-more"
                                 onClick={() => selectCatSubcat(cat, sub)}
                               >
-                                {isPt ? 'ver todos' : 'see all'} <span className="loja-section-more-arrow">→</span>
+                                {isPt ? 'ver todos' : 'see all'} <span className="loja-section-more-arrow">?</span>
                               </button>
                             </div>
                           </div>
                         </div>
                         <div className="loja-grid">
                           {displayItems.map((item) => (
-                            <LojaCard key={item.id} item={item} isPt={isPt} onClick={() => navigate(`/loja/${item.id}`)} />
+                            <LojaCard key={item.id} item={item} isPt={isPt} onClick={() => navigate(lojaPath(item.id))} />
                           ))}
                         </div>
                         {hasMore && (
@@ -653,7 +677,7 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
                             onClick={() => selectCatSubcat(cat, sub)}
                           >
                             {isPt ? `ver todos (${subItems.length})` : `see all (${subItems.length})`}
-                            <span className="loja-section-more-arrow"> →</span>
+                            <span className="loja-section-more-arrow"> ?</span>
                           </button>
                         )}
                       </div>
@@ -666,7 +690,7 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
                       </div>
                       <div className="loja-grid">
                         {semSubcat.map((item) => (
-                          <LojaCard key={item.id} item={item} isPt={isPt} onClick={() => navigate(`/loja/${item.id}`)} />
+                          <LojaCard key={item.id} item={item} isPt={isPt} onClick={() => navigate(lojaPath(item.id))} />
                         ))}
                       </div>
                     </div>
@@ -675,10 +699,10 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
               );
             })()
           ) : (
-            /* ── modo filtrado: grid simples ── */
+            /* -- modo filtrado: grid simples -- */
             <div className="loja-grid">
               {filtered.map((item) => (
-                <LojaCard key={item.id} item={item} isPt={isPt} onClick={() => navigate(`/loja/${item.id}`)} />
+                <LojaCard key={item.id} item={item} isPt={isPt} onClick={() => navigate(lojaPath(item.id))} />
               ))}
             </div>
           )}
@@ -689,16 +713,16 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
         <div className="loja-footer-bottom">
           {storeUrl && (
             <a className="loja-footer-store" href={storeUrl} target="_blank" rel="noreferrer">
-              {isPt ? 'Loja oficial ↗' : 'Official store ↗'}
+              {isPt ? 'Loja oficial ?' : 'Official store ?'}
             </a>
           )}
-          <span>© {new Date().getFullYear()} MIND OF A DEAD BODY</span>
+          <span>� {new Date().getFullYear()} MIND OF A DEAD BODY</span>
         </div>
       </footer>
     </div>
   );
 }
-// ─── produto (/loja/:id) ──────────────────────────────────────────────────────
+// --- produto (/loja/:id) ------------------------------------------------------
 
 function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
   const { id } = useParams();
@@ -727,8 +751,8 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
   if (loading) {
     return (
       <div className={`loja-page${hasSubbar ? ' has-subbar' : ''}`} style={PAGE_BG}>
-        <LojaNav lang={lang} setLang={setLang} backHref="/loja" storeUrl={storeUrl} />
-        <main className="loja-main"><div className="loja-loading">{isPt ? 'Carregando…' : 'Loading…'}</div></main>
+        <LojaNav lang={lang} setLang={setLang} backHref={lojaPath()} storeUrl={storeUrl} />
+        <main className="loja-main"><div className="loja-loading">{isPt ? 'Carregando�' : 'Loading�'}</div></main>
       </div>
     );
   }
@@ -736,11 +760,11 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
   if (!item) {
     return (
       <div className={`loja-page${hasSubbar ? ' has-subbar' : ''}`} style={PAGE_BG}>
-        <LojaNav lang={lang} setLang={setLang} backHref="/loja" storeUrl={storeUrl} />
+        <LojaNav lang={lang} setLang={setLang} backHref={lojaPath()} storeUrl={storeUrl} />
         <main className="loja-main">
-          <div className="loja-empty">{isPt ? 'Produto não encontrado.' : 'Product not found.'}</div>
-          <button type="button" className="loja-back-link" onClick={() => navigate('/loja')}>
-            ← {isPt ? 'Voltar à loja' : 'Back to store'}
+          <div className="loja-empty">{isPt ? 'Produto n�o encontrado.' : 'Product not found.'}</div>
+          <button type="button" className="loja-back-link" onClick={() => navigate(lojaPath())}>
+            ? {isPt ? 'Voltar � loja' : 'Back to store'}
           </button>
         </main>
       </div>
@@ -749,32 +773,32 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
 
   return (
     <div className={`loja-page${hasSubbar ? ' has-subbar' : ''}`} style={PAGE_BG}>
-      <LojaNav lang={lang} setLang={setLang} backHref="/loja" storeUrl={storeUrl} />
+      <LojaNav lang={lang} setLang={setLang} backHref={lojaPath()} storeUrl={storeUrl} />
 
       <main className="loja-produto-main">
         <LojaDisclaimer isPt={isPt} storeUrl={storeUrl} />
 
         {/* breadcrumb */}
         <nav className="loja-breadcrumb" aria-label="breadcrumb">
-          <button type="button" onClick={() => navigate('/loja')} className="loja-breadcrumb-link">
+          <button type="button" onClick={() => navigate(lojaPath())} className="loja-breadcrumb-link">
             {isPt ? 'Loja' : 'Store'}
           </button>
           {item.categoria && (
             <>
-              <span className="loja-breadcrumb-sep">›</span>
+              <span className="loja-breadcrumb-sep">�</span>
               <button type="button" className="loja-breadcrumb-link"
-                onClick={() => navigate('/loja', { state: { cat: item.categoria } })}>
+                onClick={() => navigate(lojaPath(), { state: { cat: item.categoria } })}>
                 {item.categoria}
               </button>
             </>
           )}
-          <span className="loja-breadcrumb-sep">›</span>
+          <span className="loja-breadcrumb-sep">�</span>
           <span className="loja-breadcrumb-current">{item.title}</span>
         </nav>
 
         <div className="loja-produto-layout">
 
-          {/* ── galeria ── */}
+          {/* -- galeria -- */}
           <div className="loja-produto-gallery">
             <div className="loja-produto-main-img" style={{ background: item.bgColor || '#0a0a0a' }}>
               {item.images[activeImg]
@@ -801,7 +825,7 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
             )}
           </div>
 
-          {/* ── info ── */}
+          {/* -- info -- */}
           <div className="loja-produto-info">
 
             {(item.categoria || item.subcategoria) && (
@@ -820,8 +844,8 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
                 </svg>
                 <span>
                   {isPt
-                    ? 'Edição Especial — peça exclusiva em colaboração com outro projeto.'
-                    : 'Special Edition — exclusive piece in collaboration with another project.'}
+                    ? 'Edi��o Especial � pe�a exclusiva em colabora��o com outro projeto.'
+                    : 'Special Edition � exclusive piece in collaboration with another project.'}
                 </span>
               </div>
             )}
@@ -847,7 +871,7 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
             {(printInfo || sizeEntries.length > 0) && (
               <div className="loja-produto-specs">
 
-                {/* cabeçalho com ícone */}
+                {/* cabe�alho com �cone */}
                 <div className="loja-produto-specs-header">
                   <svg className="loja-produto-specs-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                     <circle cx="10" cy="10" r="8.5" stroke="currentColor" strokeWidth="1.2"/>
@@ -855,18 +879,18 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
                     <circle cx="10" cy="6.5" r=".8" fill="currentColor"/>
                   </svg>
                   <span className="loja-produto-specs-title">
-                    {isPt ? 'Especificações de Impressão' : 'Print Specifications'}
+                    {isPt ? 'Especifica��es de Impress�o' : 'Print Specifications'}
                   </span>
                   {printInfo && (
                     <span className="loja-produto-specs-badge">{printInfo.label}</span>
                   )}
                 </div>
 
-                {/* técnica — descrição expandida */}
+                {/* t�cnica � descri��o expandida */}
                 {printInfo && (
                   <div className="loja-produto-specs-technique">
                     <div className="loja-produto-specs-technique-name">
-                      {printInfo.label} <span>— {printInfo.fullName}</span>
+                      {printInfo.label} <span>� {printInfo.fullName}</span>
                     </div>
                     <p className="loja-produto-specs-technique-desc">{printInfo.desc}</p>
                   </div>
@@ -876,7 +900,7 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
                 <div className="loja-produto-specs-rows">
                   {item.printSide && (
                     <div className="loja-produto-spec-row">
-                      <span>{isPt ? 'Posição' : 'Position'}</span>
+                      <span>{isPt ? 'Posi��o' : 'Position'}</span>
                       <strong>{item.printSide}</strong>
                     </div>
                   )}
@@ -904,7 +928,7 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
             {item.href && (
               <button type="button" className="loja-produto-cta" onClick={() => openPlatformLink(item.href)}>
                 {isPt ? 'VER NA LOJA' : 'VIEW IN STORE'}
-                <span className="loja-produto-cta-arrow">↗</span>
+                <span className="loja-produto-cta-arrow">?</span>
               </button>
             )}
 
@@ -914,14 +938,14 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
 
       <footer className="loja-footer">
         <div className="loja-footer-bottom">
-          <span>© {new Date().getFullYear()} MIND OF A DEAD BODY</span>
+          <span>� {new Date().getFullYear()} MIND OF A DEAD BODY</span>
         </div>
       </footer>
     </div>
   );
 }
 
-// ─── root ─────────────────────────────────────────────────────────────────────
+// --- root ---------------------------------------------------------------------
 
 export default function LojaRoot() {
   const [lang, setLang] = useState(() => {
@@ -931,7 +955,7 @@ export default function LojaRoot() {
   const { shopCfg, loading } = useShopData();
   const storeUrl = String(shopCfg.storeUrl || '').trim();
 
-  // estado de filtro elevado para o root — compartilhado entre catálogo e produto
+  // estado de filtro elevado para o root � compartilhado entre cat�logo e produto
   const categorias = useMemo(() => {
     const cats = [...new Set((shopCfg.items || []).map((i) => i.categoria).filter(Boolean))];
     return cats;
@@ -966,19 +990,19 @@ export default function LojaRoot() {
 
   return (
     <>
-      {/* topbar fixa — aparece em todas as telas da loja */}
+      {/* topbar fixa � aparece em todas as telas da loja */}
       <div className="loja-topbar">
         <div className="loja-topbar-inner">
           <div className="loja-cats" role="tablist">
             <button type="button" role="tab" aria-selected={catFilter === 'all'}
               className={`loja-cat-btn${catFilter === 'all' ? ' is-active' : ''}`}
-              onClick={() => { selectCat('all'); navigate('/loja'); }}>
-              {isPt ? 'Lançamentos' : 'New Arrivals'}
+              onClick={() => { selectCat('all'); navigate(lojaPath()); }}>
+              {isPt ? 'Lan�amentos' : 'New Arrivals'}
             </button>
             {categorias.map((cat) => (
               <button key={cat} type="button" role="tab" aria-selected={catFilter === cat}
                 className={`loja-cat-btn${catFilter === cat ? ' is-active' : ''}`}
-                onClick={() => { selectCat(cat); navigate('/loja'); }}>
+                onClick={() => { selectCat(cat); navigate(lojaPath()); }}>
                 {cat}
               </button>
             ))}
@@ -989,11 +1013,11 @@ export default function LojaRoot() {
               <path d="M13 13l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
             <input type="search" className="loja-search" value={search}
-              onChange={(e) => { setSearch(e.target.value); navigate('/loja'); }}
-              placeholder={isPt ? 'Buscar produto…' : 'Search product…'}
+              onChange={(e) => { setSearch(e.target.value); navigate(lojaPath()); }}
+              placeholder={isPt ? 'Buscar produto�' : 'Search product�'}
               aria-label={isPt ? 'Buscar produto' : 'Search product'} />
             {search && (
-              <button type="button" className="loja-search-clear" onClick={() => setSearch('')} aria-label="Limpar">×</button>
+              <button type="button" className="loja-search-clear" onClick={() => setSearch('')} aria-label="Limpar">�</button>
             )}
           </div>
         </div>

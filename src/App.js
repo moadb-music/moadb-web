@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+﻿import { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { trackPageView } from './analytics';
 import './App.css';
@@ -453,78 +453,152 @@ function useTouchSwipe(onSwipeLeft, onSwipeRight) {
   };
 }
 
-// ─── ShopCard: card com dots para alternar imagens ────────────────────────────
-function ShopCard({ item, className, onNavigate, featured }) {
-  const [activeImg, setActiveImg] = useState(0);
-  const [imgLoading, setImgLoading] = useState(false);
-  const images = item.images && item.images.length ? item.images : (item.image ? [item.image] : []);
+// ─── ShopCarousel ─────────────────────────────────────────────────────────────
+function ShopCarousel({ items, langKey }) {
+  const [active, setActive] = useState(null); // null = nenhum ativo (estado padrão)
+  const [prevActive, setPrevActive] = useState(null);
+  const [imgIdx, setImgIdx] = useState(0);
+  const activateTimer = useRef(null);
+  const imgTimer = useRef(null);
+  const isPt = langKey === 'pt';
+  const n = items.length;
+  const activeItem = active !== null ? items[active] : null;
+  const images = activeItem
+    ? (activeItem.images?.length ? activeItem.images : activeItem.image ? [activeItem.image] : [])
+    : [];
   const hasMultiple = images.length > 1;
-  const imgClass = featured ? 'shop-featured-img' : 'shop-grid-img';
-  const titleClass = featured ? 'shop-featured-title' : 'shop-grid-title';
-  const wrapClass = featured ? 'shop-featured-info' : null;
 
-  function switchImg(idx) {
-    if (idx === activeImg) return;
-    setImgLoading(true);
-    setActiveImg(idx);
+  useEffect(() => { setImgIdx(0); }, [active]);
+
+  function activateCard(idx) {
+    if (idx === active) return;
+    setPrevActive(active);
+    setActive(idx);
+    setTimeout(() => setPrevActive(null), 600);
+  }
+
+  function deactivate() {
+    clearTimeout(activateTimer.current);
+    clearTimeout(imgTimer.current);
+    setPrevActive(active);
+    setActive(null);
+    setImgIdx(0);
+    setTimeout(() => setPrevActive(null), 600);
+  }
+
+  function handleCardHover(idx) {
+    clearTimeout(activateTimer.current);
+    activateTimer.current = setTimeout(() => activateCard(idx), 100);
+  }
+
+  function handleTrackLeave() {
+    clearTimeout(activateTimer.current);
+    deactivate();
+  }
+
+  function handleImgEnter(e) {
+    if (!hasMultiple) return;
+    if (e.target.closest('.shc-dot')) return;
+    clearTimeout(imgTimer.current);
+    imgTimer.current = setTimeout(() => setImgIdx(1), 10);
+  }
+
+  function handleCardLeave() {
+    clearTimeout(imgTimer.current);
+    setImgIdx(0);
   }
 
   return (
-    <div
-      className={className}
-      onMouseLeave={() => { setActiveImg(0); setImgLoading(false); }}
-    >
+    <div className="shc">
       <div
-        className={imgClass}
-        style={{ background: item.bgColor || '#111' }}
+        className={`shc-track${active === null ? ' shc-track--idle' : ''}`}
+        style={{ gridTemplateColumns: `repeat(${n + (active !== null ? 1 : 0)}, 1fr)` }}
+        onMouseLeave={handleTrackLeave}
       >
-        <img
-          src={images[activeImg] || ''}
-          alt={item.title}
-          className={imgLoading ? 'shop-img-loading' : ''}
-          onLoad={() => setImgLoading(false)}
-          onError={() => setImgLoading(false)}
-        />
-
-        {/* spinner de loading */}
-        {imgLoading && (
-          <div className="shop-img-spinner" aria-hidden="true">
-            <span className="shop-img-spinner-ring" />
-          </div>
-        )}
-
-        {/* botão "ver" aparece no hover */}
-        <button
-          type="button"
-          className="shop-card-view-btn"
-          onClick={onNavigate}
-          aria-label={item.title}
-        >
-          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" width="14" height="14">
-            <path d="M3 13L13 3M13 3H7M13 3V9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-
-        {hasMultiple && (
-          <div className="shop-card-dots">
-            {images.map((_, idx) => (
-              <span
-                key={idx}
-                className={`shop-card-dot${activeImg === idx ? ' is-active' : ''}`}
-                onMouseEnter={(e) => { e.stopPropagation(); switchImg(idx); }}
-                role="presentation"
-              />
-            ))}
-          </div>
-        )}
+        {items.map((it, idx) => {
+          const isActive = idx === active;
+          const wasPrev = idx === prevActive;
+          const hasActive = active !== null;
+          const imgs = it.images?.length ? it.images : it.image ? [it.image] : [];
+          const displayImg = isActive ? (images[imgIdx] || '') : (imgs[0] || '');
+          return (
+            <div
+              key={it.id}
+              className={`shc-card${isActive ? ' is-active' : ''}${wasPrev ? ' was-active' : ''}${hasActive && !isActive ? ' is-dimmed' : ''}`}
+              onMouseEnter={() => handleCardHover(idx)}
+              onMouseLeave={() => { if (isActive) handleCardLeave(); }}
+            >
+              <div
+                className="shc-img"
+                style={{ background: it.bgColor || '#111' }}
+                onMouseEnter={(e) => { if (isActive) handleImgEnter(e); }}
+              >
+                <img key={displayImg} src={displayImg} alt={it.title} className="shc-img-el" />
+                {isActive && hasMultiple && (
+                  <div className="shc-dots">
+                    {images.map((_, i) => (
+                      <span
+                        key={i}
+                        className={`shc-dot${imgIdx === i ? ' is-active' : ''}`}
+                        onMouseEnter={() => { clearTimeout(imgTimer.current); setImgIdx(i); }}
+                        onClick={(e) => { e.stopPropagation(); setImgIdx(i); }}
+                        role="presentation"
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="shc-card-body">
+                <div className="shc-card-title">{it.title}</div>
+                {isActive && (
+                  <button
+                    type="button"
+                    className="shc-cta"
+                    onClick={(e) => { e.stopPropagation(); window.open(`https://loja.moadb.com.br/${it.id}`, '_blank', 'noreferrer'); }}
+                  >
+                    <span>{isPt ? 'VER PRODUTO' : 'VIEW PRODUCT'}</span>
+                    <svg viewBox="0 0 16 16" fill="none" width="11" height="11" aria-hidden="true">
+                      <path d="M3 13L13 3M13 3H7M13 3V9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
-      {wrapClass ? (
-        <div className={wrapClass}>
-          <div className={titleClass}>{item.title}</div>
+
+      <div className="shc-footer">
+        <div className="shc-nav-dots">
+          {items.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              className={`shc-nav-dot${active === idx ? ' is-active' : ''}`}
+              onClick={() => activateCard(idx)}
+              aria-label={`Produto ${idx + 1}`}
+            />
+          ))}
         </div>
-      ) : (
-        <div className={titleClass}>{item.title}</div>
-      )}
+        <button type="button" className="shc-see-all" onClick={() => window.open('https://loja.moadb.com.br', '_blank', 'noreferrer')}>
+          {isPt ? 'VER TUDO' : 'SEE ALL'} →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── ShopCard (legado — mantido para compatibilidade) ─────────────────────────
+function ShopCard({ item, onNavigate }) {
+  return (
+    <div className="sc" onClick={onNavigate}>
+      <div className="sc-img" style={{ background: item.bgColor || '#111' }}>
+        <img src={item.image || (item.images?.[0]) || ''} alt={item.title} />
+      </div>
+      <div className="sc-body"><div className="sc-title">{item.title}</div></div>
+      <button type="button" className="sc-cta" onClick={(e) => { e.stopPropagation(); onNavigate(); }}>
+        <span>VER PRODUTO</span>
+      </button>
     </div>
   );
 }
@@ -1351,60 +1425,29 @@ function App() {
           <div className="shop-inner">
             {/* ── cabeçalho ── */}
             <div className="shop-header">
-              <div className="shop-header-left">
-                <div className="shop-eyebrow">{langKey === 'pt' ? 'MERCH OFICIAL' : 'OFFICIAL MERCH'}</div>
-                <h2 className="shop-title">{langKey === 'pt' ? 'LOJA' : 'STORE'}</h2>
-              </div>
+              <h2 className="shop-title">{langKey === 'pt' ? 'LOJA' : 'STORE'}</h2>
             </div>
 
             {shopItems.length === 0 ? (
               <div className="shop-empty">
-                <button type="button" className="shop-full btn-outline" onClick={() => navigate('/loja')}>
+                <button type="button" className="shop-full btn-outline" onClick={() => window.open('https://loja.moadb.com.br', '_blank', 'noreferrer')}>
                   {langKey === 'pt' ? 'ACESSAR A LOJA' : 'VISIT STORE'}
                 </button>
               </div>
             ) : (
-              <div className="shop-editorial">
-                {/* ── destaque: primeiro item ── */}
-                {shopItems[0] && (
-                  <ShopCard
-                    item={shopItems[0]}
-                    className="shop-featured"
-                    onNavigate={() => window.open(`/loja/${shopItems[0].id}`, '_blank', 'noreferrer')}
-                    featured
-                  />
-                )}
-
-                {/* ── grid: demais itens ── */}
-                <div className="shop-grid">
-                  {shopItems.slice(1, 6).map((item) => (
-                    <ShopCard
-                      key={item.id}
-                      item={item}
-                      className="shop-grid-item"
-                      onNavigate={() => window.open(`/loja/${item.id}`, '_blank', 'noreferrer')}
-                    />
-                  ))}
-
-                  {/* ── tile "ver mais" ── */}
-                  <button type="button" className="shop-grid-more" onClick={() => window.open('/loja', '_blank', 'noreferrer')}>
-                    <span className="shop-grid-more-count">+</span>
-                    <span className="shop-grid-more-label">{langKey === 'pt' ? 'VER TUDO' : 'SEE ALL'}</span>
-                  </button>
-                </div>
-              </div>
+              <ShopCarousel items={shopItems} langKey={langKey} storeUrl={shopStoreUrl} />
             )}
           </div>
         </section>
 
-        <section id="noticias" className={`news reveal${!sectionVisible.noticias ? ' section-hidden' : ''}`} aria-label="Notícias" style={sectionBgStyle.noticias}>
+        <section id="noticias" className={`news reveal${!sectionVisible.noticias ? ' section-hidden' : ''}`} aria-label="Not├¡cias" style={sectionBgStyle.noticias}>
           <SectionBg bg={sectionBg.noticias} />
           <div className="news-inner">
-            <h2 className="news-title">{isPt ? 'NOTÍCIAS' : 'NEWS'}</h2>
+            <h2 className="news-title">{isPt ? 'NOT├ìCIAS' : 'NEWS'}</h2>
 
             <div
               className="news-carousel"
-              aria-label="Carrossel de notícias"
+              aria-label="Carrossel de not├¡cias"
               {...useTouchSwipe(
                 () => goNewsScrollIndex(newsIndex + 1),
                 () => goNewsScrollIndex(newsIndex - 1)
@@ -1417,7 +1460,7 @@ function App() {
                   aria-label="Anterior"
                   onClick={() => goNewsScrollIndex(newsIndex - 1)}
                 >
-                  ‹
+                  ÔÇ╣
                 </button>
               ) : null}
 
@@ -1425,7 +1468,7 @@ function App() {
                 className="news-viewport"
                 ref={newsViewportRef}
                 style={{
-                  // expõe para o CSS calcular o flex-basis (4 cards)
+                  // exp├Áe para o CSS calcular o flex-basis (4 cards)
                   '--news-cols': newsVisibleCount,
                 }}
               >
@@ -1438,16 +1481,16 @@ function App() {
                   {newsError ? (
                     <div className="news-empty" role="status">
                       {langKey === 'pt'
-                        ? `Falha ao carregar notícias (${newsError}).`
+                        ? `Falha ao carregar not├¡cias (${newsError}).`
                         : `Failed to load news (${newsError}).`}
                     </div>
                   ) : newsLoading ? (
                     <div className="news-empty" role="status">
-                      {langKey === 'pt' ? 'Carregando notícias…' : 'Loading news…'}
+                      {langKey === 'pt' ? 'Carregando not├¡ciasÔÇª' : 'Loading newsÔÇª'}
                     </div>
                   ) : (visibleNewsItems || []).length === 0 ? (
                     <div className="news-empty" role="status">
-                      {langKey === 'pt' ? 'Sem notícias no momento.' : 'No news yet.'}
+                      {langKey === 'pt' ? 'Sem not├¡cias no momento.' : 'No news yet.'}
                     </div>
                   ) : (
                     (visibleNewsItems || []).map((post) => {
@@ -1472,7 +1515,7 @@ function App() {
                                 href={mediaHref}
                                 target="_blank"
                                 rel="noreferrer"
-                                aria-label={isVideo ? (isPt ? 'Abrir vídeo' : 'Open video') : (isPt ? 'Abrir notícia' : 'Open post')}
+                                aria-label={isVideo ? (isPt ? 'Abrir v├¡deo' : 'Open video') : (isPt ? 'Abrir not├¡cia' : 'Open post')}
                                 onClick={(e) => { e.preventDefault(); setOpenNewsPost(post); }}
                               >
                                 {thumbSrc ? <img src={thumbSrc} alt="" /> : null}
@@ -1536,7 +1579,7 @@ function App() {
                                 onClick={() => setOpenNewsPost(post)}
                                 aria-expanded={isExpanded}
                               >
-                                {langKey === 'pt' ? (isExpanded ? 'Ler menos' : 'Ler mais…') : isExpanded ? 'Read less' : 'Read more…'}
+                                {langKey === 'pt' ? (isExpanded ? 'Ler menos' : 'Ler maisÔÇª') : isExpanded ? 'Read less' : 'Read moreÔÇª'}
                               </button>
                             ) : null}
 
@@ -1557,10 +1600,10 @@ function App() {
                 <button
                   type="button"
                   className="news-nav news-next"
-                  aria-label="Próximo"
+                  aria-label="Pr├│ximo"
                   onClick={() => goNewsScrollIndex(newsIndex + 1)}
                 >
-                  ›
+                  ÔÇ║
                 </button>
               ) : null}
             </div>
@@ -1572,7 +1615,7 @@ function App() {
           <div className="discography-inner">
             <h2 className="discography-title">{isPt ? 'DISCOGRAFIA' : 'DISCOGRAPHY'}</h2>
 
-            <div className="discography-grid" aria-label="Lançamentos">
+            <div className="discography-grid" aria-label="Lan├ºamentos">
               {discography.length ? (
                 discography.map((rel) => {
                   const kind = String(rel.type || '').toUpperCase();
@@ -1585,7 +1628,7 @@ function App() {
                       key={rel.id}
                       className="discography-card reveal-item"
                       style={cover ? { '--disco-cover-url': `url(${cover})` } : undefined}
-                      aria-label={`${title || (langKey === 'pt' ? 'Lançamento' : 'Release')}${year ? ` (${year})` : ''}`}
+                      aria-label={`${title || (langKey === 'pt' ? 'Lan├ºamento' : 'Release')}${year ? ` (${year})` : ''}`}
                       role="button"
                       tabIndex={0}
                       onClick={() => setOpenReleaseId(String(rel.id))}
@@ -1594,13 +1637,13 @@ function App() {
                       }}
                     >
                       <div className="discography-cover">
-                        <img src={cover || 'https://via.placeholder.com/800x800?text=Cover'} alt={title ? `Capa de ${title}` : 'Capa do lançamento'} />
+                        <img src={cover || 'https://via.placeholder.com/800x800?text=Cover'} alt={title ? `Capa de ${title}` : 'Capa do lan├ºamento'} />
                       </div>
 
                       <div className="discography-meta">
                         <div className="discography-info">
                           <div className="discography-kind">{kind || 'RELEASE'}</div>
-                          <div className="discography-name">{title || (langKey === 'pt' ? 'LANÇAMENTO' : 'RELEASE')}</div>
+                          <div className="discography-name">{title || (langKey === 'pt' ? 'LAN├çAMENTO' : 'RELEASE')}</div>
                           <div className="discography-tracks">
                             {rel.tracks && rel.tracks.length > 0
                               ? `${rel.tracks.length} ${langKey === 'pt' ? (rel.tracks.length === 1 ? 'FAIXA' : 'FAIXAS') : (rel.tracks.length === 1 ? 'TRACK' : 'TRACKS')}`
@@ -1624,13 +1667,13 @@ function App() {
             className="site-modal-backdrop"
             role="dialog"
             aria-modal="true"
-            aria-label={langKey === 'pt' ? 'Detalhes do lançamento' : 'Release details'}
+            aria-label={langKey === 'pt' ? 'Detalhes do lan├ºamento' : 'Release details'}
             onMouseDown={() => setOpenReleaseId(null)}
           >
             <div className="site-modal" onMouseDown={(e) => e.stopPropagation()}>
               <div className="site-modal-header">
                 <button type="button" className="site-modal-close" onClick={() => setOpenReleaseId(null)} aria-label="Fechar">
-                  ×
+                  ├ù
                 </button>
               </div>
 
@@ -1638,15 +1681,15 @@ function App() {
                 <div className="disco-modal-grid">
                   <div className="disco-modal-left-panel">
                     <div className="disco-modal-cover">
-                      <img src={openRelease.coverUrl || 'https://via.placeholder.com/800x800?text=Cover'} alt={openRelease.title ? `Capa de ${openRelease.title}` : 'Capa do lançamento'} />
+                      <img src={openRelease.coverUrl || 'https://via.placeholder.com/800x800?text=Cover'} alt={openRelease.title ? `Capa de ${openRelease.title}` : 'Capa do lan├ºamento'} />
                     </div>
 
                     <div className="disco-modal-info">
                       <h2 className="disco-modal-title">{String(openRelease.title || '').toUpperCase()}</h2>
                       <div className="disco-modal-kicker">
                         {String(openRelease.type || '').toUpperCase()}
-                        {openRelease.year ? ` • ${openRelease.year}` : ''}
-                        {openRelease.tracks && openRelease.tracks.length > 0 ? ` • ${openRelease.tracks.length} ${langKey === 'pt' ? (openRelease.tracks.length === 1 ? 'FAIXA' : 'FAIXAS') : (openRelease.tracks.length === 1 ? 'TRACK' : 'TRACKS')}` : ''}
+                        {openRelease.year ? ` ÔÇó ${openRelease.year}` : ''}
+                        {openRelease.tracks && openRelease.tracks.length > 0 ? ` ÔÇó ${openRelease.tracks.length} ${langKey === 'pt' ? (openRelease.tracks.length === 1 ? 'FAIXA' : 'FAIXAS') : (openRelease.tracks.length === 1 ? 'TRACK' : 'TRACKS')}` : ''}
                       </div>
 
                       <div className="disco-modal-links" aria-label={langKey === 'pt' ? 'Plataformas' : 'Platforms'}>
@@ -1795,7 +1838,7 @@ function App() {
                 <div className="contact-block">
                   <div className="contact-kicker">{isPt ? 'APOIE O PROJETO' : 'SUPPORT THE PROJECT'}</div>
                   <p className="contact-help">
-                    {isPt ? 'Sua contribuição ajuda a manter viva a chama do metal independente.' : 'Your contribution helps keep the flame of independent metal alive.'}
+                    {isPt ? 'Sua contribui├º├úo ajuda a manter viva a chama do metal independente.' : 'Your contribution helps keep the flame of independent metal alive.'}
                   </p>
                   <div className="contact-support-btns">
                     <button type="button" className="support-opt support-opt--pix" onClick={() => { setSupportView('pix'); setSupportOpen(true); }}>
@@ -1804,7 +1847,7 @@ function App() {
                     </button>
                     <button type="button" className="support-opt support-opt--stripe" onClick={() => { setSupportView('stripe'); setSupportOpen(true); }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
-                      {isPt ? 'CARTÃO & OUTROS' : 'CARD & MORE'}
+                      {isPt ? 'CART├âO & OUTROS' : 'CARD & MORE'}
                     </button>
                     <button type="button" className="support-opt support-opt--bmc" onClick={() => { const btn = document.querySelector('#bmc-wbtn'); if(btn){ btn.style.pointerEvents='auto'; btn.click(); btn.style.pointerEvents='none'; } }}>
                       <img src="https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg" alt="" width="20" height="20" />
@@ -1812,7 +1855,7 @@ function App() {
                     </button>
                   </div>
                   <a href="/donate" className="contact-donate-link">
-                    {isPt ? 'Ver detalhes →' : 'See details →'}
+                    {isPt ? 'Ver detalhes ÔåÆ' : 'See details ÔåÆ'}
                   </a>
                 </div>
               </div>
@@ -1844,7 +1887,7 @@ function App() {
 
                 {contactStatus === 'ok' && (
                   <p className="contact-feedback contact-feedback--ok">
-                    {isPt ? '✓ Mensagem enviada!' : '✓ Message sent!'}
+                    {isPt ? 'Ô£ô Mensagem enviada!' : 'Ô£ô Message sent!'}
                   </p>
                 )}
                 {contactStatus === 'error' && (
@@ -1864,7 +1907,7 @@ function App() {
         </section>
       </main>
 
-      <footer className="site-footer" aria-label="Rodapé">
+      <footer className="site-footer" aria-label="Rodap├®">
         <div className="site-footer-inner">
           <div className="footer-icons" aria-label="Links">
             <div className="footer-platforms">
@@ -1903,7 +1946,7 @@ function App() {
           </div>
 
           <div className="footer-copy">
-            © {new Date().getFullYear()} MIND OF A DEAD BODY —{' '}
+            ┬® {new Date().getFullYear()} MIND OF A DEAD BODY ÔÇö{' '}
             <a
               href="https://mindplacemusic.com.br?utm_source=mindofadeadbody&utm_medium=footer&utm_campaign=referral"
               target="_blank"
@@ -1919,7 +1962,7 @@ function App() {
       {openNewsPost && (
         <div className="news-modal-backdrop" onMouseDown={() => setOpenNewsPost(null)}>
           <div className="news-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <button className="news-modal-close" onClick={() => setOpenNewsPost(null)} aria-label="Fechar">×</button>
+            <button className="news-modal-close" onClick={() => setOpenNewsPost(null)} aria-label="Fechar">├ù</button>
             <div className="news-modal-inner">
             {(openNewsPost.mediaKind === 'video' || openNewsPost.mediaKind === 'video_vertical') && openNewsPost.mediaUrl ? (
               openNewsPost.mediaUrl.includes('instagram.com') ? (
@@ -1974,7 +2017,7 @@ function App() {
                 </button>
                 <button className="support-opt support-opt--stripe" onClick={() => setSupportView('stripe')}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
-                  {isPt ? 'CARTÃO & OUTROS' : 'CARD & MORE'}
+                  {isPt ? 'CART├âO & OUTROS' : 'CARD & MORE'}
                 </button>
                 <a
                   className="support-opt support-opt--bmc"
@@ -1991,9 +2034,9 @@ function App() {
             )}
             {supportView === 'stripe' && (
               <>
-                <button className="support-back" onClick={() => setSupportView(null)} aria-label="Voltar">‹</button>
-                <button className="support-close" onClick={closeSupport} aria-label="Fechar">✕</button>
-                <div className="support-panel-title">{isPt ? 'CARTÃO & OUTROS' : 'CARD & MORE'}</div>
+                <button className="support-back" onClick={() => setSupportView(null)} aria-label="Voltar">ÔÇ╣</button>
+                <button className="support-close" onClick={closeSupport} aria-label="Fechar">Ô£ò</button>
+                <div className="support-panel-title">{isPt ? 'CART├âO & OUTROS' : 'CARD & MORE'}</div>
                 <StripeWidget isPt={isPt} onBack={() => setSupportView(null)} />
               </>
             )}

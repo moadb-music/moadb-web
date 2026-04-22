@@ -693,21 +693,17 @@
   justify-content: center;
   padding: 12px 0 8px;
   background: linear-gradient(to top, rgba(0,0,0,.5), transparent);
-  opacity: 0;
-  transition: opacity .2s;
-  pointer-events: none;
+  opacity: 1;
+  pointer-events: auto;
 }
 .loja-card-outer:hover .loja-card-dots { opacity: 1; pointer-events: auto; }
-
-@media (hover: none) {
-  /* touch devices: dots sempre visíveis */
-  .loja-card-dots { opacity: 1; pointer-events: auto; }
-}
 
 .loja-card-dot {
   display: inline-block;
   padding: 5px 4px;
   cursor: pointer;
+  position: relative;
+  z-index: 10;
 }
 .loja-card-dot::after {
   content: '';
@@ -716,6 +712,7 @@
   border-radius: 50%;
   background: rgba(255,255,255,.35);
   transition: background .15s, transform .15s;
+  pointer-events: none;
 }
 .loja-card-dot:hover::after,
 .loja-card-dot.is-active::after { background: #fff; transform: scale(1.25); }
@@ -727,6 +724,7 @@
   flex-direction: column;
   gap: 5px;
   border-top: 1px solid rgba(255,255,255,.05);
+  flex: 1; /* empurra o botão CTA para o fundo */
 }
 
 .loja-card-sub {
@@ -767,21 +765,21 @@
   font-size: .68rem;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: rgba(255,255,255,.25);
+  color: #fff;
   border: none;
   border-top: 1px solid rgba(255,255,255,.05);
-  background: transparent;
+  background: #8b0000;
   width: 100%;
   cursor: pointer;
   text-align: left;
-  transition: color .2s, background .2s;
+  transition: background .2s;
+  margin-top: auto; /* garante que fica no fundo */
 }
 .loja-card-outer:hover .loja-card-cta,
-.loja-card-cta:hover { color: #fff; background: #8b0000; }
+.loja-card-cta:hover { background: #a00000; }
 
 @media (hover: none) {
-  /* touch devices: CTA sempre vermelho */
-  .loja-card-cta { color: #fff; background: #8b0000; }
+  .loja-card-cta { background: #8b0000; }
 }
 .loja-card-cta-arrow { transition: transform .2s; }
 .loja-card-outer:hover .loja-card-cta .loja-card-cta-arrow,
