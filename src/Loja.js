@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 import { trackPageView } from './analytics';
-import { useNavigate, useParams, Routes, Route } from 'react-router-dom';
+import { useNavigate, useParams, Routes, Route, useLocation } from 'react-router-dom';
 import logoPng from './assets/logo.png';
 import PromoPopup from './components/PromoPopup';
 import './App.css';
@@ -12,6 +12,13 @@ import './Loja.css';
 // Base path da loja: '' no subdomínio loja.moadb.com.br, '/loja' nos demais
 const LOJA_BASE = window.location.hostname === 'loja.moadb.com.br' ? '' : '/loja';
 const lojaPath = (id) => id ? `${LOJA_BASE}/${id}` : (LOJA_BASE || '/');
+
+// Volta ao topo sempre que a rota muda
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
 
 // --- flags (igual ao SiteNav) -------------------------------------------------
 
@@ -1069,6 +1076,7 @@ export default function LojaRoot() {
 
   return (
     <>
+      <ScrollToTop />
       {/* topbar fixa — aparece em todas as telas da loja */}
       <div className="loja-topbar">
         <div className="loja-topbar-inner">

@@ -455,11 +455,20 @@ function useTouchSwipe(onSwipeLeft, onSwipeRight) {
 
 // ─── ShopCarousel ─────────────────────────────────────────────────────────────
 function ShopCarousel({ items, langKey }) {
-  const [active, setActive] = useState(null); // null = nenhum ativo (estado padrão)
+  const [active, setActive] = useState(null); // null = nenhum ativo (desktop idle)
   const [prevActive, setPrevActive] = useState(null);
   const [imgIdx, setImgIdx] = useState(0);
+  const [mobileActive, setMobileActive] = useState(0);
+  const [featuredImgIdx, setFeaturedImgIdx] = useState(0);
+  const thumbsRef = useRef(null);
+  const activeThumbRef = useRef(null);
+  const touchStartX = useRef(null);
   const activateTimer = useRef(null);
   const imgTimer = useRef(null);
+  const [isMobile, setIsMobile] = useState(
+    () => window.matchMedia('(hover: none)').matches || window.innerWidth <= 768
+  );
+  const isMobileRef = useRef(isMobile);
   const isPt = langKey === 'pt';
   const n = items.length;
   const activeItem = active !== null ? items[active] : null;
@@ -468,8 +477,30 @@ function ShopCarousel({ items, langKey }) {
     : [];
   const hasMultiple = images.length > 1;
 
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const handler = (e) => { isMobileRef.current = e.matches; setIsMobile(e.matches); };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   useEffect(() => { setImgIdx(0); }, [active]);
 
+  // mobile: reset imagem ao trocar produto
+  useEffect(() => { setFeaturedImgIdx(0); }, [mobileActive]);
+
+  // mobile: auto-scroll do thumbnail ativo para o centro
+  useEffect(() => {
+    if (!isMobile) return;
+    if (!thumbsRef.current || !activeThumbRef.current) return;
+    const container = thumbsRef.current;
+    const thumb = activeThumbRef.current;
+    const containerCenter = container.offsetWidth / 2;
+    const thumbCenter = thumb.offsetLeft + thumb.offsetWidth / 2;
+    container.scrollTo({ left: thumbCenter - containerCenter, behavior: 'smooth' });
+  }, [mobileActive, isMobile]);
+
+  // ── desktop handlers ──
   function activateCard(idx) {
     if (idx === active) return;
     setPrevActive(active);
@@ -487,11 +518,13 @@ function ShopCarousel({ items, langKey }) {
   }
 
   function handleCardHover(idx) {
+    if (isMobileRef.current) return;
     clearTimeout(activateTimer.current);
     activateTimer.current = setTimeout(() => activateCard(idx), 100);
   }
 
   function handleTrackLeave() {
+    if (isMobileRef.current) return;
     clearTimeout(activateTimer.current);
     deactivate();
   }
@@ -508,6 +541,115 @@ function ShopCarousel({ items, langKey }) {
     setImgIdx(0);
   }
 
+  // ── mobile: layout destaque + thumbnails ──
+  if (isMobile && items.length > 0) {
+    const featured = items[mobileActive];
+    const featuredImgs = featured.images?.length ? featured.images : featured.image ? [featured.image] : [];
+    const featuredLen = featuredImgs.length;
+
+    function handleFeaturedTouchStart(e) {
+      touchStartX.current = e.touches[0].clientX;
+    }
+    function handleFeaturedTouchEnd(e) {
+      if (touchStartX.current === null) return;
+      const dx = e.changedTouches[0].clientX - touchStartX.current;
+      touchStartX.current = null;
+      if (Math.abs(dx) < 30 || featuredLen <= 1) return;
+      setFeaturedImgIdx(i => dx < 0
+        ? (i + 1) % featuredLen
+        : (i - 1 + featuredLen) % featuredLen
+      );
+    }
+
+    return (
+      <div className="shc shc--mobile">
+        {/* card em destaque */}
+        <div
+          className="shc-m-featured"
+          style={{ background: featured.bgColor || '#111' }}
+          onTouchStart={handleFeaturedTouchStart}
+          onTouchEnd={handleFeaturedTouchEnd}
+        >
+          <img
+            key={`${mobileActive}-${featuredImgIdx}`}
+            src={featuredImgs[featuredImgIdx] || ''}
+            alt={featured.title}
+            className="shc-m-featured-img"
+          />
+          {/* dots das imagens do produto */}
+          {featuredImgs.length > 1 && (
+            <div className="shc-m-img-dots">
+              {featuredImgs.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={`shc-m-img-dot${featuredImgIdx === i ? ' is-active' : ''}`}
+                  onClick={() => setFeaturedImgIdx(i)}
+                  aria-label={`Imagem ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* info + cta */}
+        <div className="shc-m-info">
+          <div className="shc-m-title">{featured.title}</div>
+          <button
+            type="button"
+            className="shc-cta shc-m-cta"
+            onClick={() => window.open(`https://loja.moadb.com.br/${featured.id}`, '_blank', 'noreferrer')}
+          >
+            <span>{isPt ? 'VER PRODUTO' : 'VIEW PRODUCT'}</span>
+            <svg viewBox="0 0 16 16" fill="none" width="11" height="11" aria-hidden="true">
+              <path d="M3 13L13 3M13 3H7M13 3V9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* thumbnails com auto-scroll */}
+        <div className="shc-m-thumbs" ref={thumbsRef}>
+          {items.map((it, idx) => {
+            const thumb = it.images?.[0] || it.image || '';
+            const isActive = mobileActive === idx;
+            return (
+              <button
+                key={it.id}
+                ref={isActive ? activeThumbRef : null}
+                type="button"
+                className={`shc-m-thumb${isActive ? ' is-active' : ''}`}
+                style={{ background: it.bgColor || '#111' }}
+                onClick={() => setMobileActive(idx)}
+                aria-label={it.title}
+              >
+                <img src={thumb} alt={it.title} />
+              </button>
+            );
+          })}
+        </div>
+
+        {/* rodapé */}
+        <div className="shc-footer">
+          <div className="shc-nav-dots">
+            {items.map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className={`shc-nav-dot${mobileActive === idx ? ' is-active' : ''}`}
+                onClick={() => setMobileActive(idx)}
+                aria-label={`Produto ${idx + 1}`}
+              />
+            ))}
+          </div>
+          <button type="button" className="shc-see-all" onClick={() => window.open('https://loja.moadb.com.br', '_blank', 'noreferrer')}>
+            {isPt ? 'VER TUDO' : 'SEE ALL'} →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── desktop: layout original ──
   return (
     <div className="shc">
       <div
