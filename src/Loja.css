@@ -604,12 +604,12 @@
 
 .loja-card-img-wrap {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1122 / 1402;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px;
+  padding: 0;
   position: relative;
   cursor: pointer;
 }
@@ -617,7 +617,7 @@
 .loja-card-img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   display: block;
   position: relative;
   z-index: 1;
@@ -656,6 +656,7 @@
 .loja-card-print-badge {
   position: absolute;
   top: 10px; right: 10px;
+  z-index: 2;
   background: rgba(0,0,0,.65);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
@@ -672,6 +673,7 @@
 .loja-card-special-badge {
   position: absolute;
   top: 10px; left: 10px;
+  z-index: 2;
   background: rgba(229,201,126,.15);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
@@ -847,17 +849,17 @@
 
 .loja-produto-main-img {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1122 / 1402;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 0;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.07);
 }
 .loja-produto-main-img img {
   width: 100%; height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   display: block;
   transition: transform .5s cubic-bezier(.22,1,.36,1);
 }
@@ -867,7 +869,7 @@
 .loja-produto-thumb {
   width: 62px; height: 62px;
   border: 1px solid rgba(255,255,255,.07);
-  padding: 5px;
+  padding: 0;
   cursor: pointer;
   overflow: hidden;
   display: flex;
@@ -876,7 +878,7 @@
   transition: border-color .15s;
   flex-shrink: 0;
 }
-.loja-produto-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.loja-produto-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .loja-produto-thumb:hover { border-color: rgba(255,255,255,.3); }
 .loja-produto-thumb.is-active { border-color: #8b0000; }
 
