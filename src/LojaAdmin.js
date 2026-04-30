@@ -110,6 +110,7 @@ function normalizeShopFromDb(data) {
         ladoD:  String(it?.printSizes?.ladoD  || ''),
         ladoE:  String(it?.printSizes?.ladoE  || ''),
       },
+      preco: String(it?.preco || ''),
       destaque: it?.destaque === true,
       edicaoEspecial: it?.edicaoEspecial === true,
     })),
@@ -143,6 +144,7 @@ function serializeShopToDb(shop) {
               ladoD:  String(it.printSizes?.ladoD  || '').trim(),
               ladoE:  String(it.printSizes?.ladoE  || '').trim(),
             },
+            preco: String(it.preco || '').trim(),
             destaque: it.destaque === true,
             edicaoEspecial: it.edicaoEspecial === true,
           }))
@@ -155,6 +157,7 @@ const EMPTY_FORM = {
   id: '', name: '', descricao: '', productUrl: '', images: [], bgColor: '#070707',
   categoria: '', subcategoria: '', cor: '', printSide: '', printType: '', printSize: '',
   printSizes: { frente: '', costas: '', ladoD: '', ladoE: '' },
+  preco: '',
   destaque: false, edicaoEspecial: false,
 };
 
@@ -538,6 +541,7 @@ export default function LojaAdmin() {
         ladoD:  it.printSizes?.ladoD  || '',
         ladoE:  it.printSizes?.ladoE  || '',
       },
+      preco: it.preco || '',
       destaque: it.destaque || false,
       edicaoEspecial: it.edicaoEspecial || false,
     });
@@ -589,6 +593,7 @@ export default function LojaAdmin() {
         ladoD:  it.printSizes?.ladoD  || '',
         ladoE:  it.printSizes?.ladoE  || '',
       },
+      preco: it.preco || '',
       destaque: false,
       edicaoEspecial: it.edicaoEspecial || false,
     });
@@ -1070,6 +1075,16 @@ export default function LojaAdmin() {
                     value={form.productUrl}
                     onChange={(e) => updateForm((p) => ({ ...p, productUrl: e.target.value }))}
                     placeholder="https://..."
+                  />
+                </label>
+
+                <label className="admin-field">
+                  <span className="admin-label">Preço (ex: R$ 89,90)</span>
+                  <input
+                    className="admin-input"
+                    value={form.preco}
+                    onChange={(e) => updateForm((p) => ({ ...p, preco: e.target.value }))}
+                    placeholder="R$ 0,00"
                   />
                 </label>
 

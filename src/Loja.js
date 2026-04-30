@@ -324,6 +324,7 @@ function normalizeShopFromDb(data) {
           ladoE:  String(it?.printSizes?.ladoE  || ''),
         },
         descricao: String(it?.descricao || ''),
+        preco: String(it?.preco || ''),
         edicaoEspecial: it?.edicaoEspecial === true,
       }))
       .filter((it) => it.title || it.images.length || it.href),
@@ -545,6 +546,7 @@ function LojaCard({ item, isPt, onClick }) {
         )}
         <div className="loja-card-title">{item.title}</div>
         {item.cor && <div className="loja-card-cor">{item.cor}</div>}
+        {item.preco && <div className="loja-card-preco">{item.preco}</div>}
       </div>
 
       {/* cta — único elemento que navega */}
@@ -922,6 +924,15 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
             )}
 
             <h1 className="loja-produto-title">{item.title}</h1>
+
+            {item.preco && (
+              <div className="loja-produto-preco">
+                <span className="loja-produto-preco-currency">R$</span>
+                <span className="loja-produto-preco-value">
+                  {String(item.preco).replace(/^R\$\s*/i, '').trim()}
+                </span>
+              </div>
+            )}
 
             {item.edicaoEspecial && (
               <div className="loja-produto-collab">

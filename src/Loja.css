@@ -757,6 +757,15 @@
   margin-top: 2px;
 }
 
+.loja-card-preco {
+  font-family: Oswald, sans-serif;
+  font-size: .95rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: #fff;
+  margin-top: 6px;
+}
+
 /* CTA */
 .loja-card-cta {
   display: flex;
@@ -912,6 +921,34 @@
   line-height: 1.1;
   color: #fff;
   margin: 0;
+}
+
+.loja-produto-preco {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 14px 18px;
+  background: rgba(255,255,255,.04);
+  border-left: 3px solid #8b0000;
+  border: 1px solid rgba(255,255,255,.08);
+  border-left: 3px solid #8b0000;
+}
+
+.loja-produto-preco-currency {
+  font-family: Inter, sans-serif;
+  font-size: .85rem;
+  font-weight: 500;
+  color: rgba(255,255,255,.5);
+  letter-spacing: .04em;
+}
+
+.loja-produto-preco-value {
+  font-family: Oswald, sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: #fff;
+  line-height: 1;
 }
 
 .loja-produto-collab {
