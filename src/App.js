@@ -994,12 +994,26 @@ function App() {
     return { home: isVisible('home'), sobre: isVisible('sobre'), loja: isVisible('loja'), noticias: isVisible('noticias'), discografia: isVisible('discografia'), contato: isVisible('contato') };
   }, [pagesContent]);
 
+  // itens aleatórios — rotaciona a cada 30s quando não há destaques
+  const [randomSeed, setRandomSeed] = useState(0);
+  useEffect(() => {
+    const all = shopCfg?.items || [];
+    const destaques = all.filter((i) => i.destaque);
+    if (destaques.length > 0) return; // só roda quando não há destaques
+    const timer = setInterval(() => setRandomSeed((s) => s + 1), 30000);
+    return () => clearInterval(timer);
+  }, [shopCfg]);
+
   const shopItems = useMemo(() => {
     const all = shopCfg?.items || [];
     const destaques = all.filter((i) => i.destaque);
-    // se há itens marcados como destaque, usa eles; senão usa os primeiros
-    return destaques.length > 0 ? destaques : all;
-  }, [shopCfg]);
+    if (destaques.length > 0) return destaques.slice(0, 6);
+    // sem destaques: sorteia 6 aleatórios (muda a cada randomSeed)
+    if (all.length <= 6) return all;
+    const shuffled = [...all].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 6);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shopCfg, randomSeed]);
   const shopStoreUrl = String(shopCfg?.storeUrl || '').trim();
 
   const [shopIndex, setShopIndex] = useState(0);
