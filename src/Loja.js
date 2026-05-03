@@ -549,14 +549,18 @@ function LojaCard({ item, isPt, onClick }) {
         )}
         <div className="loja-card-title">{item.title}</div>
         {item.cor && <div className="loja-card-cor">{item.cor}</div>}
-        {item.preco && (
-          <div className="loja-card-preco">
+      </div>
+
+      {/* preço — área fixa, sempre alinhada entre cards */}
+      <div className="loja-card-preco">
+        {item.preco ? (
+          <>
             <span className="loja-card-preco-currency">R$</span>
             <span className="loja-card-preco-value">
               {String(item.preco).replace(/^R\$\s*/i, '').trim()}
             </span>
-          </div>
-        )}
+          </>
+        ) : null}
       </div>
 
       {/* cta — único elemento que navega */}
