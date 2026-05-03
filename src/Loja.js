@@ -100,7 +100,10 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
           <button
             type="button"
             className="loja-nav-back-btn loja-nav-back-mobile"
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (window.history.length > 1) navigate(-1);
+              else navigate(lojaPath());
+            }}
             aria-label={isPt ? 'Voltar' : 'Back'}
           >
             <svg viewBox="0 0 16 16" fill="none" width="20" height="20" aria-hidden="true">
@@ -161,7 +164,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
             )}
           </span>
           <a className="loja-disclaimer-link" href={storeUrl} target="_blank" rel="noreferrer">
-            {isPt ? 'Ir para a loja ?' : 'Go to store ?'}
+            {isPt ? 'Ir para a loja →' : 'Go to store →'}
           </a>
         </div>
       )}
@@ -254,7 +257,7 @@ function LojaNav({ lang, setLang, backHref, storeUrl, filterProps, categorias })
             <svg viewBox="0 0 16 16" fill="none" width="13" height="13" aria-hidden="true">
               <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            {isPt ? '? mindofadeadbody.com.br' : '? mindofadeadbody.com.br'}
+            {isPt ? '← mindofadeadbody.com.br' : '← mindofadeadbody.com.br'}
           </button>
         </div>
       )}
@@ -279,7 +282,7 @@ function LojaDisclaimer({ isPt, storeUrl }) {
           : <>Showcase — purchases on <strong>Hotprinti</strong>.</>}
       </span>
       <a className="loja-disclaimer-link" href={storeUrl} target="_blank" rel="noreferrer">
-        {isPt ? 'Ir para a loja ?' : 'Go to store ?'}
+        {isPt ? 'Ir para a loja →' : 'Go to store →'}
       </a>
     </div>
   );
@@ -546,7 +549,14 @@ function LojaCard({ item, isPt, onClick }) {
         )}
         <div className="loja-card-title">{item.title}</div>
         {item.cor && <div className="loja-card-cor">{item.cor}</div>}
-        {item.preco && <div className="loja-card-preco">{item.preco}</div>}
+        {item.preco && (
+          <div className="loja-card-preco">
+            <span className="loja-card-preco-currency">R$</span>
+            <span className="loja-card-preco-value">
+              {String(item.preco).replace(/^R\$\s*/i, '').trim()}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* cta — único elemento que navega */}
@@ -734,7 +744,7 @@ function LojaCatalogo({ shopCfg, loading, lang, setLang, storeUrl, filterProps, 
 }
 // --- produto (/loja/:id) ------------------------------------------------------
 
-function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
+function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar, filterProps, navCategorias }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const isPt = lang === 'pt-BR';
@@ -773,7 +783,7 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
   if (loading) {
     return (
       <div className={`loja-page${hasSubbar ? ' has-subbar' : ''}`} style={PAGE_BG}>
-        <LojaNav lang={lang} setLang={setLang} backHref={lojaPath()} storeUrl={storeUrl} />
+        <LojaNav lang={lang} setLang={setLang} backHref={lojaPath()} storeUrl={storeUrl} filterProps={filterProps} categorias={navCategorias} />
         <main className="loja-main"><div className="loja-loading">{isPt ? 'Carregando…' : 'Loading…'}</div></main>
       </div>
     );
@@ -782,7 +792,7 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
   if (!item) {
     return (
       <div className={`loja-page${hasSubbar ? ' has-subbar' : ''}`} style={PAGE_BG}>
-        <LojaNav lang={lang} setLang={setLang} backHref={lojaPath()} storeUrl={storeUrl} />
+        <LojaNav lang={lang} setLang={setLang} backHref={lojaPath()} storeUrl={storeUrl} filterProps={filterProps} categorias={navCategorias} />
         <main className="loja-main">
           <div className="loja-empty">{isPt ? 'Produto não encontrado.' : 'Product not found.'}</div>
           <button type="button" className="loja-back-link" onClick={() => navigate(lojaPath())}>
@@ -795,7 +805,7 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar }) {
 
   return (
     <div className={`loja-page${hasSubbar ? ' has-subbar' : ''}`} style={PAGE_BG}>
-      <LojaNav lang={lang} setLang={setLang} backHref={lojaPath()} storeUrl={storeUrl} />
+      <LojaNav lang={lang} setLang={setLang} backHref={lojaPath()} storeUrl={storeUrl} filterProps={filterProps} categorias={navCategorias} />
 
       <main className="loja-produto-main">
         <LojaDisclaimer isPt={isPt} storeUrl={storeUrl} />
@@ -1147,7 +1157,7 @@ export default function LojaRoot() {
         } />
         <Route path="/:id" element={
           <LojaProduto shopCfg={shopCfg} loading={loading} lang={lang} setLang={setLang}
-            hasSubbar={subcats.length > 0} />
+            hasSubbar={subcats.length > 0} filterProps={filterProps} navCategorias={categorias} />
         } />
       </Routes>
       <PromoPopup lang={lang} />

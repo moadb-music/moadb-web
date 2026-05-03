@@ -153,6 +153,20 @@ function serializeShopToDb(shop) {
   };
 }
 
+// formata qualquer string de preço para "R$ 0,00"
+// aceita: "8490", "84.90", "84,90", "R$ 84,90", "R$84,90"
+function formatPreco(raw) {
+  if (!raw && raw !== 0) return '';
+  const str = String(raw).trim();
+  // remove prefixo R$
+  const clean = str.replace(/^R\$\s*/i, '').trim();
+  // extrai só dígitos
+  const digits = clean.replace(/\D/g, '');
+  if (!digits) return '';
+  const cents = parseInt(digits, 10);
+  return 'R$ ' + (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 const EMPTY_FORM = {
   id: '', name: '', descricao: '', productUrl: '', images: [], bgColor: '#070707',
   categoria: '', subcategoria: '', cor: '', printSide: '', printType: '', printSize: '',
@@ -541,7 +555,7 @@ export default function LojaAdmin() {
         ladoD:  it.printSizes?.ladoD  || '',
         ladoE:  it.printSizes?.ladoE  || '',
       },
-      preco: it.preco || '',
+      preco: formatPreco(it.preco),
       destaque: it.destaque || false,
       edicaoEspecial: it.edicaoEspecial || false,
     });
@@ -593,7 +607,7 @@ export default function LojaAdmin() {
         ladoD:  it.printSizes?.ladoD  || '',
         ladoE:  it.printSizes?.ladoE  || '',
       },
-      preco: it.preco || '',
+      preco: formatPreco(it.preco),
       destaque: false,
       edicaoEspecial: it.edicaoEspecial || false,
     });
@@ -1079,12 +1093,16 @@ export default function LojaAdmin() {
                 </label>
 
                 <label className="admin-field">
-                  <span className="admin-label">Preço (ex: R$ 89,90)</span>
+                  <span className="admin-label">Preço</span>
                   <input
                     className="admin-input"
                     value={form.preco}
-                    onChange={(e) => updateForm((p) => ({ ...p, preco: e.target.value }))}
+                    onChange={(e) => {
+                      const formatted = formatPreco(e.target.value);
+                      updateForm((p) => ({ ...p, preco: formatted }));
+                    }}
                     placeholder="R$ 0,00"
+                    inputMode="numeric"
                   />
                 </label>
 
