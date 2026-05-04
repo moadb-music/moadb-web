@@ -369,6 +369,25 @@ function formatSubcat(s) {
   return String(s || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// extrai centavos de uma string de preço ("R$ 84,90" → 8490, "8490" → 8490)
+function precoToCents(preco) {
+  if (!preco) return 0;
+  const digits = String(preco).replace(/\D/g, '');
+  return parseInt(digits, 10) || 0;
+}
+
+// formata centavos para "84,90"
+function centsToStr(cents) {
+  return (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// calcula parcela de 3x e retorna string formatada, ex: "28,30"
+function calcParcela(preco) {
+  const cents = precoToCents(preco);
+  if (!cents) return null;
+  return centsToStr(Math.ceil(cents / 3));
+}
+
 // mapa de nomes de cor em PT/EN ? valor CSS
 const COR_MAP = {
   preto: '#111', black: '#111',
@@ -555,10 +574,17 @@ function LojaCard({ item, isPt, onClick }) {
       <div className="loja-card-preco">
         {item.preco ? (
           <>
-            <span className="loja-card-preco-currency">R$</span>
-            <span className="loja-card-preco-value">
-              {String(item.preco).replace(/^R\$\s*/i, '').trim()}
-            </span>
+            <div className="loja-card-preco-main">
+              <span className="loja-card-preco-currency">R$</span>
+              <span className="loja-card-preco-value">
+                {String(item.preco).replace(/^R\$\s*/i, '').trim()}
+              </span>
+            </div>
+            {calcParcela(item.preco) && (
+              <div className="loja-card-preco-parcela">
+                3x de R$ {calcParcela(item.preco)} sem juros
+              </div>
+            )}
           </>
         ) : null}
       </div>
@@ -941,10 +967,17 @@ function LojaProduto({ shopCfg, loading, lang, setLang, hasSubbar, filterProps, 
 
             {item.preco && (
               <div className="loja-produto-preco">
-                <span className="loja-produto-preco-currency">R$</span>
-                <span className="loja-produto-preco-value">
-                  {String(item.preco).replace(/^R\$\s*/i, '').trim()}
-                </span>
+                <div className="loja-produto-preco-main">
+                  <span className="loja-produto-preco-currency">R$</span>
+                  <span className="loja-produto-preco-value">
+                    {String(item.preco).replace(/^R\$\s*/i, '').trim()}
+                  </span>
+                </div>
+                {calcParcela(item.preco) && (
+                  <div className="loja-produto-preco-parcela">
+                    3x de R$ {calcParcela(item.preco)} sem juros
+                  </div>
+                )}
               </div>
             )}
 

@@ -759,13 +759,18 @@
 
 .loja-card-preco {
   display: flex;
-  align-items: baseline;
-  gap: 4px;
+  flex-direction: column;
+  gap: 3px;
   padding: 10px 18px 10px;
   border-top: 1px solid rgba(255,255,255,.07);
-  /* altura fixa garante alinhamento entre cards */
-  min-height: 44px;
+  min-height: 52px;
   box-sizing: border-box;
+}
+
+.loja-card-preco-main {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
 }
 
 .loja-card-preco-currency {
@@ -783,6 +788,13 @@
   letter-spacing: .02em;
   color: #fff;
   line-height: 1;
+}
+
+.loja-card-preco-parcela {
+  font-family: Inter, sans-serif;
+  font-size: .62rem;
+  color: rgba(255,255,255,.35);
+  letter-spacing: .02em;
 }
 
 /* CTA */
@@ -944,13 +956,25 @@
 
 .loja-produto-preco {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  flex-direction: column;
+  gap: 5px;
   padding: 14px 18px;
   background: rgba(255,255,255,.04);
-  border-left: 3px solid #8b0000;
   border: 1px solid rgba(255,255,255,.08);
   border-left: 3px solid #8b0000;
+}
+
+.loja-produto-preco-main {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.loja-produto-preco-parcela {
+  font-family: Inter, sans-serif;
+  font-size: .78rem;
+  color: rgba(255,255,255,.4);
+  letter-spacing: .02em;
 }
 
 .loja-produto-preco-currency {
